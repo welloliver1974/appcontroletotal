@@ -19,4 +19,4 @@ npm run preview    # serve o build
 
 O PRD está em `PRD.md`; decisões e convenções de código em `CLAUDE.md`.
 
-**Status:** Fase 0 (fundação) pronta — Dashboard em construção.
+**Status:** Fase 0 (fundação) e 0.5 (refresh visual: Space Grotesk + Inter, dark "com vida", indigo primário) prontas — Dashboard em construção.

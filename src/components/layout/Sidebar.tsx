@@ -8,11 +8,11 @@ export function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-zinc-800/80 bg-zinc-950/90 backdrop-blur-xl lg:flex">
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/30">
           <Sparkles className="h-5 w-5" />
         </div>
         <div className="min-w-0 leading-tight">
-          <p className="truncate text-sm font-bold text-zinc-50">AppControleTotal</p>
+          <p className="font-display truncate text-sm font-bold text-zinc-50">AppControleTotal</p>
           <p className="text-[11px] text-zinc-500">Life OS Hub · Hermes</p>
         </div>
       </div>
@@ -28,7 +28,7 @@ export function Sidebar() {
                 cn(
                   'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-white/[0.06] text-zinc-50'
+                    ? cn(m.glow, 'text-zinc-50')
                     : 'text-zinc-400 hover:bg-white/[0.03] hover:text-zinc-100',
                 )
               }

@@ -9,11 +9,11 @@ export function Omnibox({ className }: { className?: string }) {
     <button
       onClick={() => setCommandOpen(true)}
       className={cn(
-        'group flex w-full items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/70 px-3.5 py-2 text-left text-sm text-zinc-400 transition-colors hover:border-zinc-700 hover:bg-zinc-900',
+        'group flex w-full items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/70 px-3.5 py-2 text-left text-sm text-zinc-400 transition-all hover:border-indigo-500/40 hover:bg-zinc-900',
         className,
       )}
     >
-      <Search className="h-4 w-4 shrink-0 text-zinc-500 transition-colors group-hover:text-violet-400" />
+      <Search className="h-4 w-4 shrink-0 text-zinc-500 transition-colors group-hover:text-indigo-400" />
       <span className="min-w-0 flex-1 truncate">
         Busca neural
         <span className="text-zinc-600"> — ex: "o que preciso trocar em casa?"</span>

@@ -81,14 +81,14 @@ export function CommandPalette() {
         {!query && (
           <div className="px-4 py-3">
             <p className="eyebrow mb-2 flex items-center gap-1.5">
-              <Sparkles className="h-3 w-3 text-violet-400" /> Sugestões
+              <Sparkles className="h-3 w-3 text-indigo-400" /> Sugestões
             </p>
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => setQuery(s)}
-                  className="chip transition-colors hover:border-violet-500/40 hover:text-zinc-200"
+                  className="chip transition-colors hover:border-indigo-500/40 hover:text-zinc-200"
                 >
                   {s}
                 </button>
@@ -145,8 +145,8 @@ export function CommandPalette() {
                     </span>
                     <ArrowRight
                       className={cn(
-                        'h-4 w-4 shrink-0 text-zinc-600',
-                        i === selected && 'text-violet-400',
+                        'h-4 w-4 shrink-0 text-zinc-600 transition-colors',
+                        i === selected && 'text-indigo-400',
                       )}
                     />
                   </button>

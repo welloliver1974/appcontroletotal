@@ -35,13 +35,14 @@ src/
   styles/       # index.css (Tailwind v4 + design tokens + glassmorphism)
 ```
 
-## Design system
+## Design system ("dark com vida")
 
-- **Dark nativo**: fundo `zinc-950`, cards `zinc-900`, bordas `zinc-800`; texto `zinc-100`/`zinc-400`. Fonte Inter.
-- **Accents por módulo** (sempre classes literais no registry `src/lib/modules.ts` — Tailwind não compila classes dinâmicas):
-  Dashboard → violet · Life-Log → emerald · Manutenção → orange · Despensa → purple · Viagens → cyan · Inglês → blue · Agenda → rose
+- **Tipografia**: `--font-display` = **Space Grotesk** (títulos `h1–h5` e números em destaque) · `--font-sans` = **Inter** (corpo/UI) · `--font-mono` = mono de sistema + `.font-num` (dados, datas, preços, tabular).
+- **Dark nativo com vida**: fundo `zinc-950` + glows ambientes fixos (indigo topo / cyan direita / rose canto) no `body`; cards `zinc-900` com inset top-highlight (`inset 0 1px 0 white/0.04`).
+- **Primária = indigo-500**: botões primários (`Button` variant `primary`), botão "+" do header, foco do omnibox/inputs, destaques da command palette. Marca em gradiente **indigo→violet**.
+- **Accents por módulo** (classes literais no registry `src/lib/modules.ts` — Tailwind não compila dinâmico): Dashboard → violet · Life-Log → emerald · Manutenção → orange · Despensa → purple · Viagens → cyan · Inglês → blue · Agenda → rose. Cada módulo tem `text` (-400), `solid` (-500), `soft` (chip /15), `glow` (bg tingido `/10` do item ativo na navegação) e `gradient`.
 - **Responsivo**: mobile <768px (BottomNav glass + `env(safe-area-inset)`), tablet 768–1024 (NavRail + grids 2 col), desktop ≥1024 (Sidebar).
-- Classes utilitárias em `src/styles/index.css`: `.card`, `.glass`, `.chip`, `.btn-ghost`, `.input-base`, `.skeleton`, `.pulse-dot`, `.eyebrow`, `.text-gradient`, `@keyframes shake`.
+- Classes utilitárias em `src/styles/index.css`: `.card`, `.glass`, `.chip`, `.btn-ghost`, `.input-base`, `.skeleton`, `.pulse-dot`, `.eyebrow`, `.text-gradient` (indigo→violet→cyan), `.font-num`, `@keyframes shake`.
 
 ## Convenções
 
@@ -55,6 +56,7 @@ src/
 | Fase | Status | Entrega |
 |---|---|---|
 | 0 | ✅ | Fundação: design system, nav responsiva, header + omnibox, Emergency Gate, rotas, mock layer, docs |
+| 0.5 | ✅ | Refresh visual: Space Grotesk + Inter, indigo primário, dark "com vida" (glows/highlight), accents vivos + glow |
 | 1 | ⏭️ | Dashboard (KPIs, alertas, agenda, emails, Life Insights) |
 | 2 | ⏭️ | Life-Log & Leitura |
 | 3 | ⏭️ | Manutenção & Ativos |
@@ -64,9 +66,13 @@ src/
 | 7 | ⏭️ | Agenda & Inbox (Hermes Bridge) |
 | 8 | ⏭️ | Backup, Webhook e PWA (offline) |
 
+## Governança de fases
+
+**Regra do usuário:** toda fase/módulo termina com parada de revisão e **só avançamos após o OK explícito do usuário** — nunca automaticamente.
+
 ## Validação
 
 - `npm run build` limpo (TS strict + bundle).
-- Revisão visual responsiva nas 3 larguras via DevTools.
+- Revisão visual responsiva nas 3 larguras via DevTools (mobile/tablet/desktop).
 - Atalhos: `⌘/Ctrl+K` omnibox · `⌘/Ctrl+N` adição rápida · `Alt+1..7` troca de módulo.
 - Fluxo Emergency Gate na 1ª abertura (código demo `2468`), persiste dispositivo confiável.

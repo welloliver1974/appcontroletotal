@@ -48,7 +48,7 @@ export function Modal({
         )}
       >
         <div className="sticky top-0 flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-900/80 px-5 py-3.5 backdrop-blur-xl">
-          <div className="text-sm font-semibold text-zinc-100">{title}</div>
+          <div className="font-display text-sm font-semibold text-zinc-100">{title}</div>
           <button
             onClick={onClose}
             className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"

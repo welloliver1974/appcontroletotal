@@ -44,7 +44,7 @@ export function KpiCard({
         </div>
       ) : (
         <div className="mt-4">
-          <p className="text-2xl font-bold tracking-tight text-zinc-50">{value}</p>
+          <p className="font-display text-2xl font-bold tabular-nums tracking-tight text-zinc-50">{value}</p>
           <p className="mt-0.5 text-xs font-medium text-zinc-500">{label}</p>
         </div>
       )}
