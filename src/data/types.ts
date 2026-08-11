@@ -40,6 +40,19 @@ export interface Fact {
   createdAt: string // ISO
 }
 
+export type ReadingStatus = 'lendo' | 'encerrado'
+
+export interface ReadingEntry {
+  id: string
+  title: string
+  author: string
+  status: ReadingStatus
+  progress: number // 0..100
+  note?: string
+  tags: string[]
+  updatedAt: string // ISO
+}
+
 export type AssetCategory = 'carro' | 'casa'
 
 export interface Asset {
@@ -111,7 +124,7 @@ export interface MaintMonth {
 export interface SearchDoc {
   id: string
   module: string
-  kind: 'anotacao' | 'fato' | 'ativo' | 'evento' | 'email' | 'item' | 'viagem' | 'lição'
+  kind: 'anotacao' | 'fato' | 'leitura' | 'ativo' | 'evento' | 'email' | 'item' | 'viagem' | 'lição'
   title: string
   body: string
   tags: string[]

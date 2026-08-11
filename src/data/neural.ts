@@ -22,6 +22,9 @@ function buildIndex(): SearchDoc[] {
   for (const f of db.get<RowWithId>('facts')) {
     push('life-log', 'fato', String(f.content).slice(0, 60), String(f.content), f.tags as string[])
   }
+  for (const r of db.get<RowWithId>('reading')) {
+    push('life-log', 'leitura', String(r.title), `${String(r.author)} · ${String(r.progress)}% · ${String(r.status)}`, r.tags as string[])
+  }
   for (const a of db.get<RowWithId>('assets')) {
     push('manutencao', 'ativo', `Próxima manutenção: ${String(a.name)}`, String(a.nextMaintenance), [String(a.category)])
   }

@@ -7,6 +7,7 @@ import type {
   MaintenanceRecord,
   MaintMonth,
   PantryItem,
+  ReadingEntry,
   StudySession,
   Trip,
   VocabWeek,
@@ -37,7 +38,8 @@ function month(monthsAgo: number): string {
   return d.toISOString().slice(0, 7)
 }
 
-export const SEED_VERSION = 1
+// bumping re-seeds every collection; safe while all data is mock seed
+export const SEED_VERSION = 2
 
 export const SEED: Record<string, unknown[]> = {
   events: [
@@ -68,6 +70,12 @@ export const SEED: Record<string, unknown[]> = {
     { id: 'fct-2', content: 'Pneu traseiro esquerdo perde ~2 psi/semana — verificar na próxima manutenção.', source: 'Observação', tags: ['carro', 'pneu'], createdAt: new Date(Date.now() - 9 * 86_400_000).toISOString() },
     { id: 'fct-3', content: 'Meu horário de foco produtivo: 6h30–9h da manhã.', source: 'Reflexão', tags: ['produtividade', 'rotina'], createdAt: new Date(Date.now() - 20 * 86_400_000).toISOString() },
   ] satisfies Fact[],
+
+  reading: [
+    { id: 'rd-1', title: 'Deep Work', author: 'Cal Newport', status: 'lendo', progress: 62, note: 'Capítulo 5: rituais de foco profundo.', tags: ['foco', 'produtividade'], updatedAt: new Date(Date.now() - 2 * 86_400_000).toISOString() },
+    { id: 'rd-2', title: 'Hábitos Atômicos', author: 'James Clear', status: 'encerrado', progress: 100, note: 'Fichamento pronto.', tags: ['habitos'], updatedAt: new Date(Date.now() - 10 * 86_400_000).toISOString() },
+    { id: 'rd-3', title: 'O Poder do Hábito', author: 'Charles Duhigg', status: 'lendo', progress: 30, tags: ['habitos', 'ciencia'], updatedAt: new Date(Date.now() - 86_400_000).toISOString() },
+  ] satisfies ReadingEntry[],
 
   assets: [
     { id: 'ast-1', name: 'Chevrolet Onix 2021', category: 'carro', lifePct: 62, nextMaintenance: day(6), lastMaintenance: day(-160) },
