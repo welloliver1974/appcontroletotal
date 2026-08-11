@@ -1,0 +1,125 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+
+  /* Semantic dark-mode surface scale (premium SaaS / Linear-like) */
+  --color-surface: var(--color-zinc-950);
+  --color-card: var(--color-zinc-900);
+  --color-edge: var(--color-zinc-800);
+
+  /* Module accents (used by nav + feature badges) */
+  --color-mod-dashboard: var(--color-violet-500);
+  --color-mod-lifelog: var(--color-emerald-500);
+  --color-mod-manutencao: var(--color-orange-500);
+  --color-mod-despensa: var(--color-violet-500);
+  --color-mod-viagens: var(--color-cyan-500);
+  --color-mod-ingles: var(--color-blue-600);
+  --color-mod-agenda: var(--color-rose-500);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-zinc-950 font-sans text-zinc-100 antialiased;
+  text-rendering: optimizeLegibility;
+  /* Subtle ambient glow from the top */
+  background-image:
+    radial-gradient(1200px 500px at 50% -10%, rgb(139 92 246 / 0.07), transparent 60%),
+    radial-gradient(900px 400px at 90% 110%, rgb(34 211 238 / 0.04), transparent 60%);
+  background-attachment: fixed;
+}
+
+::selection {
+  background-color: rgb(139 92 246 / 0.35);
+}
+
+/* Slim dark scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-zinc-700) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-zinc-700);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+@layer components {
+  /* ---- Surfaces ---- */
+  .card {
+    @apply rounded-2xl border border-zinc-800 bg-zinc-900/70;
+  }
+  .card-hover {
+    @apply transition-colors hover:border-zinc-700 hover:bg-zinc-900;
+  }
+  .glass {
+    @apply border border-white/10 bg-zinc-900/60 backdrop-blur-xl;
+  }
+
+  /* ---- Typography helpers ---- */
+  .text-gradient {
+    @apply bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent;
+  }
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500;
+  }
+
+  /* ---- Chips / badges ---- */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-zinc-700/60 bg-zinc-800/60 px-2.5 py-0.5 text-xs font-medium text-zinc-300;
+  }
+
+  /* ---- Interactive ---- */
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/5 hover:text-zinc-50 active:scale-[0.98];
+  }
+  .input-base {
+    @apply w-full rounded-xl border border-zinc-800 bg-zinc-900/70 px-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-violet-500/60 focus:outline-none focus:ring-2 focus:ring-violet-500/20;
+  }
+
+  /* ---- Status dot pulse (Hermes Sync) ---- */
+  .pulse-dot {
+    @apply relative inline-block h-2 w-2 rounded-full bg-emerald-400;
+  }
+  .pulse-dot::after {
+    content: '';
+    @apply absolute inset-0 animate-ping rounded-full bg-emerald-400/60;
+  }
+
+  /* ---- Skeleton shimmer ---- */
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-zinc-800/80;
+  }
+}
