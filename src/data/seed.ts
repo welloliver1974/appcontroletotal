@@ -6,6 +6,7 @@ import type {
   LifeLogEntry,
   MaintenanceRecord,
   MaintMonth,
+  MediaItem,
   PantryItem,
   ReadingEntry,
   StudySession,
@@ -39,7 +40,7 @@ function month(monthsAgo: number): string {
 }
 
 // bumping re-seeds every collection; safe while all data is mock seed
-export const SEED_VERSION = 2
+export const SEED_VERSION = 3
 
 export const SEED: Record<string, unknown[]> = {
   events: [
@@ -76,6 +77,13 @@ export const SEED: Record<string, unknown[]> = {
     { id: 'rd-2', title: 'Hábitos Atômicos', author: 'James Clear', status: 'encerrado', progress: 100, note: 'Fichamento pronto.', tags: ['habitos'], updatedAt: new Date(Date.now() - 10 * 86_400_000).toISOString() },
     { id: 'rd-3', title: 'O Poder do Hábito', author: 'Charles Duhigg', status: 'lendo', progress: 30, tags: ['habitos', 'ciencia'], updatedAt: new Date(Date.now() - 86_400_000).toISOString() },
   ] satisfies ReadingEntry[],
+
+  media: [
+    { id: 'md-1', kind: 'youtube', url: 'https://youtu.be/habits-in-15', title: 'Como criar hábitos que duram — Atomic Habits em 15 min', sourceLabel: 'YouTube · @produtividade', summary: 'Resumo visual do método de James Clear: gatilho, rotina e recompensa — e como melhorar 1% por dia sem depender só de força de vontade.', minutes: 15, status: 'salvo', tags: ['habitos', 'foco'], createdAt: new Date(Date.now() - 2 * 86_400_000).toISOString() },
+    { id: 'md-2', kind: 'youtube', url: 'https://youtu.be/dark-mode-with-life', title: 'Dark mode com vida — design systems na prática (Tailwind)', sourceLabel: 'YouTube · @devconf', summary: 'Camadas de superfície, sombras internas e glows ambiente: como montar um tema escuro sem preto chapado e com profundidade real na UI.', minutes: 24, status: 'consumido', tags: ['design', 'frontend'], createdAt: new Date(Date.now() - 9 * 86_400_000).toISOString() },
+    { id: 'md-3', kind: 'instagram', url: 'https://instagram.com/reel/fit-recipe-10min', title: 'Receita fit de 10 minutos (rolê rápido)', sourceLabel: 'Instagram · @receitasfit', summary: 'Ovos, aveia e banana em reels: 320 kcal e 18 g de proteína — boa opção para o treino matinal.', minutes: 8, status: 'salvo', tags: ['saude', 'comida'], createdAt: new Date(Date.now() - 86_400_000).toISOString() },
+    { id: 'md-4', kind: 'instagram', url: 'https://instagram.com/p/floripa-checklist', title: 'Checklist de viagem — Florianópolis', sourceLabel: 'Instagram · @viajandolite', summary: 'O que levar e os 3 pontos que valem a pena na temporada: Lagoinha, Jurerê e o centro histórico.', minutes: 6, status: 'consumido', tags: ['viagem'], createdAt: new Date(Date.now() - 30 * 86_400_000).toISOString() },
+  ] satisfies MediaItem[],
 
   assets: [
     { id: 'ast-1', name: 'Chevrolet Onix 2021', category: 'carro', lifePct: 62, nextMaintenance: day(6), lastMaintenance: day(-160) },

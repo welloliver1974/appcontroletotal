@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/data/api'
-import type { Fact, LifeLogEntry, ReadingEntry } from '@/data/types'
+import type { Fact, LifeLogEntry, MediaItem, ReadingEntry } from '@/data/types'
 
 export interface LifeLogData {
   logs: LifeLogEntry[]
   reading: ReadingEntry[]
+  media: MediaItem[]
   facts: Fact[]
 }
 
@@ -17,12 +18,13 @@ export function useLifeLogData() {
   const alive = useRef(true)
 
   const reload = useCallback(async () => {
-    const [logs, reading, facts] = await Promise.all([
+    const [logs, reading, media, facts] = await Promise.all([
       api.list<LifeLogEntry>('lifeLog'),
       api.list<ReadingEntry>('reading'),
+      api.list<MediaItem>('media'),
       api.list<Fact>('facts'),
     ])
-    if (alive.current) setData({ logs, reading, facts })
+    if (alive.current) setData({ logs, reading, media, facts })
   }, [])
 
   useEffect(() => {
@@ -46,8 +48,12 @@ export function useLifeLogData() {
     (facts: Fact[]) => setData((d) => (d ? { ...d, facts } : d)),
     [],
   )
+  const setMedia = useCallback(
+    (media: MediaItem[]) => setData((d) => (d ? { ...d, media } : d)),
+    [],
+  )
 
-  return { data, reload, setLogs, setReading, setFacts }
+  return { data, reload, setLogs, setReading, setMedia, setFacts }
 }
 
 /**

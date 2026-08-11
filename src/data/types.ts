@@ -42,6 +42,24 @@ export interface Fact {
 
 export type ReadingStatus = 'lendo' | 'encerrado'
 
+export type MediaKind = 'youtube' | 'instagram'
+export type MediaStatus = 'salvo' | 'consumido'
+
+/** Captured YouTube/Instagram link with a mock AI summary (PRD: Artigos & Mídias). */
+export interface MediaItem {
+  id: string
+  kind: MediaKind
+  url: string
+  title: string
+  sourceLabel: string // e.g. "YouTube · @channel"
+  thumbnail?: string
+  summary: string
+  minutes: number // estimated consumption time
+  status: MediaStatus
+  tags: string[]
+  createdAt: string // ISO
+}
+
 export interface ReadingEntry {
   id: string
   title: string
@@ -124,7 +142,7 @@ export interface MaintMonth {
 export interface SearchDoc {
   id: string
   module: string
-  kind: 'anotacao' | 'fato' | 'leitura' | 'ativo' | 'evento' | 'email' | 'item' | 'viagem' | 'lição'
+  kind: 'anotacao' | 'fato' | 'leitura' | 'midia' | 'ativo' | 'evento' | 'email' | 'item' | 'viagem' | 'lição'
   title: string
   body: string
   tags: string[]

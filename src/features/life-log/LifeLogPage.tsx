@@ -3,10 +3,11 @@ import { MODULE_BY_ID } from '@/lib/modules'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/feedback'
 import { api } from '@/data/api'
-import type { Fact, LifeLogEntry, ReadingEntry } from '@/data/types'
+import type { Fact, LifeLogEntry, MediaItem, MediaStatus, ReadingEntry } from '@/data/types'
 import { useLifeLogData } from './useLifeLogData'
 import { Kpis } from './Kpis'
 import { HermesAsk } from './HermesAsk'
+import { MediaSection } from './MediaSection'
 import { LogsSection } from './LogsSection'
 import { ReadingSection } from './ReadingSection'
 import { FactVault, type FactDraft } from './FactVault'
@@ -41,10 +42,10 @@ function LifeLogSkeleton() {
   )
 }
 
-/** Fase 2 — Life-Log: diário (CRUD + busca + Hermes Ask) e leitura. */
+/** Fase 2 — Life-Log: diário (CRUD + busca + Hermes Ask), leitura e artigos & mídias. */
 export function LifeLogPage() {
   const module = MODULE_BY_ID['life-log']
-  const { data, setLogs, setReading, setFacts } = useLifeLogData()
+  const { data, setLogs, setReading, setMedia, setFacts } = useLifeLogData()
   const [openLog, setOpenLog] = useState<LogFormState>(null)
   const [openReading, setOpenReading] = useState<ReadingFormState>(null)
 
@@ -89,6 +90,14 @@ export function LifeLogPage() {
     setReading(await api.remove<ReadingEntry>('reading', id))
   }
 
+  const toggleMedia = async (id: string, status: MediaStatus) => {
+    setMedia(await api.update<MediaItem>('media', id, { status }))
+  }
+
+  const deleteMedia = async (id: string) => {
+    setMedia(await api.remove<MediaItem>('media', id))
+  }
+
   const saveFact = async (draft: FactDraft) => {
     if (!data) return
     const created = await api.create<Fact>('facts', {
@@ -112,6 +121,7 @@ export function LifeLogPage() {
         <>
           <Kpis logs={data.logs} reading={data.reading} />
           <HermesAsk entries={data.logs} />
+          <MediaSection media={data.media} onToggle={toggleMedia} onRemove={deleteMedia} />
           <div className="grid items-start gap-6 lg:grid-cols-3">
             <LogsSection
               logs={data.logs}
