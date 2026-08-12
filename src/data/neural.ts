@@ -38,7 +38,20 @@ function buildIndex(): SearchDoc[] {
     push('despensa', 'item', String(p.name), `${String(p.qty)} ${String(p.unit)} · estoque baixo em ${String(p.lowThreshold)}`, [String(p.category)])
   }
   for (const t of db.get<RowWithId>('trips')) {
-    push('viagens', 'viagem', String(t.destination), `${String(t.startDate)} → ${String(t.endDate)} · ${String(t.status)}`, ['viagem'])
+    const stopTitles = Array.isArray(t.stops)
+      ? (t.stops as RowWithId[]).map((s) => String(s.title)).slice(0, 4)
+      : []
+    const extra = stopTitles.length > 0 ? ` — ${stopTitles.join(' · ')}` : ''
+    push(
+      'viagens',
+      'viagem',
+      String(t.destination),
+      `${String(t.startDate)} → ${String(t.endDate)} · ${String(t.status)}${extra}`,
+      ['viagem'],
+    )
+  }
+  for (const p of db.get<RowWithId>('places')) {
+    push('viagens', 'viagem', String(p.name), `${String(p.where)} · ${p.visited ? 'visitado' : 'a visitar'}`, ['viagem', 'lugar'])
   }
   return docs
 }

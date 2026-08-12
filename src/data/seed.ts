@@ -8,6 +8,7 @@ import type {
   MaintMonth,
   MediaItem,
   PantryItem,
+  Place,
   ReadingEntry,
   StudySession,
   Trip,
@@ -40,7 +41,7 @@ function month(monthsAgo: number): string {
 }
 
 // bumping re-seeds every collection; safe while all data is mock seed
-export const SEED_VERSION = 3
+export const SEED_VERSION = 4
 
 export const SEED: Record<string, unknown[]> = {
   events: [
@@ -108,10 +109,52 @@ export const SEED: Record<string, unknown[]> = {
   ] satisfies PantryItem[],
 
   trips: [
-    { id: 'trp-1', destination: 'Florianópolis — SC', startDate: day(5), endDate: day(10), status: 'confirmado' },
-    { id: 'trp-2', destination: 'Monte Verde — MG', startDate: day(28), endDate: day(31), status: 'planejado' },
-    { id: 'trp-3', destination: 'Bonito — MS', startDate: day(120), endDate: day(127), status: 'planejado' },
+    {
+      id: 'trp-1',
+      destination: 'Florianópolis — SC',
+      startDate: day(5),
+      endDate: day(10),
+      status: 'confirmado',
+      stops: [
+        { id: 'st-p-1', day: 1, time: '11:45', title: 'Voo GRU → Floripa + check-in pousada', note: 'Voo direto (1h20).' },
+        { id: 'st-p-2', day: 2, time: '09:00', title: 'Praia da Joaquina' },
+        { id: 'st-p-3', day: 2, time: '17:00', title: 'Mirante do Morro da Lagoa' },
+        { id: 'st-p-4', day: 3, title: 'Trilha da Lagoinha do Leste', note: 'Trilha 1h30 — levar água.' },
+        { id: 'st-p-5', day: 4, time: '10:00', title: 'Passeio de barco — Lagoa da Conceição' },
+        { id: 'st-p-6', day: 5, title: 'Jurerê Internacional + almoço no centrinho' },
+        { id: 'st-p-7', day: 6, title: 'Centro histórico', note: 'Catedral e Mercado Público pela manhã.' },
+      ],
+    },
+    {
+      id: 'trp-2',
+      destination: 'Monte Verde — MG',
+      startDate: day(28),
+      endDate: day(31),
+      status: 'planejado',
+      stops: [
+        { id: 'st-mv-1', day: 1, time: '14:00', title: 'Chegada em Monte Verde', note: 'Clima frio — casaco leve.' },
+        { id: 'st-mv-2', day: 2, time: '08:00', title: 'Trilha do Pico do Selado', note: 'Vista 360° no topo.' },
+        { id: 'st-mv-3', day: 3, time: '09:30', title: 'Pedra Redonda' },
+        { id: 'st-mv-4', day: 4, time: '11:00', title: 'Chocolate artesanal + volta' },
+      ],
+    },
+    {
+      id: 'trp-3',
+      destination: 'Bonito — MS',
+      startDate: day(120),
+      endDate: day(127),
+      status: 'planejado',
+      stops: [],
+    },
   ] satisfies Trip[],
+
+  places: [
+    { id: 'plc-1', name: 'Jericoacoara', where: 'Ceará', visited: false },
+    { id: 'plc-2', name: 'Chapada dos Veadeiros', where: 'Goiás', visited: false, note: 'Cachoeiras — melhor na seca.' },
+    { id: 'plc-3', name: 'Fernando de Noronha', where: 'Pernambuco', visited: false, note: 'Projeto Tamar — janela de tartarugas.' },
+    { id: 'plc-4', name: 'Ilha do Cardoso', where: 'Cananéia — SP', visited: true, note: 'Mergulho e trilha da restinga.' },
+    { id: 'plc-5', name: 'São Thomé das Letras', where: 'MG', visited: true },
+  ] satisfies Place[],
 
   study: [
     { id: 'std-1', date: day(-6), minutes: 35, area: 'ingles-srs', wordsLearned: 12 },

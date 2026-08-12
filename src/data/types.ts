@@ -104,12 +104,34 @@ export interface PantryItem {
 
 export type TripStatus = 'planejado' | 'confirmado' | 'realizado'
 
+export interface TripStop {
+  id: string
+  /** 1-based day inside the trip window (1..tripLength). */
+  day: number
+  /** HH:mm, optional — sorting falls back to end of day when missing. */
+  time?: string
+  title: string
+  note?: string
+}
+
 export interface Trip {
   id: string
   destination: string
   startDate: string
   endDate: string
   status: TripStatus
+  /** Chronological itinerary, grouped by day. Empty until a stop is added. */
+  stops: TripStop[]
+}
+
+/** Bucket list of saved places ("locais salvos") with a visited toggle. */
+export interface Place {
+  id: string
+  name: string
+  /** city / region, e.g. "Ceará" or "Cananéia — SP" */
+  where: string
+  visited: boolean
+  note?: string
 }
 
 export interface StudySession {
