@@ -58,3 +58,17 @@ export function isoOffset(offsetDays: number, now = new Date()): string {
   const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offsetDays)
   return d.toISOString().slice(0, 10)
 }
+
+/** Local date key (YYYY-MM-DD) for the start of today. */
+export function todayStr(): string {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Whole days from today until `dateStr` (negative = in the past). */
+export function daysUntil(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map((p) => Number(p))
+  const [nY, nM, nD] = todayStr().split('-').map((p) => Number(p))
+  return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(nY, nM - 1, nD)) / DAY)
+}

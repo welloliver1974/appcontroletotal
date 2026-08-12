@@ -1,14 +1,6 @@
 import { Car, Home, type LucideIcon } from 'lucide-react'
 import type { Asset, AssetCategory, MaintenanceRecord } from '@/data/types'
-
-const DAY_MS = 86_400_000
-
-/** Local date key (YYYY-MM-DD), matching seed `day()` semantics. */
-export function todayStr(): string {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString().slice(0, 10)
-}
+import { daysUntil, todayStr } from '@/lib/utils'
 
 export const CATEGORY: Record<AssetCategory, { label: string; icon: LucideIcon }> = {
   carro: { label: 'Carro', icon: Car },
@@ -18,13 +10,6 @@ export const CATEGORY: Record<AssetCategory, { label: string; icon: LucideIcon }
 export function clampLife(n: number): number {
   if (Number.isNaN(n)) return 0
   return Math.max(0, Math.min(100, n))
-}
-
-/** Whole days from today until `dateStr` (negative = overdue). */
-export function daysUntil(dateStr: string): number {
-  const [y, m, d] = dateStr.split('-').map((p) => Number(p))
-  const [nY, nM, nD] = todayStr().split('-').map((p) => Number(p))
-  return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(nY, nM - 1, nD)) / DAY_MS)
 }
 
 export function isOverdue(asset: Asset): boolean {

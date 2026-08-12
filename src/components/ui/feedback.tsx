@@ -43,7 +43,7 @@ export function ProgressBar({
   className,
 }: {
   value: number // 0..100
-  tone?: 'emerald' | 'orange' | 'violet' | 'cyan'
+  tone?: 'emerald' | 'orange' | 'violet' | 'cyan' | 'rose'
   className?: string
 }) {
   const tones = {
@@ -51,6 +51,7 @@ export function ProgressBar({
     orange: 'bg-orange-500',
     violet: 'bg-violet-500',
     cyan: 'bg-cyan-500',
+    rose: 'bg-rose-500',
   }
   return (
     <div className={cn('h-1.5 w-full overflow-hidden rounded-full bg-zinc-800', className)}>
