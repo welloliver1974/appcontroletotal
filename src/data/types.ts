@@ -169,3 +169,91 @@ export interface SearchDoc {
   body: string
   tags: string[]
 }
+
+/** English module (B1 level) */
+
+export type LessonArea = 'grammar' | 'vocabulary' | 'listening' | 'reading' | 'speaking'
+
+export interface Course {
+  id: string
+  title: string
+  level: 'A1' | 'A2' | 'B1' | 'B2'
+  description: string
+  order: number
+  lessons: Lesson[]
+  progress: number // 0..100
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Lesson {
+  id: string
+  courseId: string
+  title: string
+  area: LessonArea
+  order: number
+  content: string // Markdown/JSON content
+  vocabulary: VocabItem[]
+  estimatedMinutes: number
+  completed: boolean
+  completedAt?: string
+  score?: number // quiz score 0..100
+}
+
+export interface VocabItem {
+  id: string
+  word: string
+  translation: string
+  example: string
+  audioUrl?: string
+  tags: string[]
+}
+
+export interface QuizQuestion {
+  id: string
+  lessonId: string
+  type: 'multiple_choice' | 'fill_blank' | 'translation'
+  prompt: string
+  options?: string[] // for multiple_choice
+  correctAnswer: string | string[] // string for single, array for multiple
+  explanation?: string
+}
+
+export interface SRSFlashcard {
+  id: string
+  userId: string // fixed for single-user mock
+  vocabId: string
+  word: string
+  translation: string
+  example: string
+  /** SM-2 algorithm fields */
+  interval: number // days
+  easeFactor: number
+  repetitions: number
+  nextReview: string // ISO date
+  lastReviewed?: string
+  /** 0 = new, 1 = learning, 2 = review */
+  state: 0 | 1 | 2
+}
+
+export interface RoleplayMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
+  /** For Hermes persona: correction, hint, encouragement */
+  meta?: {
+    correction?: string
+    hint?: string
+    tone: 'encouraging' | 'corrective' | 'neutral'
+  }
+}
+
+export interface RoleplaySession {
+  id: string
+  scenario: string // e.g., "airport check-in", "job interview", "ordering food"
+  level: 'A2' | 'B1' | 'B2'
+  messages: RoleplayMessage[]
+  startedAt: string
+  endedAt?: string
+}

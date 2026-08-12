@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 type Variant = 'primary' | 'ghost' | 'soft' | 'danger'
-type Size = 'sm' | 'md' | 'icon'
+type Size = 'sm' | 'md' | 'lg' | 'icon'
 
 const variants: Record<Variant, string> = {
   primary:
@@ -15,6 +15,7 @@ const variants: Record<Variant, string> = {
 const sizes: Record<Size, string> = {
   sm: 'rounded-lg px-2.5 py-1.5 text-xs',
   md: 'rounded-xl px-3.5 py-2 text-sm',
+  lg: 'rounded-xl px-5 py-3 text-base',
   icon: 'rounded-xl p-2',
 }
 

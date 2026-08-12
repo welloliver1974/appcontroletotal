@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(git add src/features/life-log src/data/types.ts src/data/seed.ts src/data/neural.ts)",
+      "Bash(git commit *)"
+    ]
+  }
+}
