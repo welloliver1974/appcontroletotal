@@ -6,7 +6,7 @@ import { Card, CardHeader } from '@/components/ui/Card'
 import { IconTile } from '@/components/ui/primitives'
 import { cn } from '@/lib/utils'
 import { parseTags } from './logUtils'
-import { usePendingDelete } from './useLifeLogData'
+import { usePendingDelete } from '@/lib/usePendingDelete'
 
 export interface FactDraft {
   content: string

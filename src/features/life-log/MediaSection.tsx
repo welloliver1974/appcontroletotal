@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/feedback'
 import { cn, shortDateTime } from '@/lib/utils'
-import { usePendingDelete } from './useLifeLogData'
+import { usePendingDelete } from '@/lib/usePendingDelete'
 
 /** Saved YouTube/Instagram links (PRD "Artigos & Mídias"): cards with mock AI summary. */
 export function MediaSection({

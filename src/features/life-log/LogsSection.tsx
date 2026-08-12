@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/feedback'
 import { SectionHeader } from '@/components/ui/primitives'
 import { cn, fuzzyScore, shortDateTime } from '@/lib/utils'
-import { usePendingDelete } from './useLifeLogData'
+import { usePendingDelete } from '@/lib/usePendingDelete'
 
 function Mood({ value }: { value: LifeLogEntry['mood'] }) {
   return (

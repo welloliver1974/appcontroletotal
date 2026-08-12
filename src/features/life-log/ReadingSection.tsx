@@ -5,7 +5,7 @@ import { Card, CardHeader } from '@/components/ui/Card'
 import { EmptyState, ProgressBar } from '@/components/ui/feedback'
 import { IconTile } from '@/components/ui/primitives'
 import { cn, shortDateTime } from '@/lib/utils'
-import { usePendingDelete } from './useLifeLogData'
+import { usePendingDelete } from '@/lib/usePendingDelete'
 
 const EMERALD_SOFT = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
 
