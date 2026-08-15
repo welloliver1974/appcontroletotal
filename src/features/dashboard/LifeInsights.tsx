@@ -73,27 +73,6 @@ export function LifeInsights({ data }: { data: DashboardData }) {
           </div>
         </Card>
 
-        {/* Vocabulário */}
-        <Card>
-          <CardHeader title="Vocabulário" subtitle="palavras novas por semana" />
-          <div className="h-40 p-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.vocab} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                <XAxis
-                  dataKey="week"
-                  tickFormatter={(v: string) => shortWeekLabel(v)}
-                  {...AXIS}
-                  tick={{ fill: '#71717a', fontSize: 10 }}
-                />
-                <YAxis {...AXIS} tick={{ fill: '#71717a', fontSize: 10 }} width={26} />
-                <Tooltip content={<ChartTooltip format={(n) => `+${n} palavras`} />} cursor={{ fill: 'rgb(255 255 255 / 0.04)' }} />
-                <Bar dataKey="words" name="Palavras" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
         {/* Manutenção */}
         <Card>
           <CardHeader title="Frequência de manutenção" subtitle={`nº de registros / mês`} />

@@ -4,7 +4,7 @@ Seu sistema operacional pessoal — dark mode premium, responsivo (mobile / tabl
 
 ## Módulos
 
-📊 Dashboard · 📝 Life-Log · 🛠️ Manutenção · 🛒 Despensa · ✈️ Viagens · 🇬🇧 Inglês (B1) · 📅 Agenda & Inbox
+📊 Dashboard · 📝 Life-Log · 🛠️ Manutenção · 🛒 Despensa · ✈️ Viagens · 📅 Agenda & Inbox
 
 ## Rode
 

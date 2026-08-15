@@ -7,7 +7,6 @@ import type {
   LifeLogEntry,
   MaintMonth,
   PantryItem,
-  VocabWeek,
   WeeklySpending,
 } from '@/data/types'
 
@@ -18,7 +17,6 @@ export interface DashboardData {
   assets: Asset[]
   pantry: PantryItem[]
   spending: WeeklySpending[]
-  vocab: VocabWeek[]
   maintMonths: MaintMonth[]
 }
 
@@ -29,7 +27,7 @@ export function useDashboardData(): DashboardData | null {
   useEffect(() => {
     let alive = true
     ;(async () => {
-      const [events, emails, lifeLog, assets, pantry, spending, vocab, maintMonths] =
+      const [events, emails, lifeLog, assets, pantry, spending, maintMonths] =
         await Promise.all([
           api.list<AgendaEvent>('events'),
           api.list<InboxEmail>('emails'),
@@ -37,10 +35,9 @@ export function useDashboardData(): DashboardData | null {
           api.list<Asset>('assets'),
           api.list<PantryItem>('pantry'),
           api.list<WeeklySpending>('spending'),
-          api.list<VocabWeek>('vocab'),
           api.list<MaintMonth>('maintMonths'),
         ])
-      if (alive) setData({ events, emails, lifeLog, assets, pantry, spending, vocab, maintMonths })
+      if (alive) setData({ events, emails, lifeLog, assets, pantry, spending, maintMonths })
     })()
     return () => {
       alive = false

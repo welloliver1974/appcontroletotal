@@ -1,7 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   CalendarClock,
-  Languages,
   LayoutDashboard,
   NotebookPen,
   Plane,
@@ -15,7 +14,6 @@ export type ModuleId =
   | 'manutencao'
   | 'despensa'
   | 'viagens'
-  | 'ingles'
   | 'agenda'
 
 export type ModuleAccent = 'violet' | 'emerald' | 'orange' | 'purple' | 'cyan' | 'blue' | 'rose'
@@ -119,21 +117,6 @@ export const MODULES: ModuleDef[] = [
     gradient: 'from-cyan-500 to-sky-500',
     tag: 'Experiências',
     description: 'Itinerários cronológicos e locais salvos.',
-  },
-  {
-    id: 'ingles',
-    label: 'Inglês',
-    emoji: '🇬🇧',
-    path: '/ingles',
-    icon: Languages,
-    accent: 'blue',
-    text: 'text-blue-400',
-    solid: 'bg-blue-500',
-    soft: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
-    glow: 'bg-blue-500/10',
-    gradient: 'from-blue-600 to-indigo-500',
-    tag: 'B1 · Sala de Aula',
-    description: 'Cursos, lições, quiz, SRS e conversação com Hermes.',
   },
   {
     id: 'agenda',

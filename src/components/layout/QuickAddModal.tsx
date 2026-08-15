@@ -11,7 +11,6 @@ const VERBS: Record<ModuleId, string> = {
   manutencao: 'Novo registro de ativo',
   despensa: 'Novo item na despensa',
   viagens: 'Nova viagem',
-  ingles: 'Nova lição / revisão',
   agenda: 'Novo compromisso / email',
 }
 

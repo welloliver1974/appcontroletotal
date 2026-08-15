@@ -9,7 +9,7 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
 ======================================================================
 - ESTÉTICA: Dark mode nativo "Premium SaaS" (estilo Linear.app/Vercel).
 - CORES BASE: Zinc 950 (Fundo), Zinc 900 (Cards), Zinc 800 (Bordas).
-- ACCENTS: Dashboard (Roxo), Life-Log (Verde), Manutenção (Laranja), Despensa (Violeta), Viagens (Ciano), Inglês (Azul Royal), Agenda/Email (Rose).
+- ACCENTS: Dashboard (Roxo), Life-Log (Verde), Manutenção (Laranja), Despensa (Violeta), Viagens (Ciano), Agenda/Email (Rose).
 - RESPONSIVIDADE:
   - Mobile: Bottom Navigation Bar (Glassmorphism).
   - Tablet: Navigation Rail lateral + Grids 2 colunas.
@@ -18,8 +18,8 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
 ======================================================================
 2. ESTRUTURA DE NAVEGAÇÃO E HEADER
 ======================================================================
-- Sidebar/Bottombar (7 rotas): 
-  1. 📊 Dashboard | 2. 📝 Life-Log | 3. 🛠️ Manutenção | 4. 🛒 Despensa | 5. ✈️ Viagens | 6. 🇬🇧 Inglês | 7. 📅 Agenda & Inbox
+- Sidebar/Bottombar (6 rotas): 
+  1. 📊 Dashboard | 2. 📝 Life-Log | 3. 🛠️ Manutenção | 4. 🛒 Despensa | 5. ✈️ Viagens | 6. 📅 Agenda & Inbox
 - Header Global:
   - Neural Omnibox (Cmd+K): Busca semântica inteligente e campo para colar links diretos (YouTube, Instagram, Artigos).
   - Badge Status: "Hermes Sync Active".
@@ -30,7 +30,7 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
 ======================================================================
 - DASHBOARD: 
   - Omnibox, KPIs, Grids de Alertas, "Próximos Compromissos" (Agenda), "Emails Críticos" (Inbox Inteligente).
-  - LIFE INSIGHTS: Componente de gráficos (recharts) exibindo tendências (ex: gastos, evolução de vocabulário, frequência de manutenção).
+  - LIFE INSIGHTS: Componente de gráficos (recharts) exibindo tendências (ex: gastos, frequência de manutenção).
 - LIFE-LOG & LEITURA (CAPTURA DE MÍDIAS E LINKS):
   - PROCESSADOR DE LINKS: Tratamento especial para URLs do YOUTUBE (extração de título, thumbnail e resumo de áudio/vídeo) e INSTAGRAM (salvamento de posts, reels e legendas para ver depois).
   - Visão Artigos & Mídias: Cards com resumo gerado por IA, thumbnail do vídeo/post e tempo estimado de consumo.
@@ -41,8 +41,6 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
   - Estoque visual e exportação de lista via Webhook para Hermes Agent/WhatsApp.
 - VIAGENS & EXPERIÊNCIAS:
   - Itinerário cronológico e locais salvos.
-- ENGLISH MASTERY (SALA DE AULA - NÍVEL B1):
-  - Catálogo de cursos, Lesson Player (Markdown/JSON), Quiz, SRS (Flashcards), Free Conversation (Hermes Roleplay).
 - AGENDA & INTEGRATION (HERMES BRIDGE):
   - Sincronização bidirecional com calendário e inbox (filtrado pelo Hermes).
 
@@ -77,7 +75,7 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
 7. MOCK DATA E ATALHOS
 ======================================================================
 - Mock Data para links do YOUTUBE e INSTAGRAM salvos com resumos de IA no Life-Log.
-- Dados para 1 curso de Inglês (B1), 3 ativos, 8 itens de despensa, 1 viagem, 3 compromissos de agenda.
+- Dados para 3 ativos, 8 itens de despensa, 1 viagem, 3 compromissos de agenda.
 - Atalhos (Cmd/Ctrl+K, Cmd/Ctrl+N, Alt+1..7).
 - Skeleton Loaders (animate-pulse) e Empty States em todas as telas.
 

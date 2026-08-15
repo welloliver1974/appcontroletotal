@@ -7,7 +7,6 @@ import { LifeLogPage } from '@/features/life-log/LifeLogPage'
 import { ManutencaoPage } from '@/features/manutencao/ManutencaoPage'
 import { DespensaPage } from '@/features/despensa/DespensaPage'
 import { ViagensPage } from '@/features/viagens/ViagensPage'
-import { InglesPage } from '@/features/ingles/InglesPage'
 import { AgendaPage } from '@/features/agenda/AgendaPage'
 
 export default function App() {
@@ -24,7 +23,6 @@ export default function App() {
             <Route path="/manutencao" element={<ManutencaoPage />} />
             <Route path="/despensa" element={<DespensaPage />} />
             <Route path="/viagens" element={<ViagensPage />} />
-            <Route path="/ingles" element={<InglesPage />} />
             <Route path="/agenda" element={<AgendaPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
