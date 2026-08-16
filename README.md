@@ -25,14 +25,14 @@ npm run lint         # oxlint
 
 ---
 
-## 📦 Módulos (6 ativos)
+## 📦 Módulos (6 ativos — **todos concluídos**)
 
 | Módulo | Ícone | Descrição | Status |
 |--------|-------|-----------|--------|
-| Dashboard | 📊 | KPIs, alertas, agenda, emails, Life Insights (gráficos) | 🔧 Em andamento (Fase 1) |
-| Life-Log & Leitura | 📝 | Diário, leitura, cofre de fatos, captura YouTube/Instagram | 📋 Planejado (Fase 2) |
-| Manutenção & Ativos | 🛠️ | Veículos/Casa, barras de vida útil, histórico de intervenções | 📋 Planejado (Fase 3) |
-| Consumo & Despensa | 🛒 | Estoque visual, CRUD, exportação lista via webhook | 📋 Planejado (Fase 4) |
+| Dashboard | 📊 | KPIs, alertas, agenda, emails, Life Insights (gráficos Recharts) | ✅ Concluído (Fase 1) |
+| Life-Log & Leitura | 📝 | Diário, leitura, cofre de fatos, captura YouTube/Instagram, índice neural | ✅ Concluído (Fase 2) |
+| Manutenção & Ativos | 🛠️ | Veículos/Casa, barras de vida útil, histórico de intervenções | ✅ Concluído (Fase 3) |
+| Consumo & Despensa | 🛒 | Estoque visual, CRUD, exportação lista via webhook | ✅ Concluído (Fase 4) |
 | Viagens & Experiências | ✈️ | Itinerário cronológico, locais salvos (bucket list) | ✅ Concluído (Fase 5) |
 | Agenda & Inbox | 📅 | CalendarView, EventModal, EmailCard, Settings (Backup/Webhook/PWA) | ✅ Concluído (Fase 7) |
 
@@ -180,16 +180,18 @@ src/
 |------|--------|---------|
 | 0 | ✅ | Fundação: design system, nav responsiva, header+omnibox, Emergency Gate, rotas, mock layer |
 | 0.5 | ✅ | Refresh visual: Space Grotesk+Inter, indigo primário, dark "com vida", glows, accents |
-| 1 | 🔧 | **Dashboard** (KPIs, alertas, agenda, emails, Life Insights) — **EM ANDAMENTO** |
-| 2 | 📋 | Life-Log & Leitura (diário, leitura, cofre, captura YT/IG, índice neural) |
-| 3 | 📋 | Manutenção & Ativos (CRUD, vida útil, histórico) |
-| 4 | 📋 | Consumo & Despensa (estoque, CRUD, webhook mock) |
-| 5 | ✅ | Viagens & Experiências (itinerário cronológico + locais salvos) |
+| 1 | ✅ | **Dashboard** (KPIs, alertas, agenda, emails, Life Insights Recharts) |
+| 2 | ✅ | **Life-Log & Leitura** (diário, leitura, cofre, captura YT/IG, índice neural) |
+| 3 | ✅ | **Manutenção & Ativos** (CRUD, vida útil, histórico) |
+| 4 | ✅ | **Consumo & Despensa** (estoque, CRUD, webhook mock) |
+| 5 | ✅ | **Viagens & Experiências** (itinerário cronológico + locais salvos) |
 | 6 | ❌ | **Removido** — Inglês B1 (não prossegue) |
-| 7 | ✅ | Agenda & Inbox (Hermes Bridge) — CalendarView, EventModal, EmailCard, Settings |
-| 8 | ✅ | Backup, Webhook & PWA Offline — backup semanal, offline queue, toast, SW runtime caching |
+| 7 | ✅ | **Agenda & Inbox** (Hermes Bridge) — CalendarView, EventModal, EmailCard, Settings |
+| 8 | ✅ | **Backup, Webhook & PWA Offline** — backup semanal, offline queue, toast, SW runtime caching |
 
 > **Regra de governança:** Toda fase termina com parada de revisão. Só avançamos após **OK explícito do usuário** — nunca automaticamente.
+
+> **🎉 Todas as 9 fases (0, 0.5, 1–5, 7–8) implementadas e aprovadas.** App completo e em produção.
 
 ---
 
