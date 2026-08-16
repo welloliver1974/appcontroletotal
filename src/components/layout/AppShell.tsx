@@ -12,7 +12,7 @@ import { QuickAddModal } from './QuickAddModal'
 /**
  * Responsive app shell:
  * mobile → bottom nav · tablet → rail · desktop → sidebar.
- * Owns global shortcuts: ⌘K omnibox, ⌘N quick add, Alt+1..7 modules.
+ * Owns global shortcuts: ⌘K omnibox, ⌘N quick add, Alt+1..6 modules.
  */
 export function AppShell() {
   const location = useLocation()

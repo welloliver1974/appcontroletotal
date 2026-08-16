@@ -30,8 +30,8 @@ src/
     auth/       # EmergencyGate
   features/     # um diretório por módulo: dashboard, life-log, manutencao, despensa, viagens, agenda
   data/         # "backend mock": db.ts (localStorage), api.ts (async fake), seed.ts, neural.ts (busca), types.ts
-  stores/       # zustand: uiStore (palette/modais), authStore (trusted device)
-  lib/          # modules.ts (registry dos 6 módulos), utils.ts (cn, fuzzy, datas)
+  stores/       # zustand: uiStore (palette/modais), authStore (trusted device), toastStore, backupStore, offlineQueueStore
+  lib/          # modules.ts (registry dos 6 módulos), utils.ts (cn, fuzzy, datas), pwa.ts, safeApi.ts (mock async + fallback offline), backgroundSync.ts, backupScheduler.ts, usePendingDelete.ts
   styles/       # index.css (Tailwind v4 + design tokens + glassmorphism)
 ```
 
@@ -63,16 +63,25 @@ src/
 | 4 | ⏭️ | Consumo & Despensa |
 | 5 | ✅ | Viagens & Experiências (itinerário cronológico + locais salvos) |
 | 6 | ✅ | **Removido — Inglês B1** (módulo não prossegui) |
-| 7 | ⏭️ | Agenda & Inbox (Hermes Bridge) |
-| 8 | ⏭️ | Backup, Webhook e PWA (offline) |
+| 7 | ✅ | Agenda & Inbox (Hermes Bridge) — CalendarView, EventModal, EmailCard, Settings (Backup/Webhook/PWA) |
+| 8 | ✅ | Backup, Webhook e PWA (offline) — `backupStore`, `offlineQueueStore`, `safeApi`, `backgroundSync`, `backupScheduler`, `ToastContainer` |
 
 ## Governança de fases
 
 **Regra do usuário:** toda fase/módulo termina com parada de revisão e **só avançamos após o OK explícito do usuário** — nunca automaticamente.
 
+### Fase 8 — Backup, Webhook e PWA (offline) ✅
+
+- **Persistência local resiliente:** `offlineQueueStore` enfileira ações offline e replays quando a conexão retorna; `backgroundSync.ts` detecta estado de rede (`navigator.onLine`) e aciona flush.
+- **API segura:** `safeApi.ts` envolve o mock async com fallback automático para a fila offline em caso de erro.
+- **Backup & restore:** `backupStore` (persistência de schedule) + `backupScheduler.ts` (export/import JSON + backup automático semanal/ periódico via `visibilitychange` + `focus`).
+- **Webhook mock:** payload JSON POST para endpoint configurado, com assinatura HMAC opcional (`X-Hermes-Signature`) e teste com inspeção de resposta via UI de agenda.
+- **PWA offline:** service worker (vite-plugin-pwa) pré-cacheia assets + shell + runtime caching (fonts, `/api/*`); `pwa.ts` utilitários para registro e lifecycle; `registerServiceWorker()` chamado em `main.tsx` em produção.
+- **Feedback:** `ToastContainer.tsx` renderiza toasts de sucesso/erro/alerta (backup concluído, sincronização offline, etc.).
+
 ## Validação
 
 - `npm run build` limpo (TS strict + bundle).
 - Revisão visual responsiva nas 3 larguras via DevTools (mobile/tablet/desktop).
-- Atalhos: `⌘/Ctrl+K` omnibox · `⌘/Ctrl+N` adição rápida · `Alt+1..7` troca de módulo.
+- Atalhos: `⌘/Ctrl+K` omnibox · `⌘/Ctrl+N` adição rápida · `Alt+1..6` troca de módulo.
 - Fluxo Emergency Gate na 1ª abertura (código demo `2468`), persiste dispositivo confiável.

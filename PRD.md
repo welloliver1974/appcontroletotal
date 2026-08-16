@@ -1,6 +1,6 @@
 # Life OS Hub — PRD
 
-> **Nota:** este é o PRD completo e autoritativo (sincronizado com a versão integral fornecida pelo usuário). Fases 0–2 implementadas; roadmap e governança em [CLAUDE.md](CLAUDE.md).
+> **Nota:** este é o PRD completo e autoritativo (sincronizado com a versão integral fornecida pelo usuário). Fases 0, 0.5, 5, 7 e 8 implementadas; roadmap e governança em [CLAUDE.md](CLAUDE.md).
 
 Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moderno e responsivo. Sua tarefa é construir um "Life OS Hub" (Sistema Operacional Pessoal) completo, modular e responsivo para telas de Smartphones, Tablets e Desktops.
 
@@ -52,14 +52,13 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
 - EMERGENCY MODE (SEGURANÇA):
   - Autenticação por código via Hermes Agent (WhatsApp/Telegram) para dispositivos não confiáveis.
 - DATA PORTABILITY (BACKUP AUTOMÁTICO):
-  - Backup semanal agendado (JSON/CSV) do banco de dados para storage externo (Google Drive/Dropbox).
+  - Backup semanal agendado (JSON) com download local — `backupStore` + `backupScheduler.ts` (simulação; upload real para Google Drive/Dropbox é fase futura com credenciais).
 
 ======================================================================
 5. ARQUITETURA TÉCNICA
 ======================================================================
-- ARQUITETURA DE CONTEÚDO: Pasta `/content/` para cursos (JSON/Markdown).
-- PWA/OFFLINE: Service Worker para cache e modo avião.
-- API/WEBHOOKS: Estrutura para envio de dados e comandos para o Hermes Agent com envio de contexto.
+- PWA/OFFLINE: Service Worker (vite-plugin-pwa) com pré-cache de assets + runtime caching (Google Fonts, `/api/*`); registro via `main.tsx` e utilitários em `pwa.ts`.
+- API/WEBHOOKS: Estrutura `safeApi.ts` envolve o mock async com fallback automático para fila offline; webhook mock POST (JSON + HMAC) configurável via UI de agenda (SettingsWebhook).
 
 ======================================================================
 6. COMPARTILHAMENTO MOBILE & INTEGRACÃO YOUTUBE / INSTAGRAM
@@ -76,8 +75,24 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
 ======================================================================
 - Mock Data para links do YOUTUBE e INSTAGRAM salvos com resumos de IA no Life-Log.
 - Dados para 3 ativos, 8 itens de despensa, 1 viagem, 3 compromissos de agenda.
-- Atalhos (Cmd/Ctrl+K, Cmd/Ctrl+N, Alt+1..7).
+- Atalhos (Cmd/Ctrl+K, Cmd/Ctrl+N, Alt+1..6).
 - Skeleton Loaders (animate-pulse) e Empty States em todas as telas.
+
+======================================================================
+8. FASE 8 — BACKUP, WEBHOOK E PWA (OFFLINE) ✅
+======================================================================
+Status: **concluída** (persistência local resiliente, PWA offline, notificações toast, backup automático e webhook mock).
+
+Entregáveis (todos concluídos):
+- **Persistência local resiliente:** `offlineQueueStore` enfileira ações offline e replays quando a conexão retorna; `backgroundSync.ts` detecta o estado de rede (`navigator.onLine`) e aciona o flush.
+- **API segura:** `safeApi.ts` envolve o mock async com fallback automático para a fila offline em caso de erro.
+- **Backup & restore:** `backupStore` (persistência de schedule) + `backupScheduler.ts` (export/import JSON + backup automático semanal periódico via `visibilitychange` + `focus`).
+- **Webhook mock:** payload JSON POST para endpoint configurado, com assinatura HMAC opcional (`X-Hermes-Signature`).
+- **PWA offline:** service worker (vite-plugin-pwa) pré-cacheia assets + shell + runtime caching (fonts, `/api/*`); `pwa.ts` utilitários para registro e lifecycle; `registerServiceWorker()` chamado em `main.tsx` em produção.
+- **Feedback:** `ToastContainer.tsx` renderiza toasts de sucesso/erro/alerta (backup concluído, sincronização offline, etc.).
+
+Resumo do que Fase8 entregou:
+Automatização de backup (JSON/CSV) com scheduler, runtime caching offline via service worker, notificações toast para feedback de usuário, fila offline com sincronização em background e integração webhook mock com o Hermes Agent — deixando o app funcional no modo avião e com dados protegidos.
 
 ENTREGÁVEL:
 Gere os componentes, páginas e lógica de backend simulada (Mock) com React e Tailwind CSS. Layout impecável e responsivo para todos os dispositivos.
