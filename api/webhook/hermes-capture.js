@@ -2,6 +2,9 @@
 // Rota: POST /api/webhook/hermes-capture
 import { createClient } from '@supabase/supabase-js';
 
+// Timestamps explícitos no formato ISO (as tabelas têm created_at/updated_at NOT NULL sem default)
+const nowIso = () => new Date().toISOString();
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -41,6 +44,8 @@ export default async function handler(req, res) {
         minutes: 0,
         status: 'salvo',
         tags,
+        created_at: nowIso(),
+        updated_at: nowIso(),
       })
       .select()
       .single();
@@ -52,7 +57,13 @@ export default async function handler(req, res) {
   // nota pura -> tabela facts
   const { data, error } = await supabase
     .from('facts')
-    .insert({ content: summary || title, source: 'hermes', tags })
+    .insert({
+      content: summary || title,
+      source: 'hermes',
+      tags,
+      created_at: nowIso(),
+      updated_at: nowIso(),
+    })
     .select()
     .single();
 
