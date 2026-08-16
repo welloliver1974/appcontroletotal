@@ -1,6 +1,6 @@
 import { useBackupStore } from '@/stores/backupStore'
 import { toast } from '@/stores/toastStore'
-import { db } from '@/data/db'
+import { db } from '@/lib/db'
 import { SEED_VERSION } from '@/data/seed'
 
 /** Collections included in the export — keep in sync with SettingsBackup. */
@@ -30,12 +30,13 @@ interface BackupPayload {
   collections: CollectionsMap
 }
 
-/** Build the backup payload for all collections in localStorage. */
-function buildBackupPayload(kind: 'manual' | 'automatic'): BackupPayload {
+/** Build the backup payload for all collections (async — Supabase or localStorage). */
+async function buildBackupPayload(kind: 'manual' | 'automatic'): Promise<BackupPayload> {
   const collections = {} as CollectionsMap
-  for (const col of COLLECTIONS) {
-    collections[col] = db.get<unknown>(col)
-  }
+  const results = await Promise.all(COLLECTIONS.map((col) => db.get(col)))
+  COLLECTIONS.forEach((col, idx) => {
+    collections[col] = results[idx]
+  })
   return { version: SEED_VERSION, timestamp: new Date().toISOString(), kind, collections }
 }
 
@@ -85,17 +86,19 @@ function isSameWeek(a: Date, b: Date): boolean {
 
 /** Executa o backup automático (gera download + toast + registra no store). */
 export function runAutomaticBackup(notify = true): void {
-  const payload = buildBackupPayload('automatic')
-  triggerDownload(payload)
-  useBackupStore.getState().markBackupDone()
-  if (notify) toast.success('Backup semanal automático salvo 📦', { duration: 5000 })
+  void buildBackupPayload('automatic').then((payload) => {
+    triggerDownload(payload)
+    useBackupStore.getState().markBackupDone()
+    if (notify) toast.success('Backup semanal automático salvo 📦', { duration: 5000 })
+  })
 }
 
 /** Backup manual — exposto para components (SettingsBackup). */
-export function runManualBackup(notify = true): void {
-  const payload = buildBackupPayload('manual')
+export async function runManualBackup(notify = true): Promise<BackupPayload> {
+  const payload = await buildBackupPayload('manual')
   triggerDownload(payload)
   if (notify) toast.success('Backup exportado com sucesso 📦', { duration: 4000 })
+  return payload
 }
 
 /** Init hook — should be called once at startup (main.tsx) and on visibility/focus changes. */

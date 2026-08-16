@@ -1,0 +1,62 @@
+# Supabase Configuration for Life OS Hub
+# This file configures the local development setup and migration behavior.
+
+[db]
+  # Major version of Postgres to use
+  major_version = 16
+
+  # Port for local Postgres (when running `supabase start`)
+  port = 54322
+
+  # Shadow database port (for migrations)
+  shadow_port = 54320
+
+[api]
+  # Port for local API gateway (Kong)
+  port = 54321
+
+  # Schemas to expose via PostgREST
+  schemas = ["public", "storage", "graphql_public"]
+
+  # Extra search path for PostgREST
+  extra_search_path = ["public", "extensions"]
+
+[auth]
+  # JWT expiry in seconds
+  jwt_expiry = 3600
+
+  # Enable email confirmations
+  enable_signup = true
+
+  # External auth providers (configure when needed)
+  # external = { google = { enabled = false }, github = { enabled = false } }
+
+[storage]
+  # Local storage file size limit (50MB)
+  file_size_limit = "50MiB"
+
+  # Enabled image transformation
+  image_transformation = true
+
+[functions]
+  # Port for edge functions
+  port = 54323
+
+[studio]
+  # Port for Supabase Studio UI
+  port = 54324
+
+[realtime]
+  # Enable realtime by default
+  enabled = true
+
+# =============================================================================
+# MIGRATION SETTINGS
+# =============================================================================
+[migration]
+  # Migration files are in supabase/migrations/
+  # They run in alphabetical order (timestamp prefix ensures correct order)
+  #
+  # To apply: npx supabase db push
+  # To reset: npx supabase db reset
+  # To create new: npx supabase migration new <name>

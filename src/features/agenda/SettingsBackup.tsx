@@ -3,11 +3,10 @@ import { Download, Upload, RefreshCw, AlertCircle, CheckCircle, FileJson, Calend
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
-import { db } from '@/data/db'
+import { db } from '@/lib/db'
 import { SEED_VERSION } from '@/data/seed'
-import { useBackupStore } from '@/stores/backupStore'
 import { runManualBackup, runAutomaticBackup } from '@/lib/backupScheduler'
-import { DAY_LABELS } from '@/stores/backupStore'
+import { DAY_LABELS, useBackupStore } from '@/stores/backupStore'
 import { toast } from '@/stores/toastStore'
 import { cn } from '@/lib/utils'
 
@@ -54,7 +53,7 @@ function parseBackup(file: File): Promise<BackupData> {
   })
 }
 
-function restoreBackup(data: BackupData): { restored: number; errors: string[] } {
+async function restoreBackup(data: BackupData): Promise<{ restored: number; errors: string[] }> {
   const errors: string[] = []
   let restored = 0
 
@@ -65,7 +64,7 @@ function restoreBackup(data: BackupData): { restored: number; errors: string[] }
       continue
     }
     try {
-      db.set(col, rows)
+      await db.set(col as keyof BackupData['collections'], rows)
       restored++
     } catch (err) {
       errors.push(`${col}: ${err instanceof Error ? err.message : 'erro desconhecido'}`)
@@ -109,7 +108,7 @@ export function SettingsBackup() {
     setImportError(null)
     try {
       const backup = await parseBackup(selectedFile)
-      const result = restoreBackup(backup)
+      const result = await restoreBackup(backup)
       setImportResult(result)
       setImportStatus(result.errors.length > 0 ? 'error' : 'success')
       if (result.errors.length === 0) {

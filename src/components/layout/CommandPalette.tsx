@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, CornerDownLeft, Search, Sparkles } from 'lucide-react'
 import { useUiStore } from '@/stores/uiStore'
@@ -23,7 +23,24 @@ export function CommandPalette() {
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const results = useMemo(() => neuralSearch(query, 8), [query])
+  const [results, setResults] = useState<SearchDoc[]>([])
+  const resultsRef = useRef(results)
+  resultsRef.current = results
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([])
+      return
+    }
+    let active = true
+    neuralSearch(query, 8).then((res) => {
+      if (active) {
+        setResults(res)
+        resultsRef.current = res
+      }
+    })
+    return () => { active = false }
+  }, [query])
 
   useEffect(() => {
     if (!open) return
