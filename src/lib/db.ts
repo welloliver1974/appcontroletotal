@@ -122,7 +122,7 @@ function toAppShape<T>(raw: Record<string, unknown>, collection: string): T {
 }
 
 /** Converte um objeto de camelCase (app) para snake_case (banco). */
-function toDbShape<T>(obj: Record<string, unknown>, collection: string): Record<string, unknown> {
+function toDbShape(obj: Record<string, unknown>, collection: string): Record<string, unknown> {
   const map = columnMap(collection)
   const db: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(obj)) {
