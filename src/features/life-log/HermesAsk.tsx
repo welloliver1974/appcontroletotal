@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowUpRight, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Sparkles, Bot } from 'lucide-react'
 import type { LifeLogEntry } from '@/data/types'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { composeHermesAnswer, rankHits } from './logUtils'
+import { queryHermesAI } from '@/lib/hermes'
 
 type AskState =
   | { status: 'idle' }
   | { status: 'thinking' }
-  | { status: 'done'; answer: string }
+  | { status: 'done'; answer: string; source: 'api' | 'local' }
 
-/** Mock Hermes: answers a question by synthesizing the best-matching diary entries. */
+/** Hermes Assistant: synthesizes diary entries with AI API or local semantic matching. */
 export function HermesAsk({ entries }: { entries: LifeLogEntry[] }) {
   const [question, setQuestion] = useState('')
   const [ask, setAsk] = useState<AskState>({ status: 'idle' })
@@ -18,15 +19,29 @@ export function HermesAsk({ entries }: { entries: LifeLogEntry[] }) {
 
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
-  const handleAsk = (e: FormEvent) => {
+  const handleAsk = async (e: FormEvent) => {
     e.preventDefault()
     const q = question.trim()
     if (!q || ask.status === 'thinking') return
     setAsk({ status: 'thinking' })
+
+    const contextEntries = rankHits(entries, q).slice(0, 5)
+    const contextText = contextEntries
+      .map((h) => `[${h.entry.createdAt?.slice(0, 10) || ''}] ${h.entry.title}: ${h.entry.body}`)
+      .join('\n')
+
+    // Try AI endpoint first
+    const aiResult = await queryHermesAI(q, contextText)
+    if (aiResult) {
+      setAsk({ status: 'done', answer: aiResult.answer, source: 'api' })
+      return
+    }
+
+    // Fallback to fast local synthesis
     window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => {
-      setAsk({ status: 'done', answer: composeHermesAnswer(q, rankHits(entries, q)) })
-    }, 1200)
+      setAsk({ status: 'done', answer: composeHermesAnswer(q, contextEntries), source: 'local' })
+    }, 800)
   }
 
   return (
@@ -66,6 +81,21 @@ export function HermesAsk({ entries }: { entries: LifeLogEntry[] }) {
 
           {ask.status === 'done' && (
             <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-emerald-400 flex items-center gap-1">
+                  {ask.source === 'api' ? (
+                    <>
+                      <Bot className="h-3.5 w-3.5 text-emerald-400" />
+                      Hermes AI Cloud
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                      Sintetizador Local
+                    </>
+                  )}
+                </span>
+              </div>
               <div className="whitespace-pre-line rounded-xl border-l-2 border-emerald-500/50 bg-white/[0.02] p-4 text-sm leading-relaxed text-zinc-300">
                 {ask.answer}
               </div>

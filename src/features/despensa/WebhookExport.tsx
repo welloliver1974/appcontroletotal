@@ -1,35 +1,45 @@
-import { useEffect, useRef, useState } from 'react'
-import { Check, Send } from 'lucide-react'
+import { useState } from 'react'
+import { AlertCircle, Check, Loader2, Send } from 'lucide-react'
 import type { PantryItem } from '@/data/types'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { buildShoppingList } from './despensaUtils'
+import { getHermesConfig, sendHermesWebhook, type HermesWebhookResult } from '@/lib/hermes'
+import { toast } from '@/stores/toastStore'
 
-type Status = 'idle' | 'sending' | 'sent'
-
-const HERMES_URL = 'https://hermes.agent/v1/webhook/despensa'
+type Status = 'idle' | 'sending' | 'success' | 'error'
 
 /**
- * Mock webhook export to "Hermes Agent": forwards the shopping list (low stock +
- * expiring ≤ 7d) with a simulated send and a payload preview. Real integration in Fase 8.
+ * Webhook export to "Hermes Agent": forwards the shopping list (low stock +
+ * expiring ≤ 7d) to the configured Hermes endpoint (WhatsApp/VPS).
  */
 export function WebhookExport({ items }: { items: PantryItem[] }) {
   const [status, setStatus] = useState<Status>('idle')
   const [payload, setPayload] = useState('')
-  const timer = useRef<number | undefined>(undefined)
+  const [result, setResult] = useState<HermesWebhookResult | null>(null)
+  const config = getHermesConfig()
 
-  useEffect(
-    () => () => {
-      window.clearTimeout(timer.current)
-    },
-    [],
-  )
-
-  const exportList = () => {
+  const exportList = async () => {
     if (status === 'sending') return
-    setPayload(buildShoppingList(items))
+    const text = buildShoppingList(items)
+    setPayload(text)
     setStatus('sending')
-    timer.current = window.setTimeout(() => setStatus('sent'), 900)
+    setResult(null)
+
+    const res = await sendHermesWebhook('shopping_list.export', {
+      text,
+      itemCount: items.length,
+      exportedAt: new Date().toISOString(),
+    })
+
+    setResult(res)
+    setStatus(res.ok ? 'success' : 'error')
+
+    if (res.ok) {
+      toast.success('Lista de compras enviada ao Hermes Agent! 🚀')
+    } else {
+      toast.error(`Falha no envio: ${res.response}`)
+    }
   }
 
   return (
@@ -38,35 +48,47 @@ export function WebhookExport({ items }: { items: PantryItem[] }) {
         <div className="min-w-0">
           <p className="text-sm font-medium text-zinc-100">Webhook · Hermes Agent</p>
           <p className="mt-0.5 text-xs text-zinc-500">
-            Exporta a lista de compras (estoque baixo + vencendo ≤ 7d) para o Hermes no WhatsApp.
+            Exporta a lista de compras (estoque baixo + vencendo ≤ 7d) para o Hermes no WhatsApp / VPS.
           </p>
         </div>
         {status === 'sending' && (
-          <span className="pulse-dot inline-flex items-center gap-1.5 text-xs font-medium text-purple-300">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-purple-300">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
             Enviando…
           </span>
         )}
-        {status === 'sent' && (
+        {status === 'success' && (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-300">
-            <Check className="h-3.5 w-3.5" /> Enviado (mock)
+            <Check className="h-3.5 w-3.5" /> Enviado ({result?.status || 200})
+          </span>
+        )}
+        {status === 'error' && (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-300">
+            <AlertCircle className="h-3.5 w-3.5" /> Erro ({result?.status || 0})
           </span>
         )}
       </div>
 
-      <Button variant="primary" size="sm" onClick={exportList} disabled={status === 'sending'}>
-        <Send className="h-3.5 w-3.5" />
-        {status === 'sending' ? 'Exportando…' : 'Exportar lista de compras'}
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button variant="primary" size="sm" onClick={exportList} disabled={status === 'sending'} className="flex items-center gap-2">
+          <Send className="h-3.5 w-3.5" />
+          {status === 'sending' ? 'Exportando…' : 'Exportar lista de compras'}
+        </Button>
+        {config.webhookUrl && (
+          <span className="text-[11px] text-zinc-500 truncate max-w-xs font-mono">
+            {config.webhookUrl}
+          </span>
+        )}
+      </div>
 
-      {status !== 'idle' && (
+      {payload && (
         <div className="space-y-1.5">
-          <p className="font-mono text-[10px] break-all text-zinc-600">→ {HERMES_URL}</p>
           <pre className={cn('overflow-x-auto rounded-xl bg-zinc-950/70 p-3 font-mono text-[11px] leading-relaxed', payload.length > 5 ? 'text-zinc-300' : 'text-zinc-500')}>
             {payload}
           </pre>
-          {status === 'sent' && (
-            <p className="text-[11px] text-zinc-600">
-              Simulação — a integração real chega na Fase 8 (webhook Hermes).
+          {result && !result.ok && (
+            <p className="text-[11px] text-rose-400">
+              {result.response} (Configure a URL do Webhook em Configurações)
             </p>
           )}
         </div>

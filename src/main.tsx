@@ -5,6 +5,13 @@ import App from './app/App'
 import { db } from '@/lib/db'
 import { initBackupScheduler } from '@/lib/backupScheduler'
 import { initBackgroundSync } from '@/lib/backgroundSync'
+import { useThemeStore } from '@/stores/themeStore'
+
+// Initialize active theme
+const savedTheme = useThemeStore.getState().theme
+if (typeof document !== 'undefined' && savedTheme) {
+  document.documentElement.setAttribute('data-theme', savedTheme)
+}
 
 // Database adapter seeds local data only when Supabase is not configured.
 db.init()
