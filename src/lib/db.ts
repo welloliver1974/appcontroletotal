@@ -6,16 +6,6 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 type Row = { id: string } & Record<string, unknown>
 
-/**
- * Database adapter com fallback automático para o mock (localStorage).
- *
- * - Se `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` estiverem definidas → usa Supabase.
- * - Se não estiverem → usa localStorage mock automaticamente (funciona offline).
- *
- * A interface é idêntica ao `db` mock existente (`get/set/insert/update/remove/init/reset`)
- * para que nenhum código no app precise mudar.
- */
-
 const supabaseUrl = SUPABASE_URL
 const supabaseKey = SUPABASE_ANON_KEY
 const supabase = supabaseUrl && supabaseKey
@@ -25,13 +15,131 @@ const supabase = supabaseUrl && supabaseKey
     })
   : null
 
-/** True quando o cliente Supabase está configurado. */
 export const useSupabase = !!supabase
 
 /**
- * Fallback handler — usa localStorage mock quando Supabase não está disponível
- * ou quando há erro de rede. Mantém o app 100% funcional offline.
+ * Camada de mapeamento camelCase (frontend) <-> snake_case (colunas do Supabase).
+ * O app foi construído com as collections em camelCase (localStorage mock),
+ * mas as migrações do Supabase criaram as colunas em snake_case. Este mapa
+ * alinha o adapter para que o app leia/grave no banco real.
  */
+
+/** Nome da collection (camelCase que o app usa) -> nome real da tabela no Supabase. */
+const TABLE_OVERRIDES: Record<string, string> = {
+  lifeLog: 'life_log',
+  // demais collections já têm o mesmo nome no banco
+}
+
+/** Mapa de colunas: camelCase (app) -> snake_case (banco). */
+const COLUMN_MAPS: Record<string, Record<string, string>> = {
+  default: {
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  lifeLog: {
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  media: {
+    sourceLabel: 'source_label',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  facts: {
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  reading: {
+    updatedAt: 'updated_at',
+    createdAt: 'created_at',
+  },
+  events: {
+    timeStart: 'time_start',
+    timeEnd: 'time_end',
+    location: 'location',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  emails: {
+    fromName: 'from_name',
+    sentAt: 'sent_at',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  assets: {
+    lifePct: 'life_pct',
+    nextMaintenance: 'next_maintenance',
+    lastMaintenance: 'last_maintenance',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  maintenance: {
+    assetId: 'asset_id',
+    odometerKm: 'odometer_km',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  pantry: {
+    lowThreshold: 'low_threshold',
+    expiresAt: 'expires_at',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  trips: {
+    startDate: 'start_date',
+    endDate: 'end_date',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  places: {
+    where: 'where_text',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+}
+
+/** Converte nome da collection para o nome real da tabela. */
+function tableName(collection: string): string {
+  return TABLE_OVERRIDES[collection] || collection
+}
+
+/** Retorna o mapa de colunas para uma collection (fallback no default). */
+function columnMap(collection: string): Record<string, string> {
+  return COLUMN_MAPS[collection] || COLUMN_MAPS.default
+}
+
+/** Converte um objeto de snake_case (do banco) para camelCase (app). */
+function toAppShape<T>(raw: Record<string, unknown>, collection: string): T {
+  const map = invertMap(columnMap(collection))
+  const app: Record<string, unknown> = { ...raw }
+  for (const [snake, camel] of Object.entries(map)) {
+    if (snake in app) {
+      app[camel] = app[snake]
+      delete app[snake]
+    }
+  }
+  return app as T
+}
+
+/** Converte um objeto de camelCase (app) para snake_case (banco). */
+function toDbShape<T>(obj: Record<string, unknown>, collection: string): Record<string, unknown> {
+  const map = columnMap(collection)
+  const db: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    const mapped = map[key] || key
+    db[mapped] = value
+  }
+  return db as Record<string, unknown>
+}
+
+/** Inverte o mapa (snake -> camel). */
+function invertMap(map: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [camel, snake] of Object.entries(map)) {
+    out[snake] = camel
+  }
+  return out
+}
 
 function mapSupabaseError(err: unknown): Error {
   const postgrestErr = err as PostgrestError | undefined
@@ -41,42 +149,39 @@ function mapSupabaseError(err: unknown): Error {
   return new Error('Database unavailable')
 }
 
-/**
- * Database adapter — mesma interface do mock localStorage, mas usa Supabase quando
- * configurado. Fallback automático pro mock em caso de erro ou ausência de config.
- */
 export const db = {
   /** Lista todas as linhas de uma coleção. */
   async get<T = Row>(collection: string): Promise<T[]> {
     if (!supabase) return localStorageDb.get<T>(collection)
+    const table = tableName(collection)
     try {
-      const { data, error } = await supabase.from(collection).select('*')
+      const { data, error } = await supabase.from(table).select('*')
       if (error) {
-        console.warn(`[db] Supabase error on get(${collection}) — falling back to mock:`, error.message)
+        console.warn(`[db] Supabase error on get(${table}) — falling back to mock:`, error.message)
         return localStorageDb.get<T>(collection)
       }
-      return (data ?? []) as T[]
+      return ((data ?? []) as Record<string, unknown>[]).map((row) => toAppShape<T>(row, collection))
     } catch (err) {
-      console.warn(`[db] Supabase threw on get(${collection}) — falling back to mock:`, mapSupabaseError(err).message)
+      console.warn(`[db] Supabase threw on get(${table}) — falling back to mock:`, mapSupabaseError(err).message)
       return localStorageDb.get<T>(collection)
     }
   },
 
-  /** Substitui todas as linhas de uma coleção (merge semelhante). */
+  /** Substitui todas as linhas de uma coleção. */
   async set<T = Row>(collection: string, rows: T[]): Promise<T[]> {
     if (!supabase) {
       localStorageDb.set<T>(collection, rows)
       return rows
     }
+    const table = tableName(collection)
     try {
-      // Upsert each row (Supabase needs primary key match)
       for (const row of rows) {
-        const { error } = await supabase.from(collection).upsert(row as Record<string, unknown>)
+        const { error } = await supabase.from(table).upsert(toDbShape(row as Record<string, unknown>, collection))
         if (error) throw error
       }
       return rows
     } catch (err) {
-      console.warn(`[db] Supabase set failed for ${collection} — falling back to mock:`, mapSupabaseError(err).message)
+      console.warn(`[db] Supabase set failed for ${table} — falling back to mock:`, mapSupabaseError(err).message)
       localStorageDb.set<T>(collection, rows)
       return rows
     }
@@ -89,47 +194,50 @@ export const db = {
       localStorageDb.insert<T & { id: string }>(collection, r)
       return localStorageDb.get<T>(collection)
     }
+    const table = tableName(collection)
     try {
-      const { error } = await supabase.from(collection).insert(row as Record<string, unknown>)
+      const { error } = await supabase.from(table).insert(toDbShape(row as Record<string, unknown>, collection))
       if (error) throw error
       return await this.get<T>(collection)
     } catch (err) {
-      console.warn(`[db] Supabase insert failed for ${collection} — falling back to mock:`, mapSupabaseError(err).message)
+      console.warn(`[db] Supabase insert failed for ${table} — falling back to mock:`, mapSupabaseError(err).message)
       const r = row as T & { id: string }
       localStorageDb.insert<T & { id: string }>(collection, r)
       return localStorageDb.get<T>(collection)
     }
   },
 
-  /** Atualiza uma linha pelo `id` e retorna todas as linhas atualizadas. */
+  /** Atualiza uma linha pelo `id`. */
   async update<T = Row>(collection: string, id: string, patch: Partial<T>): Promise<T[]> {
     if (!supabase) {
       localStorageDb.update<T & { id: string }>(collection, id, patch as Partial<T & { id: string }>)
       return localStorageDb.get<T>(collection)
     }
+    const table = tableName(collection)
     try {
-      const { error } = await supabase.from(collection).update(patch as Record<string, unknown>).eq('id', id)
+      const { error } = await supabase.from(table).update(toDbShape(patch as Record<string, unknown>, collection)).eq('id', id)
       if (error) throw error
       return await this.get<T>(collection)
     } catch (err) {
-      console.warn(`[db] Supabase update failed for ${collection}:${id} — falling back to mock:`, mapSupabaseError(err).message)
+      console.warn(`[db] Supabase update failed for ${table}:${id} — falling back to mock:`, mapSupabaseError(err).message)
       localStorageDb.update<T & { id: string }>(collection, id, patch as Partial<T & { id: string }>)
       return localStorageDb.get<T>(collection)
     }
   },
 
-  /** Remove uma linha pelo `id` e retorna todas as linhas atualizadas. */
+  /** Remove uma linha pelo `id`. */
   async remove<T = Row>(collection: string, id: string): Promise<T[]> {
     if (!supabase) {
       localStorageDb.remove<T & { id: string }>(collection, id)
       return localStorageDb.get<T>(collection)
     }
+    const table = tableName(collection)
     try {
-      const { error } = await supabase.from(collection).delete().eq('id', id)
+      const { error } = await supabase.from(table).delete().eq('id', id)
       if (error) throw error
       return await this.get<T>(collection)
     } catch (err) {
-      console.warn(`[db] Supabase remove failed for ${collection}:${id} — falling back to mock:`, mapSupabaseError(err).message)
+      console.warn(`[db] Supabase remove failed for ${table}:${id} — falling back to mock:`, mapSupabaseError(err).message)
       localStorageDb.remove<T & { id: string }>(collection, id)
       return localStorageDb.get<T>(collection)
     }
@@ -140,7 +248,7 @@ export const db = {
     localStorageDb.init()
   },
 
-  /** Reseta localStorage mock (dados reais viram do seed). */
+  /** Reseta localStorage mock. */
   reset(): void {
     localStorageDb.reset()
   },
