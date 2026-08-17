@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/data/api'
+import { useRealtimeSync } from '@/lib/useRealtimeSync'
 import type { Asset, MaintenanceRecord } from '@/data/types'
 
 export interface ManutencaoData {
@@ -7,9 +8,10 @@ export interface ManutencaoData {
   records: MaintenanceRecord[]
 }
 
+const MANUTENCAO_COLLECTIONS = ['assets', 'maintenance']
+
 /**
- * Loads manutencao data through the mock API. Mutation handlers patch the state
- * directly with what api.create/update/remove returns — no re-fetch, no flicker.
+ * Loads manutencao data through the API with realtime sync.
  */
 export function useManutencaoData() {
   const [data, setData] = useState<ManutencaoData | null>(null)
@@ -30,6 +32,8 @@ export function useManutencaoData() {
       alive.current = false
     }
   }, [reload])
+
+  useRealtimeSync(MANUTENCAO_COLLECTIONS, reload)
 
   const setAssets = useCallback(
     (assets: Asset[]) => setData((d) => (d ? { ...d, assets } : d)),

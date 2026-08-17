@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/data/api'
+import { useRealtimeSync } from '@/lib/useRealtimeSync'
 import type {
   AgendaEvent,
   Asset,
@@ -20,29 +21,38 @@ export interface DashboardData {
   maintMonths: MaintMonth[]
 }
 
-/** Loads every collection the dashboard reads through the mock API (async + skeleton). */
+const DASHBOARD_COLLECTIONS = ['events', 'emails', 'lifeLog', 'assets', 'pantry', 'spending', 'maintMonths']
+
+/** Loads every collection the dashboard reads through the API (async + skeleton + realtime). */
 export function useDashboardData(): DashboardData | null {
   const [data, setData] = useState<DashboardData | null>(null)
+  const aliveRef = useRef(true)
 
-  useEffect(() => {
-    let alive = true
-    ;(async () => {
-      const [events, emails, lifeLog, assets, pantry, spending, maintMonths] =
-        await Promise.all([
-          api.list<AgendaEvent>('events'),
-          api.list<InboxEmail>('emails'),
-          api.list<LifeLogEntry>('lifeLog'),
-          api.list<Asset>('assets'),
-          api.list<PantryItem>('pantry'),
-          api.list<WeeklySpending>('spending'),
-          api.list<MaintMonth>('maintMonths'),
-        ])
-      if (alive) setData({ events, emails, lifeLog, assets, pantry, spending, maintMonths })
-    })()
-    return () => {
-      alive = false
+  const reload = useCallback(async () => {
+    const [events, emails, lifeLog, assets, pantry, spending, maintMonths] =
+      await Promise.all([
+        api.list<AgendaEvent>('events'),
+        api.list<InboxEmail>('emails'),
+        api.list<LifeLogEntry>('lifeLog'),
+        api.list<Asset>('assets'),
+        api.list<PantryItem>('pantry'),
+        api.list<WeeklySpending>('spending'),
+        api.list<MaintMonth>('maintMonths'),
+      ])
+    if (aliveRef.current) {
+      setData({ events, emails, lifeLog, assets, pantry, spending, maintMonths })
     }
   }, [])
+
+  useEffect(() => {
+    aliveRef.current = true
+    void reload()
+    return () => {
+      aliveRef.current = false
+    }
+  }, [reload])
+
+  useRealtimeSync(DASHBOARD_COLLECTIONS, reload)
 
   return data
 }

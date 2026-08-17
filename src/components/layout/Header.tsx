@@ -3,6 +3,8 @@ import { useLocation } from 'react-router-dom'
 import { Plus, Search, Settings } from 'lucide-react'
 import { MODULE_BY_PATH } from '@/lib/modules'
 import { useUiStore } from '@/stores/uiStore'
+import { useOfflineQueueStore } from '@/stores/offlineQueueStore'
+import { useSupabase } from '@/lib/db'
 import { cn } from '@/lib/utils'
 import { Omnibox } from './Omnibox'
 import { SettingsModal } from '@/features/agenda/SettingsModal'
@@ -12,6 +14,8 @@ export function Header() {
   const location = useLocation()
   const setCommandOpen = useUiStore((s) => s.setCommandOpen)
   const setQuickAddOpen = useUiStore((s) => s.setQuickAddOpen)
+  const isOnline = useOfflineQueueStore((s) => s.isOnline)
+  const isSyncing = useOfflineQueueStore((s) => s.isSyncing)
   const module = MODULE_BY_PATH[location.pathname]
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -39,11 +43,28 @@ export function Header() {
             <Search className="h-5 w-5" />
           </button>
 
-          {/* Hermes sync badge */}
-          <span className="chip hidden sm:inline-flex">
-            <span className="pulse-dot" />
-            Hermes Sync Active
-          </span>
+          {/* Cloud / Sync Status Badge */}
+          {isSyncing ? (
+            <span className="chip hidden sm:inline-flex items-center gap-1.5 border-amber-500/30 bg-amber-500/10 text-amber-300">
+              <span className="h-2 w-2 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
+              Sincronizando...
+            </span>
+          ) : !isOnline ? (
+            <span className="chip hidden sm:inline-flex items-center gap-1.5 border-rose-500/30 bg-rose-500/10 text-rose-300">
+              <span className="h-2 w-2 rounded-full bg-rose-500" />
+              Modo Offline
+            </span>
+          ) : useSupabase ? (
+            <span className="chip hidden sm:inline-flex items-center gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Supabase Nuvem
+            </span>
+          ) : (
+            <span className="chip hidden sm:inline-flex items-center gap-1.5">
+              <span className="pulse-dot" />
+              Hermes Local
+            </span>
+          )}
 
           {/* Settings */}
           <button

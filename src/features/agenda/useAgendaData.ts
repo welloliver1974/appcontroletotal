@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/data/api'
+import { useRealtimeSync } from '@/lib/useRealtimeSync'
 import type { AgendaEvent, InboxEmail } from '@/data/types'
 
 export interface AgendaData {
   events: AgendaEvent[]
   emails: InboxEmail[]
 }
+
+const AGENDA_COLLECTIONS = ['events', 'emails']
 
 export function useAgendaData() {
   const [data, setData] = useState<AgendaData | null>(null)
@@ -26,6 +29,8 @@ export function useAgendaData() {
       alive.current = false
     }
   }, [reload])
+
+  useRealtimeSync(AGENDA_COLLECTIONS, reload)
 
   const setEvents = useCallback((events: AgendaEvent[]) => setData((d) => (d ? { ...d, events } : d)), [])
   const setEmails = useCallback((emails: InboxEmail[]) => setData((d) => (d ? { ...d, emails } : d)), [])

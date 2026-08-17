@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/data/api'
+import { useRealtimeSync } from '@/lib/useRealtimeSync'
 import type { Fact, LifeLogEntry, MediaItem, ReadingEntry } from '@/data/types'
 
 export interface LifeLogData {
@@ -9,9 +10,10 @@ export interface LifeLogData {
   facts: Fact[]
 }
 
+const LIFELOG_COLLECTIONS = ['lifeLog', 'reading', 'media', 'facts']
+
 /**
- * Loads life-log data through the mock API. Mutation handlers patch the state
- * directly with what api.create/update/remove returns — no re-fetch, no flicker.
+ * Loads life-log data through the API with realtime sync.
  */
 export function useLifeLogData() {
   const [data, setData] = useState<LifeLogData | null>(null)
@@ -34,6 +36,8 @@ export function useLifeLogData() {
       alive.current = false
     }
   }, [reload])
+
+  useRealtimeSync(LIFELOG_COLLECTIONS, reload)
 
   // Keep `data` non-null after first load; settle existing state while refetching.
   const setLogs = useCallback(

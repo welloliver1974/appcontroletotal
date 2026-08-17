@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/data/api'
+import { useRealtimeSync } from '@/lib/useRealtimeSync'
 import type { PantryItem } from '@/data/types'
 
 export interface DespensaData {
   items: PantryItem[]
 }
 
+const DESPENSA_COLLECTIONS = ['pantry']
+
 /**
- * Loads despensa data through the mock API. Mutation handlers patch the state
- * directly with what api.create/update/remove returns — no re-fetch, no flicker.
+ * Loads despensa data through the API with realtime updates.
  */
 export function useDespensaData() {
   const [data, setData] = useState<DespensaData | null>(null)
@@ -26,6 +28,8 @@ export function useDespensaData() {
       alive.current = false
     }
   }, [reload])
+
+  useRealtimeSync(DESPENSA_COLLECTIONS, reload)
 
   const setItems = useCallback(
     (items: PantryItem[]) => setData((d) => (d ? { ...d, items } : d)),

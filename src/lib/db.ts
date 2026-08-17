@@ -11,7 +11,8 @@ const secretKeyError = SUPABASE_ANON_KEY?.startsWith('sb_secret_')
 
 const supabaseUrl = SUPABASE_URL
 const supabaseKey = SUPABASE_ANON_KEY
-const supabase = supabaseUrl && supabaseKey && !secretKeyError
+
+export const supabase = supabaseUrl && supabaseKey && !secretKeyError
   ? createClient(supabaseUrl, supabaseKey, {
       db: { schema: 'public' },
       auth: { autoRefreshToken: true, persistSession: true },
@@ -25,7 +26,7 @@ const TABLES: Record<string, string> = {
   maintMonths: 'maint_months',
 }
 
-function tableName(collection: string): string {
+export function tableName(collection: string): string {
   return TABLES[collection] ?? collection
 }
 
