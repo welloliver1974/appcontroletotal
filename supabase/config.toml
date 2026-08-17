@@ -3,7 +3,7 @@
 
 [db]
   # Major version of Postgres to use
-  major_version = 16
+  major_version = 15
 
   # Port for local Postgres (when running `supabase start`)
   port = 54322

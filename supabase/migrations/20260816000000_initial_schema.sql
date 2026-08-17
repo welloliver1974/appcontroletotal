@@ -15,7 +15,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- events: Calendar events (AgendaEvent)
 CREATE TABLE IF NOT EXISTS events (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   date DATE NOT NULL, -- YYYY-MM-DD
   time_start TIME NOT NULL, -- HH:mm
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS events (
 
 -- emails: Smart inbox emails (InboxEmail)
 CREATE TABLE IF NOT EXISTS emails (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   from_name TEXT NOT NULL,
   subject TEXT NOT NULL,
   preview TEXT NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS emails (
 
 -- life_log: Journal entries (LifeLogEntry)
 CREATE TABLE IF NOT EXISTS life_log (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   body TEXT NOT NULL,
   tags TEXT[] DEFAULT '{}',
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS life_log (
 
 -- facts: Quick facts / vault (Fact)
 CREATE TABLE IF NOT EXISTS facts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   content TEXT NOT NULL,
   source TEXT NOT NULL,
   tags TEXT[] DEFAULT '{}',
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS facts (
 
 -- reading: Books / articles being read (ReadingEntry)
 CREATE TABLE IF NOT EXISTS reading (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   author TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('lendo', 'encerrado')),
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS reading (
 
 -- media: YouTube / Instagram links with AI summaries (MediaItem)
 CREATE TABLE IF NOT EXISTS media (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   kind TEXT NOT NULL CHECK (kind IN ('youtube', 'instagram')),
   url TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS media (
 
 -- assets: Vehicles and home equipment (Asset)
 CREATE TABLE IF NOT EXISTS assets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   category TEXT NOT NULL CHECK (category IN ('carro', 'casa')),
   life_pct SMALLINT NOT NULL DEFAULT 100 CHECK (life_pct BETWEEN 0 AND 100),
@@ -112,8 +112,8 @@ CREATE TABLE IF NOT EXISTS assets (
 
 -- maintenance: Maintenance history (MaintenanceRecord)
 CREATE TABLE IF NOT EXISTS maintenance (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  id TEXT PRIMARY KEY,
+  asset_id TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   cost NUMERIC(10, 2) NOT NULL DEFAULT 0,
   date DATE NOT NULL,
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS maintenance (
 
 -- pantry: Stock items (PantryItem)
 CREATE TABLE IF NOT EXISTS pantry (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   category TEXT NOT NULL,
   qty NUMERIC(10, 2) NOT NULL DEFAULT 0,
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS pantry (
 
 -- trips: Trip itineraries (Trip)
 CREATE TABLE IF NOT EXISTS trips (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   destination TEXT NOT NULL,
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
@@ -156,8 +156,8 @@ CREATE TABLE IF NOT EXISTS trips (
 
 -- trip_stops: Itinerary stops per trip (TripStop)
 CREATE TABLE IF NOT EXISTS trip_stops (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  trip_id UUID NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  id TEXT PRIMARY KEY,
+  trip_id TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
   day SMALLINT NOT NULL CHECK (day > 0),
   time TIME,
   title TEXT NOT NULL,
@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS trip_stops (
 
 -- places: Saved places / bucket list (Place)
 CREATE TABLE IF NOT EXISTS places (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   where_text TEXT NOT NULL,
   visited BOOLEAN DEFAULT FALSE,
@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS places (
 
 -- spending: Weekly spending data (WeeklySpending)
 CREATE TABLE IF NOT EXISTS spending (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   week DATE NOT NULL, -- Monday of the week
   despensa NUMERIC(10, 2) NOT NULL DEFAULT 0,
   manutencao NUMERIC(10, 2) NOT NULL DEFAULT 0,
@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS spending (
 
 -- maint_months: Monthly maintenance counts (MaintMonth)
 CREATE TABLE IF NOT EXISTS maint_months (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   month TEXT NOT NULL, -- 'YYYY-MM'
   count SMALLINT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -259,6 +259,21 @@ ALTER TABLE maint_months ENABLE ROW LEVEL SECURITY;
 
 -- Default policy: allow all operations for authenticated and anon (dev mode)
 -- Replace with proper policies when adding auth
+DROP POLICY IF EXISTS "Allow all for development" ON events;
+DROP POLICY IF EXISTS "Allow all for development" ON emails;
+DROP POLICY IF EXISTS "Allow all for development" ON life_log;
+DROP POLICY IF EXISTS "Allow all for development" ON facts;
+DROP POLICY IF EXISTS "Allow all for development" ON reading;
+DROP POLICY IF EXISTS "Allow all for development" ON media;
+DROP POLICY IF EXISTS "Allow all for development" ON assets;
+DROP POLICY IF EXISTS "Allow all for development" ON maintenance;
+DROP POLICY IF EXISTS "Allow all for development" ON pantry;
+DROP POLICY IF EXISTS "Allow all for development" ON trips;
+DROP POLICY IF EXISTS "Allow all for development" ON trip_stops;
+DROP POLICY IF EXISTS "Allow all for development" ON places;
+DROP POLICY IF EXISTS "Allow all for development" ON spending;
+DROP POLICY IF EXISTS "Allow all for development" ON maint_months;
+
 CREATE POLICY "Allow all for development" ON events FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for development" ON emails FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for development" ON life_log FOR ALL USING (true) WITH CHECK (true);

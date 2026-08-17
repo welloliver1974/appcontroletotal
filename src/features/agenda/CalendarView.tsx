@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import type { KeyboardEvent } from 'react'
 import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin, Tag, MoreHorizontal } from 'lucide-react'
 import type { AgendaEvent } from '@/data/types'
 import { Card } from '@/components/ui/Card'
@@ -82,10 +83,18 @@ function DayCell({ date, events, today, selectedDate, onClick, onCreate }: {
   const isSelected = dateStr === selectedDate
   const dayEvents = events.filter((e) => e.date === dateStr)
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    onClick(date)
+  }
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => onClick(date)}
+      onKeyDown={handleKeyDown}
       className={cn(
         'relative h-24 w-full p-2 transition-all flex flex-col',
         !isCurrentMonth && 'bg-zinc-900/50 text-zinc-500',
@@ -130,7 +139,7 @@ function DayCell({ date, events, today, selectedDate, onClick, onCreate }: {
           <Calendar className="h-3 w-3" />
         </button>
       )}
-    </button>
+    </div>
   )
 }
 

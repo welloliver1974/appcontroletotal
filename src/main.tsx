@@ -2,11 +2,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@/styles/index.css'
 import App from './app/App'
-import { db } from '@/data/db'
+import { db } from '@/lib/db'
 import { initBackupScheduler } from '@/lib/backupScheduler'
 import { initBackgroundSync } from '@/lib/backgroundSync'
 
-// Mock backend: ensure the local "database" is seeded before first render.
+// Database adapter seeds local data only when Supabase is not configured.
 db.init()
 
 // Init background services (backup scheduler + offline queue sync).
