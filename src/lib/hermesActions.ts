@@ -35,20 +35,33 @@ export async function extractAndExecuteHermesActions(replyText: string): Promise
 
       cleanedReply = cleanedReply.replace(fullTag, '').trim()
 
-      if (parsed.action === 'pantry_add' && parsed.payload?.name) {
+      if ((parsed.action === 'pantry_add' || parsed.action === 'shopping_add') && parsed.payload?.name) {
+        const rawName = String(parsed.payload.name).trim()
+        const toBuy = parsed.action === 'shopping_add' || parsed.payload.toBuy !== false || parsed.payload.qty === 0
+        const desiredCount = Number(
+          parsed.payload.quantityToBuy ||
+          parsed.payload.lowThreshold ||
+          parsed.payload.quantity ||
+          parsed.payload.qty ||
+          parsed.payload.minQuantity ||
+          1,
+        )
+
         const item: PantryItem = {
           id: uid(),
-          name: String(parsed.payload.name),
-          category: parsed.payload.category || 'outros',
-          qty: Number(parsed.payload.qty || parsed.payload.quantity) || 1,
+          name: rawName,
+          category: parsed.payload.category || 'Alimentos',
+          qty: toBuy ? 0 : desiredCount,
           unit: parsed.payload.unit || 'un',
-          lowThreshold: Number(parsed.payload.lowThreshold || parsed.payload.minQuantity) || 1,
+          lowThreshold: toBuy ? Math.max(1, desiredCount) : 1,
           expiresAt: parsed.payload.expiresAt,
         }
         await db.insert('pantry', item)
         actions.push({
           type: 'pantry_add',
-          description: `Adicionado à despensa: ${item.name} (${item.qty} ${item.unit})`,
+          description: toBuy
+            ? `Adicionado à lista de compras: ${item.name} (${item.lowThreshold} ${item.unit} a comprar)`
+            : `Adicionado ao estoque da despensa: ${item.name} (${item.qty} ${item.unit})`,
           success: true,
           data: item,
         })
