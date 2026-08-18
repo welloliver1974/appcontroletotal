@@ -11,7 +11,16 @@ export function FinanceQuickSummaryCard() {
   const [fixedBills, setFixedBills] = useState<FixedBill[]>([])
   const [loading, setLoading] = useState(true)
 
-  const currentMonthKey = new Date().toISOString().slice(0, 7) // 'YYYY-MM'
+  const [monthlyBudget, setMonthlyBudgetState] = useState<number>(() => {
+    try {
+      return Number(localStorage.getItem('act.financas.monthlyBudget')) || 3500
+    } catch {
+      return 3500
+    }
+  })
+
+  const now = new Date()
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
   useEffect(() => {
     Promise.all([
@@ -23,10 +32,18 @@ export function FinanceQuickSummaryCard() {
         setFixedBills(Array.isArray(bills) ? bills : [])
       })
       .finally(() => setLoading(false))
+
+    try {
+      const b = Number(localStorage.getItem('act.financas.monthlyBudget')) || 3500
+      setMonthlyBudgetState(b)
+    } catch {}
   }, [])
 
-  // Calculate monthly total
-  const monthSpending = spending.filter((s) => s.date && s.date.startsWith(currentMonthKey))
+  // Calculate monthly total from date or createdAt matching YYYY-MM
+  const monthSpending = spending.filter((s) => {
+    const itemDate = s.date || s.createdAt?.slice(0, 10) || ''
+    return itemDate.startsWith(currentMonthKey)
+  })
   const totalSpent = monthSpending.reduce((acc, s) => acc + (Number(s.amount) || 0), 0)
 
   // Calculate pending fixed bills for this month
@@ -34,8 +51,7 @@ export function FinanceQuickSummaryCard() {
   const pendingBillsTotal = pendingBills.reduce((acc, b) => acc + (Number(b.amount) || 0), 0)
   const paidBills = fixedBills.filter((b) => (b.paidMonths || []).includes(currentMonthKey))
 
-  // Monthly Budget baseline (default or stored)
-  const monthlyBudget = 6000
+  // Budget progress
   const budgetUsedPct = Math.min(100, Math.round((totalSpent / monthlyBudget) * 100))
   const remainingBudget = Math.max(0, monthlyBudget - totalSpent)
 

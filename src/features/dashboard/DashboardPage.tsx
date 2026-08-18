@@ -16,6 +16,7 @@ import { DailyHabitsCard } from './DailyHabitsCard'
 import { DashboardQuickActions } from './DashboardQuickActions'
 import { FinanceQuickSummaryCard } from './FinanceQuickSummaryCard'
 import { QuickShoppingListCard } from './QuickShoppingListCard'
+import { PwaInstallBanner } from '@/components/pwa/PwaInstallBanner'
 
 function todayLabel() {
   return new Date().toLocaleDateString('pt-BR', {
@@ -76,6 +77,9 @@ export function DashboardPage() {
           {todayLabel()}
         </span>
       </PageHeader>
+
+      {/* Banner inteligente de instalação no celular */}
+      <PwaInstallBanner />
 
       {!data ? (
         <DashboardSkeleton />

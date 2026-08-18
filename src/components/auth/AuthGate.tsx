@@ -21,6 +21,7 @@ import {
   isBiometricsAvailable,
   isBiometricsEnabled,
   isMobileDevice,
+  registerBiometrics,
 } from '@/lib/biometrics'
 import { toast } from '@/stores/toastStore'
 import { cn } from '@/lib/utils'
@@ -49,7 +50,7 @@ export function AuthGate() {
 
   useEffect(() => {
     async function checkBiometrics() {
-      if (isMobileDevice() && isBiometricsEnabled()) {
+      if (isMobileDevice()) {
         const available = await isBiometricsAvailable()
         if (available) {
           setBiometricsReady(true)
@@ -63,6 +64,22 @@ export function AuthGate() {
     setError(null)
     setLoading(true)
     try {
+      if (!isBiometricsEnabled()) {
+        if (!email.trim()) {
+          setError('Digite seu email abaixo para vincular sua biometria.')
+          setLoading(false)
+          return
+        }
+        const reg = await registerBiometrics(email.trim())
+        if (reg.ok) {
+          trustThisDevice(email.trim())
+          toast.success('Biometria vinculada e desbloqueada com sucesso! 📱✨')
+        } else {
+          setError(reg.error || 'Não foi possível cadastrar a biometria.')
+        }
+        return
+      }
+
       const res = await authenticateWithBiometrics()
       if (res.ok) {
         trustThisDevice(res.email)

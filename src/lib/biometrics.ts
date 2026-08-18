@@ -7,16 +7,16 @@ const STORAGE_KEY = 'act.biometrics.credential'
 
 export function isMobileDevice(): boolean {
   if (typeof window === 'undefined') return false
-  const ua = navigator.userAgent || navigator.vendor || (window as any).opera || ''
+  const ua = navigator.userAgent || ''
   const isTouch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window
   const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua)
-  return isMobileUA && isTouch
+  const isSmallScreen = window.innerWidth <= 1024
+  return isMobileUA || (isTouch && isSmallScreen)
 }
 
 export async function isBiometricsAvailable(): Promise<boolean> {
   if (typeof window === 'undefined') return false
   if (!window.PublicKeyCredential) return false
-  if (!isMobileDevice()) return false
 
   try {
     const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()

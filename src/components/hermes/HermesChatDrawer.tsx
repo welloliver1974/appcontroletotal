@@ -147,18 +147,18 @@ export function HermesChatDrawer() {
 
   return (
     <>
-      {/* Floating Trigger Button */}
-      <div className="fixed bottom-5 right-5 z-40">
+      {/* Floating Trigger Button - positioned safely above mobile bottom navigation */}
+      <div className="fixed bottom-20 right-3.5 z-30 md:bottom-6 md:right-6">
         {!open ? (
           <button
             onClick={() => setOpen(true)}
-            className="group relative flex h-13 w-13 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 text-white shadow-xl shadow-indigo-500/30 transition-all hover:scale-105 hover:shadow-indigo-500/50 active:scale-95"
+            className="group relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 text-white shadow-xl shadow-indigo-500/30 transition-all hover:scale-105 hover:shadow-indigo-500/50 active:scale-95"
             aria-label="Abrir Copiloto Hermes"
           >
-            <Bot className="h-6 w-6 transition-transform group-hover:scale-110" />
-            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+            <Bot className="h-5 w-5 transition-transform group-hover:scale-110" />
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-cyan-500 border-2 border-zinc-950" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500 border-2 border-zinc-950" />
             </span>
           </button>
         ) : null}
@@ -166,7 +166,7 @@ export function HermesChatDrawer() {
 
       {/* Floating Chat Drawer */}
       {open && (
-        <div className="fixed bottom-5 right-5 z-50 flex h-[560px] max-h-[90vh] w-[380px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-900/90 shadow-2xl backdrop-blur-2xl transition-all">
+        <div className="fixed bottom-20 right-3 z-50 flex h-[520px] max-h-[calc(100dvh-100px)] w-[380px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-900/95 shadow-2xl backdrop-blur-2xl transition-all md:bottom-6 md:right-6">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950/70 px-4 py-3">
             <div className="flex items-center gap-2.5">
