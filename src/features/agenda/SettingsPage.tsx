@@ -289,8 +289,12 @@ function PWASettings() {
   )
 }
 
-export function SettingsPage() {
-  const [activeSection, setActiveSection] = useState<'hermes' | 'calendar' | 'backup' | 'webhook' | 'pwa' | 'theme' | 'notifications'>('hermes')
+export function SettingsPage({
+  initialSection = 'hermes',
+}: {
+  initialSection?: 'hermes' | 'calendar' | 'backup' | 'webhook' | 'pwa' | 'theme' | 'notifications'
+}) {
+  const [activeSection, setActiveSection] = useState<'hermes' | 'calendar' | 'backup' | 'webhook' | 'pwa' | 'theme' | 'notifications'>(initialSection)
 
   return (
     <div className="space-y-6 h-[calc(100vh-120px)] flex flex-col">

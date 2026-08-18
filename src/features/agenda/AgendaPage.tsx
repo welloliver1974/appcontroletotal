@@ -49,6 +49,7 @@ export function AgendaPage() {
   const [emailFilter, setEmailFilter] = useState<FilterType>('all')
   const [showOnlyHermes, setShowOnlyHermes] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsSection, setSettingsSection] = useState<'hermes' | 'calendar' | 'backup' | 'webhook' | 'pwa' | 'theme' | 'notifications'>('calendar')
   const [syncingGcal, setSyncingGcal] = useState(false)
 
   // Auto-sync Google Calendar on mount if enabled
@@ -67,6 +68,7 @@ export function AgendaPage() {
     const config = getGoogleCalendarConfig()
     if (!config.icalUrl) {
       toast.info('Configure seu link iCal do Google Calendar para sincronizar.')
+      setSettingsSection('calendar')
       setSettingsOpen(true)
       return
     }
@@ -303,6 +305,7 @@ export function AgendaPage() {
       {settingsOpen && (
         <SettingsModal
           open={settingsOpen}
+          initialSection={settingsSection}
           onClose={() => {
             setSettingsOpen(false)
             reload()
