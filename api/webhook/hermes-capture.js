@@ -11,8 +11,17 @@ function inferPantryCategory(itemName) {
   if (/(coca|coke|refrigerante|suco|cerveja|vinho|leite|caf[eé]|ch[aá]|água|bebida|energetico|pepsi|guaran[aá])/i.test(t)) return 'bebidas';
   if (/(sab[aã]o|detergente|amaciante|papel higi[eê]nico|desinfetante|limpeza|esponja|veja|cloro|yp[eê])/i.test(t)) return 'limpeza';
   if (/(shampoo|sabonete|pasta de dente|creme|desodorante|higiene|fio dental|escova|cotonete)/i.test(t)) return 'higiene';
-  if (/(carne|frango|peixe|ovos|queijo|presunto|iogurte|manteiga|requeij[aã]o|fruta|maç[aã]|banana|tomate|legume)/i.test(t)) return 'frescos';
+  if (/(carne|frango|peixe|ovos|queijo|presunto|iogurte|manteiga|requeij[aã]o|fruta|maç[aã]|banana|tomate|legume|batata)/i.test(t)) return 'frescos';
   return 'alimentos';
+}
+
+function splitGroceryItems(text) {
+  const cleaned = text.replace(/^(comprar|compra|adicionar [aà] despensa|adicionar|falta|preciso de|mercado:|despensa:|pegar)\s*/i, '').trim();
+  const parts = cleaned
+    .split(/[\n,;]|\s+e\s+/i)
+    .map((s) => s.trim().replace(/^-\s*/, ''))
+    .filter((s) => s.length > 1);
+  return parts.length > 0 ? parts : [cleaned];
 }
 
 export default async function handler(req, res) {
@@ -103,30 +112,27 @@ export default async function handler(req, res) {
   const url = typeof body.url === 'string' && body.url ? body.url : (rawText.match(/https?:\/\/[^\s]+/)?.[0] || null);
   const tags = Array.isArray(body.tags) ? body.tags.map(String).filter(Boolean).slice(0, 10) : ['hermes', 'telegram'];
 
+  // Detecção de padrões de compras e alimentos
+  const isGroceryPattern =
+    /(coca|coke|batata|leite|doce|arroz|feij[aã]o|caf[eé]|p[aã]o|aç[uú]car|[oó]leo|manteiga|queijo|cerveja|sab[aã]o|shampoo|detergente|frango|carne|banana|maç[aã]|tomate|cebola|alho|[aá]gua|suco|macarr[aã]o|sal|farinha|iogurte|presunto|papel higi[eê]nico|desodorante|pasta de dente)/i.test(lowerText) ||
+    tags.some((t) => /pantry|compra|mercado|despensa/i.test(t));
+
   // Smart Intent Detection para mensagens livres do Telegram
   if (!platform && !action) {
     if (
       /^(comprar|compra|mercado|despensa|preciso de|falta|comprar:|comprar\s+|pegar\s+)/i.test(lowerText) ||
-      /(lista de compras|precisamos de)/i.test(lowerText)
+      /(lista de compras|precisamos de)/i.test(lowerText) ||
+      (isGroceryPattern && rawText.split(/\s+/).length <= 8)
     ) {
       platform = 'pantry';
     } else if (/^(gastei|paguei|despesa|gasto)/i.test(lowerText) || /r\$\s*\d+/i.test(lowerText)) {
       platform = 'spending';
     } else if (/^(reuni[aã]o|compromisso|consulta|dentista|m[eé]dico|call|agendar)/i.test(lowerText)) {
       platform = 'event';
-    } else if (url && (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('instagram.com'))) {
+    } else if (url && (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('instagram.com') || url.includes('tiktok.com'))) {
       platform = 'media';
     } else if (/^(di[aá]rio|hoje eu|me sinto|gratid[aã]o|pensamento)/i.test(lowerText)) {
       platform = 'life_log';
-    }
-  }
-
-  // Tratamento do nome do produto na Despensa
-  let name = typeof body.name === 'string' && body.name ? body.name.slice(0, 250) : title;
-  if (platform === 'pantry' && rawText) {
-    const cleaned = rawText.replace(/^(comprar|compra|adicionar [aà] despensa|adicionar|falta|preciso de|mercado:|despensa:|pegar)\s*/i, '').trim();
-    if (cleaned) {
-      name = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
     }
   }
 
@@ -141,84 +147,55 @@ export default async function handler(req, res) {
       platform === 'despensa' ||
       platform === 'compras'
     ) {
-      // Se for uma lista múltipla de itens (ex: exportação de compras)
-      if (Array.isArray(body.payload?.items) || Array.isArray(body.items)) {
-        const rawItems = Array.isArray(body.payload?.items) ? body.payload.items : body.items;
-        const inserted = [];
+      // Se for uma lista múltipla ou texto com múltiplos itens (ex: "Coca zero e batata", "Leite, pão e café")
+      const rawItemList = (Array.isArray(body.payload?.items) || Array.isArray(body.items))
+        ? (Array.isArray(body.payload?.items) ? body.payload.items : body.items)
+        : splitGroceryItems(rawText || body.name || title).map((name) => ({ name }));
 
-        for (const it of rawItems) {
-          const itName = it.name || 'Item sem nome';
+      const inserted = [];
+
+      for (const it of rawItemList) {
+        const itName = it.name ? it.name.trim() : 'Item sem nome';
+        const formattedName = itName.charAt(0).toUpperCase() + itName.slice(1);
+        const itCategory = it.category || inferPantryCategory(formattedName);
+
+        // Verifica se já existe para atualizar quantidade ou inserir
+        const { data: existing } = await supabase
+          .from('pantry')
+          .select('*')
+          .ilike('name', formattedName)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          await supabase
+            .from('pantry')
+            .update({ qty: 0, updated_at: nowIso() })
+            .eq('id', existing[0].id);
+          inserted.push(formattedName);
+        } else {
           const itemRow = {
             id: it.id || genId(),
-            name: itName,
-            category: it.category || inferPantryCategory(itName),
-            qty: Number(it.qty ?? it.quantity ?? 0),
+            name: formattedName,
+            category: itCategory,
+            qty: 0, // 0 = precisa comprar (entra na lista de compras e no radar de alertas da dashboard)
             unit: it.unit || 'un',
-            low_threshold: Number(it.lowThreshold ?? it.low_threshold ?? 1),
+            low_threshold: 1,
             expires_at: it.expiresAt || it.expires_at || null,
             created_at: nowIso(),
             updated_at: nowIso(),
           };
-          const { error } = await supabase.from('pantry').upsert(itemRow);
-          if (!error) inserted.push(itemRow.name);
+          const { error } = await supabase.from('pantry').insert(itemRow);
+          if (!error) inserted.push(formattedName);
         }
-
-        return res.status(201).json({
-          ok: true,
-          success: true,
-          table: 'pantry',
-          itemsCount: inserted.length,
-          items: inserted,
-          message: `${inserted.length} itens processados na despensa`,
-        });
-      }
-
-      // Item individual: Verifica se já existe pelo nome para atualizar ou inserir
-      const itemName = name || 'Item sem nome';
-      const itemCategory = body.category || inferPantryCategory(itemName);
-
-      const { data: existing } = await supabase
-        .from('pantry')
-        .select('*')
-        .ilike('name', itemName)
-        .limit(1);
-
-      let savedId;
-      if (existing && existing.length > 0) {
-        // Marca item existente como precisando comprar (qty: 0 para disparar alerta na Dashboard)
-        const updatedRow = {
-          qty: Number(body.qty ?? body.quantity ?? 0),
-          updated_at: nowIso(),
-        };
-        const { error } = await supabase.from('pantry').update(updatedRow).eq('id', existing[0].id);
-        if (error) throw error;
-        savedId = existing[0].id;
-      } else {
-        const itemRow = {
-          id: body.id || genId(),
-          name: itemName,
-          category: itemCategory,
-          qty: Number(body.qty ?? body.quantity ?? 0), // 0 = precisa comprar (entra na lista de compras e alerta da dashboard)
-          unit: body.unit || 'un',
-          low_threshold: Number(body.lowThreshold ?? body.low_threshold ?? 1),
-          expires_at: body.expiresAt || body.expires_at || null,
-          created_at: nowIso(),
-          updated_at: nowIso(),
-        };
-
-        const { data: insertedData, error } = await supabase.from('pantry').insert(itemRow).select().single();
-        if (error) throw error;
-        savedId = insertedData.id;
       }
 
       return res.status(201).json({
         ok: true,
         success: true,
         table: 'pantry',
-        id: savedId,
-        name: itemName,
-        category: itemCategory,
-        message: `Item "${itemName}" adicionado à lista de compras da despensa! 🛒`,
+        itemsCount: inserted.length,
+        items: inserted,
+        message: `${inserted.join(', ')} adicionado(s) à lista de compras da despensa! 🛒`,
       });
     }
 
@@ -295,7 +272,7 @@ export default async function handler(req, res) {
     if (action === 'event_add' || platform === 'event' || platform === 'agenda') {
       const eventRow = {
         id: body.id || genId(),
-        title: title || name || 'Compromisso',
+        title: title || 'Compromisso',
         date: body.date || nowIso().slice(0, 10),
         time_start: body.timeStart || body.time_start || '09:00',
         time_end: body.timeEnd || body.time_end || null,
