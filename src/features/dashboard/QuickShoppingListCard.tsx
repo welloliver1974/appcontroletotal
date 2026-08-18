@@ -180,7 +180,7 @@ export function QuickShoppingListCard() {
             return (
               <div
                 key={item.id}
-                className="flex items-center justify-between p-2.5 rounded-xl border border-zinc-800/80 bg-zinc-950/60 hover:border-zinc-700 transition-colors"
+                className="flex items-center justify-between p-2.5 rounded-xl border border-zinc-800/80 bg-zinc-950/60 hover:border-zinc-700 transition-colors gap-2"
               >
                 <div className="min-w-0 flex-1 flex items-center gap-2.5">
                   <span
@@ -197,22 +197,33 @@ export function QuickShoppingListCard() {
                     <p className="text-xs font-semibold text-zinc-200 truncate">
                       {item.name}
                     </p>
-                    <p className="text-[10px] text-zinc-500 truncate">
-                      {item.category} · Estoque: {item.qty}/{item.lowThreshold} {item.unit}
+                    <p className="text-[10px] text-zinc-400 truncate">
+                      {isZero ? (
+                        <span className="text-rose-300 font-medium">
+                          Comprar: <strong>{item.lowThreshold} {item.unit}</strong>
+                        </span>
+                      ) : (
+                        <span>
+                          Estoque: <strong>{item.qty}</strong> / {item.lowThreshold} {item.unit}
+                        </span>
+                      )}
+                      {' · '}{item.category}
                     </p>
                   </div>
                 </div>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRestock(item)}
-                  className="h-7 px-2 text-[11px] gap-1 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-emerald-500/20 shrink-0"
-                  title="Marcar como comprado (+1 un)"
-                >
-                  <Check className="h-3 w-3" />
-                  <span>Comprado</span>
-                </Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRestock(item)}
+                    className="h-7 px-2 text-[11px] gap-1 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-emerald-500/20"
+                    title={`Comprar (+1 ${item.unit})`}
+                  >
+                    <Check className="h-3 w-3" />
+                    <span>{isZero && item.lowThreshold > 1 ? `+1 un` : 'Comprado'}</span>
+                  </Button>
+                </div>
               </div>
             )
           })}
