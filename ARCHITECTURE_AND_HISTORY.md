@@ -367,6 +367,26 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - Filtros por categoria (Veículo, Casa, Saúde, Financeiro, Pessoal) e busca rápida.
 
 ---
+
+## 📸 18. Scanner de Cupom Fiscal com IA & Compressão Client-Side (Free Tier Safe)
+
+* **Compressão de Imagem no Cliente ([src/lib/imageCompressor.ts](file:///e:/Apps/AppControleTotal/src/lib/imageCompressor.ts)):**
+  - Reduz fotos pesadas de celulares (3 MB a 12 MB) para ~900px JPEG de apenas **30 KB a 60 KB** antes de enviar para a IA.
+  - **Economia de 98% em banda e tokens**, permitindo uso contínuo em modelos gratuitos e planos Free Tier (Groq, NVIDIA, OpenRouter, Gemini).
+* **Leitor OCR com Visão Multimodal ([src/lib/receiptScanner.ts](file:///e:/Apps/AppControleTotal/src/lib/receiptScanner.ts)):**
+  - Roteia a imagem comprimida via proxy serverless `/api/llm/proxy` para modelos de visão (`llama-3.2-11b-vision`, `phi-3.5-vision`, `gemini-2.0-flash`).
+  - Extrai automaticamente em JSON:
+    - 🏢 **Nome do Estabelecimento**
+    - 💵 **Valor Total Pago (R$)**
+    - 📅 **Data e Hora da Compra**
+    - 🏷️ **Categoria Sugerida**
+    - 🛒 **Itens Identificados**
+* **Modal Interativo de Escaneamento ([src/features/financas/ReceiptScannerModal.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/ReceiptScannerModal.tsx)):**
+  - Acesso direto à câmera do celular (`capture="environment"`) ou seleção na galeria.
+  - Preview com visualização da taxa de compressão e dados identificados.
+  - Botão **`Preencher Gasto`** que auto-preenche o formulário de lançamento com 1 toque.
+
+---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 

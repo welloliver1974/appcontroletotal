@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Calendar, Check, FileText, Tag, X } from 'lucide-react'
+import { Calendar, Camera, Check, FileText, Sparkles, Tag, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/stores/toastStore'
 import type { SpendingItem } from '@/data/types'
+import { ReceiptScannerModal } from './ReceiptScannerModal'
+import type { ParsedReceiptData } from '@/lib/receiptScanner'
 
 const CATEGORIES = [
   'Alimentação',
@@ -32,6 +34,25 @@ export function SpendingFormModal({ open, onClose, onSubmit }: SpendingFormModal
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   })
   const [saving, setSaving] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
+
+  const handleApplyReceipt = (data: ParsedReceiptData) => {
+    if (data.amount > 0) {
+      setAmount(data.amount.toFixed(2).replace('.', ','))
+    }
+    if (data.establishment) {
+      setNote(data.establishment)
+    }
+    if (data.category && CATEGORIES.includes(data.category)) {
+      setCategory(data.category)
+    }
+    if (data.date) {
+      setDate(data.date)
+    }
+    if (data.time) {
+      setTime(data.time)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,27 +81,53 @@ export function SpendingFormModal({ open, onClose, onSubmit }: SpendingFormModal
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Novo Lançamento de Gasto 💵">
-      <form onSubmit={handleSubmit} className="space-y-4 pt-1">
-        {/* Valor */}
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-zinc-300">Valor (R$)</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-emerald-400">
-              R$
-            </span>
-            <input
-              type="text"
-              inputMode="decimal"
-              required
-              autoFocus
-              placeholder="0,00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="input-base pl-10 font-display text-lg font-bold text-zinc-50 tracking-wide"
-            />
+    <>
+      <Modal open={open} onClose={onClose} title="Novo Lançamento de Gasto 💵">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
+          {/* Botão de Scanner de Cupom com IA */}
+          <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            className="w-full flex items-center justify-between p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15 transition-all text-left group"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="h-8 w-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">
+                <Camera className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-xs font-semibold text-zinc-100 flex items-center gap-1.5">
+                  <span>Escanear Cupom Fiscal com IA</span>
+                  <span className="chip px-1.5 py-0 text-[9px] bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
+                    Otimizado Free Tier
+                  </span>
+                </p>
+                <p className="text-[11px] text-zinc-400">
+                  Tire uma foto para preencher valor, loja e data automaticamente
+                </p>
+              </div>
+            </div>
+            <Sparkles className="h-4 w-4 text-emerald-400 opacity-70 group-hover:opacity-100 shrink-0" />
+          </button>
+
+          {/* Valor */}
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-zinc-300">Valor (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-emerald-400">
+                R$
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                required
+                autoFocus
+                placeholder="0,00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="input-base pl-10 font-display text-lg font-bold text-zinc-50 tracking-wide"
+              />
+            </div>
           </div>
-        </div>
 
         {/* Descrição / Nota */}
         <div className="space-y-1">
@@ -145,23 +192,31 @@ export function SpendingFormModal({ open, onClose, onSubmit }: SpendingFormModal
           </div>
         </div>
 
-        {/* Botões */}
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
-          <Button variant="ghost" size="sm" type="button" onClick={onClose}>
-            <X className="h-4 w-4" /> Cancelar
-          </Button>
-          <Button
-            variant="primary"
-            size="md"
-            type="submit"
-            disabled={saving || !amount}
-            className="gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white"
-          >
-            <Check className="h-4 w-4" />
-            <span>{saving ? 'Salvando...' : 'Salvar Gasto'}</span>
-          </Button>
-        </div>
-      </form>
-    </Modal>
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
+            <Button variant="ghost" size="sm" type="button" onClick={onClose}>
+              <X className="h-4 w-4" /> Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              type="submit"
+              disabled={saving || !amount}
+              className="gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white"
+            >
+              <Check className="h-4 w-4" />
+              <span>{saving ? 'Salvando...' : 'Salvar Gasto'}</span>
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {scannerOpen && (
+        <ReceiptScannerModal
+          open={scannerOpen}
+          onClose={() => setScannerOpen(false)}
+          onApply={handleApplyReceipt}
+        />
+      )}
+    </>
   )
 }
