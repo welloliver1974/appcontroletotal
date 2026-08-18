@@ -1,7 +1,7 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
-import { EmergencyGate } from '@/components/auth/EmergencyGate'
+import { AuthGate } from '@/components/auth/AuthGate'
 import { AppShell } from '@/components/layout/AppShell'
 import { ToastContainer } from '@/components/ui/ToastContainer'
 import { Skeleton } from '@/components/ui/feedback'
@@ -40,6 +40,11 @@ function PageLoading() {
 
 export default function App() {
   const isTrusted = useAuthStore((s) => s.isTrusted)
+  const initAuth = useAuthStore((s) => s.initAuth)
+
+  useEffect(() => {
+    initAuth()
+  }, [initAuth])
 
   return (
     <BrowserRouter>
@@ -64,7 +69,10 @@ export default function App() {
           <ToastContainer />
         </>
       ) : (
-        <EmergencyGate />
+        <>
+          <AuthGate />
+          <ToastContainer />
+        </>
       )}
     </BrowserRouter>
   )

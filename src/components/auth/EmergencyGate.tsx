@@ -10,14 +10,14 @@ import { cn } from '@/lib/utils'
  * it's shown on screen as a demo, and the device is then marked as trusted.
  */
 export function EmergencyGate() {
-  const verify = useAuthStore((s) => s.verify)
+  const verifyEmergencyCode = useAuthStore((s) => s.verifyEmergencyCode)
   const trustThisDevice = useAuthStore((s) => s.trustThisDevice)
   const [code, setCode] = useState('')
   const [error, setError] = useState(false)
   const [shake, setShake] = useState(false)
 
   const submit = () => {
-    if (verify(code)) {
+    if (verifyEmergencyCode(code)) {
       trustThisDevice()
     } else {
       setError(true)

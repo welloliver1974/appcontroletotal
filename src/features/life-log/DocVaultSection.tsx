@@ -35,18 +35,13 @@ export function DocVaultSection({ className }: { className?: string }) {
     api
       .list<DocVaultItem>('docVault')
       .then((res) => {
-        if (Array.isArray(res) && res.length > 0) {
+        if (Array.isArray(res)) {
           setDocs(res)
-        } else {
-          setDocs([
-            { id: 'doc-1', title: 'Renavam do Carro', category: 'veiculo', value: '00123456789', extra: 'Placa: ABC-1234 · Honda Civic', updatedAt: new Date().toISOString().slice(0, 10) },
-            { id: 'doc-2', title: 'Medidas Colchão Casal', category: 'casa', value: '1,38m x 1,88m', extra: 'Para compra de lençol e protetor', updatedAt: new Date().toISOString().slice(0, 10) },
-            { id: 'doc-3', title: 'Filtro Ar Condicionado Sala', category: 'casa', value: 'Split 12.000 BTUs', extra: 'Modelo filtro: HEPA 30x20', updatedAt: new Date().toISOString().slice(0, 10) },
-            { id: 'doc-4', title: 'Cartão Nacional de Saúde (SUS)', category: 'saude', value: '7000 1234 5678 9012', extra: 'Titular', updatedAt: new Date().toISOString().slice(0, 10) },
-          ])
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('Erro ao carregar cofre:', err)
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -86,7 +81,13 @@ export function DocVaultSection({ className }: { className?: string }) {
 
   const handleRemove = async (id: string) => {
     setDocs((prev) => prev.filter((d) => d.id !== id))
-    await api.remove<DocVaultItem>('docVault', id).catch(() => {})
+    try {
+      await api.remove<DocVaultItem>('docVault', id)
+      toast.success('Documento removido do cofre 🗑️')
+    } catch (err) {
+      console.error('Erro ao remover documento:', err)
+      toast.error('Erro ao remover item do cofre.')
+    }
   }
 
   const filteredDocs = useMemo(() => {

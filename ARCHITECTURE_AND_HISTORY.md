@@ -416,7 +416,25 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - Botão de acesso rápido `⛽ Abastecimento` no topo de Manutenção ([`ManutencaoPage.tsx`](file:///e:/Apps/AppControleTotal/src/features/manutencao/ManutencaoPage.tsx)).
 
 ---
+
+## 🔐 20. Autenticação por Email (Supabase Auth) & Correção da Persistência do Cofre
+
+* **🔑 Autenticação Completa por Email & Senha ([src/components/auth/AuthGate.tsx](file:///e:/Apps/AppControleTotal/src/components/auth/AuthGate.tsx) e [src/stores/authStore.ts](file:///e:/Apps/AppControleTotal/src/stores/authStore.ts)):**
+  - **Login com Email & Senha:** Conexão nativa com Supabase Auth (`supabase.auth.signInWithPassword`), salvando a sessão e sincronizando estado em tempo real.
+  - **Cadastro de Novos Usuários:** Permite criar novas contas pessoais informando Nome, Email e Senha.
+  - **Magic Link (Sem Senha):** Permite login através de link de acesso direto enviado para a caixa postal do usuário.
+  - **Código de Emergência Hermes (Fallback):** Permite acesso rápido por código caso o usuário queira entrar como administrador ou em modo offline.
+  - **Gerenciamento de Conta:**
+    - Identificação do usuário logado no rodapé da barra lateral ([`Sidebar.tsx`](file:///e:/Apps/AppControleTotal/src/components/layout/Sidebar.tsx)) e nova aba **`Minha Conta`** nas Configurações ([`SettingsAccount.tsx`](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsAccount.tsx)).
+    - Botão de **Logout (Sair da Conta)** com confirmação e encerramento de sessão seguro.
+
+* **🔒 Correção de Exclusão no Cofre de Documentos ([src/features/life-log/DocVaultSection.tsx](file:///e:/Apps/AppControleTotal/src/features/life-log/DocVaultSection.tsx)):**
+  - **Causa Raiz Identificada:** Quando o usuário apagava todos os registros do cofre, a consulta retornava um array vazio (`[]`), acionando um bloco `else` que reinseria os 4 exemplos mockados em tela.
+  - **Correção Implementada:** Removida a reinserção automática no carregamento, garantindo que exclusões no banco (`api.remove`) e no estado local reflitam 100% da ação do usuário com feedback via toast.
+
+---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 
 
 
