@@ -290,8 +290,23 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - Deduplicação inteligente por sessão (`sessionStorage`) para evitar notificações repetitivas ao navegar entre telas.
 * **Correção dos Badges de Data da Dashboard ([src/features/dashboard/Widgets.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/Widgets.tsx) & [src/lib/utils.ts](file:///e:/Apps/AppControleTotal/src/lib/utils.ts)):**
   - Função `formatDayAndMonth()` para extrair o dia numérico e o mês abreviado em maiúsculas (`21 AGO`, `06 SET`), eliminando a preposição `"DE"` que quebrava o layout.
-  - **Radar de Alertas da Dashboard ([src/features/dashboard/Alerts.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/Alerts.tsx)):** Inclui eventos da agenda de hoje diretamente no card de radar.
+---
+
+## 🛒 14. Despensa em Lista Compacta & Consolidação de Alertas
+
+* **Agrupamento no Radar de Alertas ([src/features/dashboard/Alerts.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/Alerts.tsx)):**
+  - Em vez de gerar 1 card individual para cada item em falta, consolida todos em um único card de alerta (`4 itens em falta para comprar: Coca zero, Batata, Leite, Doce`).
+  - Itens com validade próxima também são consolidados em 1 único card informativo.
+* **Visualização em Lista Compacta da Despensa ([src/features/despensa/PantryListView.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/PantryListView.tsx)):**
+  - Tabela/lista densa desenhada para alta escala (200+ itens).
+  - **Steppers de Estoque Rápido (`-` `+`):** Alteração instantânea de quantidade em 1 clique sem abrir modais.
+  - Badges coloridos de status (*"Falta comprar"*, *"Estoque baixo"*, *"OK"*, *"Vencendo em Xd"*).
+* **Controles de Produtividade na Despensa ([src/features/despensa/DespensaPage.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/DespensaPage.tsx)):**
+  - **Alternador de Visualização (Toggle):** `Lista` (padrão compacto) vs `Cards`, com persistência no `localStorage` (`act.pantryViewMode`).
+  - **Barra de Busca Instantânea:** Busca rápida por nome do produto ou categoria.
+  - **Abas de Status:** `Todos`, `🛒 Falta Comprar`, `⏳ Vencendo` com contadores em tempo real.
 
 ---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 
