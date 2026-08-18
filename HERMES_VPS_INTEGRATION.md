@@ -1,7 +1,7 @@
 # Hermes Agent (VPS) — Guia de Integração e Endpoints do Servidor
 
 > **Contexto da Infraestrutura:**
-> O túnel `cloudflared` já está configurado e ativo com o domínio próprio (ex: `https://hermes.housecloud.tec.be` / `housecloud.tec.br`). O servidor VPS e o Hermes já possuem endereço HTTPS público pronto. 
+> O túnel `cloudflared` já está configurado e ativo com o domínio próprio (ex: `https://hermes.housecloud.tec.br`). O servidor VPS e o Hermes já possuem endereço HTTPS público pronto. 
 > 
 > **Objetivo:** Adicionar no serviço do Hermes na VPS a rota para receber os disparos de webhook vindos do aplicativo (como a lista de compras da despensa e mensagens do chat) e enviá-los ao Telegram.
 
@@ -12,7 +12,7 @@
 ```
 [ AppControleTotal (PWA) ]
      │
-     ├── (1) Dispara Webhook / Lista de Compras (HTTPS POST) ──► [ Seu Domínio Ativo (housecloud.tec.be) ]
+     ├── (1) Dispara Webhook / Lista de Compras (HTTPS POST) ──► [ Seu Domínio Ativo (housecloud.tec.br) ]
      │                                                                          │
      │                                                                          ▼
      │                                                               [ Hermes Agent na VPS ]
@@ -21,7 +21,7 @@
 ```
 
 1. **Do Hermes (VPS) ➔ Para o App:** O Hermes continua inserindo registros diretamente no **Supabase** (como já faz). O app escuta via **Supabase Realtime (WebSocket)** e exibe tudo na hora.
-2. **Do App ➔ Para o Hermes (VPS):** O app envia requisições HTTPS diretamente para o seu domínio já ativo (ex: `https://hermes.housecloud.tec.be/webhook`) protegido por token de segurança.
+2. **Do App ➔ Para o Hermes (VPS):** O app envia requisições HTTPS diretamente para o seu domínio já ativo (ex: `https://hermes.housecloud.tec.br/webhook`) protegido por token de segurança.
 
 ---
 
