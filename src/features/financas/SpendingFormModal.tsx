@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Calendar, Check, FileText, Tag, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { toast } from '@/stores/toastStore'
 import type { SpendingItem } from '@/data/types'
 
 const CATEGORIES = [
@@ -46,7 +47,13 @@ export function SpendingFormModal({ open, onClose, onSubmit }: SpendingFormModal
         date,
         time,
       })
+      toast.success('Gasto registrado com sucesso! 💵')
+      setAmount('')
+      setNote('')
       onClose()
+    } catch (err) {
+      console.error('Erro ao salvar gasto:', err)
+      toast.error('Erro ao salvar lançamento.')
     } finally {
       setSaving(false)
     }

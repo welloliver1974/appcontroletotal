@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Calendar, Check, Tag, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { toast } from '@/stores/toastStore'
 import type { FixedBill } from '@/data/types'
 
 interface FixedBillFormModalProps {
@@ -30,7 +31,13 @@ export function FixedBillFormModal({ open, onClose, onSubmit }: FixedBillFormMod
         dueDay: Number(dueDay) || 10,
         category,
       })
+      toast.success('Conta fixa cadastrada com sucesso! 📌')
+      setName('')
+      setAmount('')
       onClose()
+    } catch (err) {
+      console.error('Erro ao salvar conta fixa:', err)
+      toast.error('Erro ao cadastrar conta fixa.')
     } finally {
       setSaving(false)
     }

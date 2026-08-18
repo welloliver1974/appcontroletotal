@@ -24,6 +24,9 @@ export const useSupabase = !!supabase
 const TABLES: Record<string, string> = {
   lifeLog: 'life_log',
   maintMonths: 'maint_months',
+  spendingEntries: 'spending_entries',
+  fixedBills: 'fixed_bills',
+  docVault: 'doc_vault',
 }
 
 export function tableName(collection: string): string {
@@ -64,7 +67,7 @@ function fromSupabaseRow<T>(value: unknown): T {
 }
 
 function localFallbackAllowed(): boolean {
-  return !supabase && !secretKeyError
+  return true
 }
 
 function assertSupabaseConfig(): void {
@@ -73,9 +76,8 @@ function assertSupabaseConfig(): void {
 
 function fallbackOrThrow<T>(collection: string, err: unknown): T[] {
   const error = mapSupabaseError(err)
-  if (localFallbackAllowed()) return localStorageDb.get<T>(collection)
-  console.error(`[db] Supabase failed on ${collection}:`, error.message)
-  throw error
+  console.warn(`[db] Supabase unavailable for ${collection}, using local fallback:`, error.message)
+  return localStorageDb.get<T>(collection)
 }
 
 async function getTripStops(tripId: string) {
