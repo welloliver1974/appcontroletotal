@@ -297,146 +297,70 @@ export function SettingsPage({
 }) {
   const [activeSection, setActiveSection] = useState<'account' | 'hermes' | 'calendar' | 'backup' | 'webhook' | 'pwa' | 'theme' | 'notifications'>(initialSection)
 
+  const navItems = [
+    { id: 'account', label: 'Minha Conta', icon: User, color: 'text-indigo-400' },
+    { id: 'hermes', label: 'Hermes & IA', icon: Bot, color: 'text-rose-400' },
+    { id: 'calendar', label: 'Google Calendar', icon: Calendar, color: 'text-blue-400' },
+    { id: 'backup', label: 'Backup & Dados', icon: Shield, color: 'text-emerald-400' },
+    { id: 'webhook', label: 'Webhooks', icon: Smartphone, color: 'text-amber-400' },
+    { id: 'theme', label: 'Temas', icon: Palette, color: 'text-purple-400' },
+    { id: 'notifications', label: 'Notificações', icon: Bell, color: 'text-cyan-400' },
+    { id: 'pwa', label: 'PWA / Offline', icon: CloudOff, color: 'text-zinc-400' },
+  ] as const
+
   return (
-    <div className="space-y-6 h-[calc(100vh-120px)] flex flex-col">
+    <div className="space-y-4 flex flex-col min-h-full">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3.5">
+        <div className="flex min-w-0 items-center gap-3">
           <span className="chip bg-rose-500/15 text-rose-300 border-rose-500/30">
             <Shield className="h-4 w-4" />
             Configurações
           </span>
           <div className="min-w-0">
-            <h1 className="text-xl font-bold tracking-tight text-zinc-50">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-zinc-50">
               Configurações
             </h1>
-            <p className="mt-0.5 text-sm text-zinc-500">
-              Minha Conta, Google Calendar, Hermes Agent, Backup e PWA
+            <p className="text-xs text-zinc-400 truncate">
+              IA, Google Calendar, Conta e Preferências
             </p>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 overflow-hidden">
-        {/* Sidebar Navigation */}
-        <aside className="lg:w-56 flex-shrink-0 space-y-1">
-          <nav className="space-y-1" role="tablist" aria-label="Configurações">
-            <button
-              role="tab"
-              aria-selected={activeSection === 'account'}
-              onClick={() => setActiveSection('account')}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                activeSection === 'account'
-                  ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30'
-                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100'
-              )}
-            >
-              <User className="h-4 w-4 text-indigo-400" />
-              Minha Conta
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeSection === 'hermes'}
-              onClick={() => setActiveSection('hermes')}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                activeSection === 'hermes'
-                  ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100'
-              )}
-            >
-              <Bot className="h-4 w-4" />
-              Hermes & IA
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeSection === 'calendar'}
-              onClick={() => setActiveSection('calendar')}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                activeSection === 'calendar'
-                  ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100'
-              )}
-            >
-              <Calendar className="h-4 w-4" />
-              Google Calendar
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeSection === 'backup'}
-              onClick={() => setActiveSection('backup')}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                activeSection === 'backup'
-                  ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100'
-              )}
-            >
-              <Shield className="h-4 w-4" />
-              Backup & Dados
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeSection === 'webhook'}
-              onClick={() => setActiveSection('webhook')}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                activeSection === 'webhook'
-                  ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100'
-              )}
-            >
-              <Smartphone className="h-4 w-4" />
-              Webhooks & Eventos
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeSection === 'theme'}
-              onClick={() => setActiveSection('theme')}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                activeSection === 'theme'
-                  ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100'
-              )}
-            >
-              <Palette className="h-4 w-4" />
-              Temas & Visual
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeSection === 'notifications'}
-              onClick={() => setActiveSection('notifications')}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                activeSection === 'notifications'
-                  ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100'
-              )}
-            >
-              <Bell className="h-4 w-4" />
-              Notificações
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeSection === 'pwa'}
-              onClick={() => setActiveSection('pwa')}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                activeSection === 'pwa'
-                  ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100'
-              )}
-            >
-              <CloudOff className="h-4 w-4" />
-              PWA / Offline
-            </button>
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1">
+        {/* Navigation: Horizontal Pills on Mobile / Sidebar on Desktop */}
+        <aside className="lg:w-56 shrink-0">
+          <nav
+            className="flex lg:flex-col gap-1.5 overflow-x-auto no-scrollbar pb-2 lg:pb-0"
+            role="tablist"
+            aria-label="Configurações"
+          >
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isSelected = activeSection === item.id
+              return (
+                <button
+                  key={item.id}
+                  role="tab"
+                  aria-selected={isSelected}
+                  onClick={() => setActiveSection(item.id)}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 lg:w-full',
+                    isSelected
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                      : 'bg-zinc-900/60 lg:bg-transparent text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-100 border border-zinc-800 lg:border-transparent',
+                  )}
+                >
+                  <Icon className={cn('h-4 w-4 shrink-0', isSelected ? 'text-white' : item.color)} />
+                  <span>{item.label}</span>
+                </button>
+              )
+            })}
           </nav>
         </aside>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0 overflow-y-auto">
+        {/* Content Area - Full Natural Scroll */}
+        <div className="flex-1 min-w-0 pb-8">
           {activeSection === 'account' && <SettingsAccount />}
           {activeSection === 'hermes' && <SettingsHermes />}
           {activeSection === 'calendar' && <SettingsGoogleCalendar />}

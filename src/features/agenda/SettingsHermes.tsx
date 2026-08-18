@@ -10,6 +10,9 @@ import {
   Send,
   ExternalLink,
   Zap,
+  Eye,
+  EyeOff,
+  ClipboardPaste,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -35,6 +38,7 @@ export function SettingsHermes() {
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
   const [testMessage, setTestMessage] = useState<string | null>(null)
   const [latencyMs, setLatencyMs] = useState<number | null>(null)
+  const [showKey, setShowKey] = useState(false)
 
   const updateConfig = (patch: Partial<HermesAdvancedConfig>) => {
     const next = { ...config, ...patch }
@@ -162,31 +166,61 @@ export function SettingsHermes() {
 
         {/* API Key */}
         {config.provider !== 'vps' && (
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs text-zinc-400">
-                Chave da API ({currentProvider.name})
+          <div className="space-y-2 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3.5">
+            <div className="flex items-center justify-between flex-wrap gap-1">
+              <label className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
+                <Key className="h-3.5 w-3.5 text-indigo-400" />
+                <span>Chave da API ({currentProvider.name})</span>
               </label>
-              {currentProvider.docsUrl && (
-                <a
-                  href={currentProvider.docsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-indigo-400 hover:underline flex items-center gap-1"
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText()
+                      if (text) {
+                        updateConfig({ llmApiKey: text.trim() })
+                        toast.success('Chave de API colada com sucesso! 📋')
+                      }
+                    } catch {
+                      toast.info('Cole sua chave diretamente no campo abaixo.')
+                    }
+                  }}
+                  className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20"
                 >
-                  Obter chave <ExternalLink className="h-3 w-3" />
-                </a>
-              )}
+                  <ClipboardPaste className="h-3 w-3" />
+                  <span>Colar</span>
+                </button>
+                {currentProvider.docsUrl && (
+                  <a
+                    href={currentProvider.docsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-indigo-400 hover:underline flex items-center gap-1"
+                  >
+                    Obter chave <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
             </div>
             <div className="relative">
               <input
-                type="password"
+                type={showKey ? 'text' : 'password'}
                 placeholder={config.provider === 'groq' ? 'gsk_...' : config.provider === 'openrouter' ? 'sk-or-v1-...' : 'nvapi-...'}
                 value={config.llmApiKey}
                 onChange={(e) => updateConfig({ llmApiKey: e.target.value })}
-                className="input-base pr-10 font-mono text-xs"
+                className="input-base pr-20 font-mono text-xs py-2.5"
               />
-              <Key className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-zinc-400">
+                <button
+                  type="button"
+                  onClick={() => setShowKey(!showKey)}
+                  className="p-1 hover:text-zinc-200"
+                  title={showKey ? 'Ocultar chave' : 'Mostrar chave'}
+                >
+                  {showKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-zinc-500" />}
+                </button>
+              </div>
             </div>
           </div>
         )}
