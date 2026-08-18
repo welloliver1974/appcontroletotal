@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   CalendarClock,
+  CircleDollarSign,
   LayoutDashboard,
   NotebookPen,
   Plane,
@@ -13,6 +14,7 @@ export type ModuleId =
   | 'life-log'
   | 'manutencao'
   | 'despensa'
+  | 'financas'
   | 'viagens'
   | 'agenda'
 
@@ -102,6 +104,21 @@ export const MODULES: ModuleDef[] = [
     gradient: 'from-purple-500 to-fuchsia-500',
     tag: 'Consumo & Estoque',
     description: 'Estoque inteligente e exportação via webhook.',
+  },
+  {
+    id: 'financas',
+    label: 'Finanças',
+    emoji: '💵',
+    path: '/financas',
+    icon: CircleDollarSign,
+    accent: 'emerald',
+    text: 'text-emerald-400',
+    solid: 'bg-emerald-500',
+    soft: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    glow: 'bg-emerald-500/10',
+    gradient: 'from-emerald-500 to-teal-500',
+    tag: 'Extrato & Contas',
+    description: 'Extrato diário pragmático, teto mensal e contas fixas.',
   },
   {
     id: 'viagens',

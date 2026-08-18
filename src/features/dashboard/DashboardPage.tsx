@@ -9,6 +9,7 @@ import { AlertsGrid } from './Alerts'
 import { LifeInsights } from './LifeInsights'
 import { EmailsCard, RecentLogCard, UpcomingCard } from './Widgets'
 import { HermesBriefingCard } from './HermesBriefingCard'
+import { DailyHabitsCard } from './DailyHabitsCard'
 
 function todayLabel() {
   return new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })
@@ -88,6 +89,7 @@ export function DashboardPage() {
           <HermesBriefingCard data={data} />
           <KpiRow data={data} loading={false} />
           <AlertsGrid data={data} />
+          <DailyHabitsCard />
           <div className="grid gap-3 lg:grid-cols-3">
             <UpcomingCard data={data} />
             <EmailsCard data={data} />

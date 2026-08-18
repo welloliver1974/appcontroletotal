@@ -160,6 +160,35 @@ export const SEED: Record<string, unknown[]> = {
     viagens: i === 6 ? 1980 : i === 3 ? 640 : 0,
   })) satisfies WeeklySpending[],
 
+  spendingEntries: [
+    { id: 'sp-1', amount: 48.5, category: 'Alimentação', note: 'Almoço executivo', date: day(0), time: '12:35' },
+    { id: 'sp-2', amount: 150.0, category: 'Transporte', note: 'Abastecimento gasolina', date: day(-1), time: '08:40' },
+    { id: 'sp-3', amount: 84.9, category: 'Saúde', note: 'Farmácia - vitaminas', date: day(-2), time: '18:15' },
+    { id: 'sp-4', amount: 215.0, category: 'Despensa', note: 'Supermercado semanal', date: day(-3), time: '19:20' },
+    { id: 'sp-5', amount: 35.0, category: 'Lazer', note: 'Cinema + café', date: day(-5), time: '21:00' },
+  ],
+
+  fixedBills: [
+    { id: 'bill-1', name: 'Internet Fibra 500MB', amount: 119.9, dueDay: 10, category: 'Serviços', paidMonths: [month(0)] },
+    { id: 'bill-2', name: 'Energia Elétrica (Enel)', amount: 185.4, dueDay: 15, category: 'Moradia', paidMonths: [month(0)] },
+    { id: 'bill-3', name: 'Fatura Cartão de Crédito', amount: 1420.0, dueDay: 22, category: 'Financeiro', paidMonths: [] },
+    { id: 'bill-4', name: 'Streaming & Assinaturas', amount: 55.9, dueDay: 28, category: 'Lazer', paidMonths: [] },
+  ],
+
+  habits: [
+    { id: 'hb-1', title: 'Tomar 2L de água', icon: '💧', completedDates: [day(0)], order: 1 },
+    { id: 'hb-2', title: 'Treino / Exercício físico 30 min', icon: '🏃', completedDates: [day(0)], order: 2 },
+    { id: 'hb-3', title: 'Leitura de 15 páginas', icon: '📖', completedDates: [], order: 3 },
+    { id: 'hb-4', title: 'Revisar agenda e prioridades', icon: '🎯', completedDates: [day(0)], order: 4 },
+  ],
+
+  docVault: [
+    { id: 'doc-1', title: 'Renavam do Carro', category: 'veiculo', value: '00123456789', extra: 'Placa: ABC-1234 · Honda Civic', updatedAt: day(-10) },
+    { id: 'doc-2', title: 'Medidas Colchão Casal', category: 'casa', value: '1,38m x 1,88m', extra: 'Para compra de lençol e protetor', updatedAt: day(-20) },
+    { id: 'doc-3', title: 'Filtro Ar Condicionado Sala', category: 'casa', value: 'Split 12.000 BTUs', extra: 'Modelo filtro: HEPA 30x20', updatedAt: day(-15) },
+    { id: 'doc-4', title: 'Cartão Nacional de Saúde (SUS)', category: 'saude', value: '7000 1234 5678 9012', extra: 'Titular', updatedAt: day(-30) },
+  ],
+
   maintMonths: Array.from({ length: 6 }, (_, i) => ({
     month: month(5 - i),
     count: [2, 1, 3, 2, 4, 2][i],

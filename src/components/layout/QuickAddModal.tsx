@@ -10,6 +10,7 @@ const VERBS: Record<ModuleId, string> = {
   'life-log': 'Nova anotação / fato',
   manutencao: 'Novo registro de ativo',
   despensa: 'Novo item na despensa',
+  financas: 'Novo gasto / conta fixa',
   viagens: 'Nova viagem',
   agenda: 'Novo compromisso / email',
 }

@@ -337,6 +337,36 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - Integração prioritária com o proxy para envio de prompts e execução de ações do Hermes.
 
 ---
+
+## 💵 17. Finanças Pragmáticas (Sem Gráficos), Hábitos Diários & Cofre de Documentos
+
+* **Módulo de Finanças Pragmático ([src/features/financas/FinancasPage.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/FinancasPage.tsx)):**
+  - **Zero Poluição Visual:** Desenvolvido sob a diretriz de **números claros e executivos**, sem gráficos confusos.
+  - **Scorecard Executivo (4 KPIs):**
+    - `Gasto Hoje` (total em R$ e contagem de lançamentos).
+    - `Últimos 7 Dias` (total em R$ e média diária).
+    - `Total do Mês Vigente` (total em R$).
+    - `Teto Mensal & Disponível` (orçamento restante personalizável em 1 clique).
+  - **Extrato Diário Compacto:**
+    - Tabela densa com ícones temáticos por categoria (Alimentação, Transporte, Moradia, Saúde, Lazer, etc.), descrição, data/hora e valores em BRL destacados.
+    - Filtros por categoria e busca instantânea.
+    - Modal de lançamento rápido `+ Novo Gasto` ([`SpendingFormModal.tsx`](file:///e:/Apps/AppControleTotal/src/features/financas/SpendingFormModal.tsx)).
+  - **Checklist de Contas Fixas & Assinaturas do Mês:**
+    - Controle de despesas recorrentes (Internet, Energia, Aluguel, Cartão de Crédito, Streaming).
+    - Checkbox interativo para marcar como "Pago" no mês vigente com persistência mensal.
+    - Modal `+ Nova Conta Fixa` ([`FixedBillFormModal.tsx`](file:///e:/Apps/AppControleTotal/src/features/financas/FixedBillFormModal.tsx)).
+
+* **Checklist Diário de Rotina & Hábitos ([src/features/dashboard/DailyHabitsCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/DailyHabitsCard.tsx)):**
+  - Card integrado ao Dashboard com barra de progresso visual (`X de Y concluídos hoje`).
+  - Marcação de hábitos diários (Água 2L, Exercício, Leitura, Revisar agenda) com 1 toque e persistência por data (`YYYY-MM-DD`).
+  - Criação rápida de novos hábitos customizados inline.
+
+* **Cofre de Documentos, Chaves & Informações Úteis ([src/features/life-log/DocVaultSection.tsx](file:///e:/Apps/AppControleTotal/src/features/life-log/DocVaultSection.tsx)):**
+  - Seção estruturada no Life-Log para armazenamento seguro de referências do dia a dia (Renavam do carro, Placa, Cartão SUS, Medidas da casa, Filtro de ar condicionado, etc.).
+  - **Cópia Instantânea em 1 Clique (`Copiar`):** Copia o número/medida diretamente para o clipboard para colagem rápida no WhatsApp/Telegram.
+  - Filtros por categoria (Veículo, Casa, Saúde, Financeiro, Pessoal) e busca rápida.
+
+---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 

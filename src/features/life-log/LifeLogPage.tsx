@@ -11,6 +11,7 @@ import { MediaSection } from './MediaSection'
 import { LogsSection } from './LogsSection'
 import { ReadingSection } from './ReadingSection'
 import { FactVault, type FactDraft } from './FactVault'
+import { DocVaultSection } from './DocVaultSection'
 import { LogEntryForm, type LogDraft } from './LogEntryForm'
 import { ReadingForm, type ReadingDraft } from './ReadingForm'
 
@@ -138,6 +139,7 @@ export function LifeLogPage() {
             />
           </div>
           <FactVault facts={data.facts} onAdd={saveFact} onRemove={deleteFact} />
+          <DocVaultSection />
         </>
       )}
 

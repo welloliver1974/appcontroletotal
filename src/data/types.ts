@@ -147,11 +147,47 @@ export interface MaintMonth {
   count: number
 }
 
+export interface SpendingItem {
+  id: string
+  amount: number
+  category: string
+  note: string
+  date: string // YYYY-MM-DD
+  time?: string // HH:mm
+  createdAt?: string
+}
+
+export interface FixedBill {
+  id: string
+  name: string
+  amount: number
+  dueDay: number // 1..31
+  category: string
+  paidMonths: string[] // e.g. ['2026-08', '2026-07']
+}
+
+export interface DailyHabit {
+  id: string
+  title: string
+  icon?: string
+  completedDates: string[] // e.g. ['2026-08-18', '2026-08-17']
+  order: number
+}
+
+export interface DocVaultItem {
+  id: string
+  title: string
+  category: string // 'veiculo' | 'casa' | 'pessoal' | 'financeiro' | 'saude' | 'geral'
+  value: string
+  extra?: string
+  updatedAt: string
+}
+
 /** Indexed document for the Neural Omnibox (mock semantic search). */
 export interface SearchDoc {
   id: string
   module: string
-  kind: 'anotacao' | 'fato' | 'leitura' | 'midia' | 'ativo' | 'evento' | 'email' | 'item' | 'viagem'
+  kind: 'anotacao' | 'fato' | 'leitura' | 'midia' | 'ativo' | 'evento' | 'email' | 'item' | 'viagem' | 'gasto' | 'doc'
   title: string
   body: string
   tags: string[]
