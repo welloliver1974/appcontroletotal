@@ -10,11 +10,12 @@ import {
 import { useDashboardData } from './dashboardData'
 import { KpiRow } from './KpiRow'
 import { AlertsGrid } from './Alerts'
-import { EmailsCard, RecentLogCard, UpcomingCard } from './Widgets'
+import { RecentLogCard, UpcomingCard } from './Widgets'
 import { HermesBriefingCard } from './HermesBriefingCard'
 import { DailyHabitsCard } from './DailyHabitsCard'
 import { DashboardQuickActions } from './DashboardQuickActions'
 import { FinanceQuickSummaryCard } from './FinanceQuickSummaryCard'
+import { QuickShoppingListCard } from './QuickShoppingListCard'
 
 function todayLabel() {
   return new Date().toLocaleDateString('pt-BR', {
@@ -98,11 +99,11 @@ export function DashboardPage() {
               <RecentLogCard data={data} />
             </div>
 
-            {/* Coluna da Direita: Finanças, Radar de Alertas & Inbox (5 colunas) */}
+            {/* Coluna da Direita: Finanças, Radar de Alertas & Compras (5 colunas) */}
             <div className="space-y-5 lg:col-span-5">
               <FinanceQuickSummaryCard key={`finance-${refreshKey}`} />
               <AlertsGrid data={data} />
-              <EmailsCard data={data} />
+              <QuickShoppingListCard key={`shopping-${refreshKey}`} />
             </div>
           </div>
         </>

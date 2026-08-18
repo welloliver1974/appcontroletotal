@@ -469,11 +469,23 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 * **📐 Layout Inteligente em 2 Colunas ([src/features/dashboard/DashboardPage.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/DashboardPage.tsx)):**
   - **Coluna da Esquerda (Foco Pessoal & Rotina):** Rotina & Hábitos do Dia ([`DailyHabitsCard.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/DailyHabitsCard.tsx)), Próximos Compromissos da Agenda ([`UpcomingCard`](file:///e:/Apps/AppControleTotal/src/features/dashboard/Widgets.tsx)) e Diário Recente ([`RecentLogCard`](file:///e:/Apps/AppControleTotal/src/features/dashboard/Widgets.tsx)).
-  - **Coluna da Direita (Finanças & Operações):** Resumo Financeiro do Mês, Radar de Alertas Críticos ([`AlertsGrid.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/Alerts.tsx)) e Emails Filtrados pelo Hermes ([`EmailsCard`](file:///e:/Apps/AppControleTotal/src/features/dashboard/Widgets.tsx)).
+  - **Coluna da Direita (Finanças, Operações & Compras):** Resumo Financeiro do Mês, Radar de Alertas Críticos ([`AlertsGrid.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/Alerts.tsx)) e Lista Rápida de Compras & Despensa ([`QuickShoppingListCard.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/QuickShoppingListCard.tsx)).
   - Remoção dos gráficos de tendência no rodapé (`LifeInsights`), economizando +380 kB de bundle inicial e tornando a página ultra rápida e focada em ações.
 
 ---
+
+## 🛒 23. Lista de Compras & Reposição de Despensa na Dashboard
+
+* **🛒 Card de Compras & Despensa Direta ([src/features/dashboard/QuickShoppingListCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/QuickShoppingListCard.tsx)):**
+  - Substitui o card de emails, trazendo utilidade diária para gestão de mantimentos da casa.
+  - Monitora itens com **Estoque Baixo** (`qty <= lowThreshold`) ou **Vencimento Próximo** nos próximos 7 dias.
+  - **Reposição em 1 Toque:** Botão **`✓ Comprado`** que incrementa o estoque do produto no banco de dados com feedback por notificação toast.
+  - **Adição Rápida de Itens:** Campo direto para cadastrar produtos faltantes na lista com categoria (Alimentos, Bebidas, Limpeza, Higiene, Farmácia).
+  - Estado vazio inteligente: Quando tudo estiver abastecido, exibe selo verde de tranquilidade (*"Tudo abastecido!"*).
+
+---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 
 
 

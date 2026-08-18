@@ -1,4 +1,4 @@
-import { CalendarClock, Inbox as InboxIcon, ShoppingBasket, Wrench } from 'lucide-react'
+import { CalendarClock, NotebookPen, ShoppingBasket, Wrench } from 'lucide-react'
 import type { DashboardData } from './dashboardData'
 import { upcomingWindowDays } from './dashboardData'
 import { KpiCard } from '@/components/ui/KpiCard'
@@ -9,7 +9,7 @@ function useKpis(data: DashboardData) {
   const maintenances = data.assets
     .filter((a) => upcomingWindowDays(a.nextMaintenance, 7) || a.lifePct <= 25).length
   const lowStock = data.pantry.filter((i) => i.qty <= i.lowThreshold).length
-  const critical = data.emails.filter((e) => e.importance === 'critico' && !e.read).length
+  const logsCount = data.lifeLog.length
   return [
     {
       icon: CalendarClock,
@@ -33,11 +33,11 @@ function useKpis(data: DashboardData) {
       soft: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
     },
     {
-      icon: InboxIcon,
-      label: 'Emails críticos',
-      value: String(critical),
-      hint: 'inbox',
-      soft: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+      icon: NotebookPen,
+      label: 'Entradas no Life-Log',
+      value: String(logsCount),
+      hint: 'diário',
+      soft: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
     },
   ] as const
 }
