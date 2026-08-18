@@ -1,7 +1,9 @@
 # Hermes Agent (VPS) — Guia de Integração e Endpoints do Servidor
 
-> **Instruções para o Hermes Agent / Administrador da VPS:**
-> Este documento especifica exatamente os endpoints, formatos de payloads JSON, cabeçalhos de segurança e regras de integração que o servidor na VPS (atrás do túnel Cloudflare) deve expor para receber e enviar dados para o **AppControleTotal (Life OS Hub)**.
+> **Contexto da Infraestrutura:**
+> O túnel `cloudflared` já está configurado e ativo com o domínio próprio (ex: `https://hermes.housecloud.tec.be` / `housecloud.tec.br`). O servidor VPS e o Hermes já possuem endereço HTTPS público pronto. 
+> 
+> **Objetivo:** Adicionar no serviço do Hermes na VPS a rota para receber os disparos de webhook vindos do aplicativo (como a lista de compras da despensa e mensagens do chat) e enviá-los ao Telegram.
 
 ---
 
@@ -10,13 +12,16 @@
 ```
 [ AppControleTotal (PWA) ]
      │
-     ├── (1) Dispara Webhooks / Lista de Compras / Chat (HTTPS POST) ──► [ Túnel Cloudflare ] ──► [ Sua VPS / Hermes API ]
-     │                                                                                                    │
-     └── (2) Recebe Realtime WebSockets ◄── [ Banco Supabase ] ◄── Grava Gastos / Agenda / Despensa ──────┘
+     ├── (1) Dispara Webhook / Lista de Compras (HTTPS POST) ──► [ Seu Domínio Ativo (housecloud.tec.be) ]
+     │                                                                          │
+     │                                                                          ▼
+     │                                                               [ Hermes Agent na VPS ]
+     │                                                                          │
+     └── (2) Recebe Realtime WebSockets ◄── [ Banco Supabase ] ◄───────────────┘
 ```
 
-1. **Do Hermes (VPS) ➔ Para o App:** O Hermes continua inserindo registros diretamente no **Supabase**. O app escuta via **Supabase Realtime (WebSocket)** e exibe tudo na hora.
-2. **Do App ➔ Para a VPS (Hermes):** O app envia requisições HTTPS para o seu domínio (ex: `https://hermes.seu-dominio.com`) protegido por assinatura de segurança.
+1. **Do Hermes (VPS) ➔ Para o App:** O Hermes continua inserindo registros diretamente no **Supabase** (como já faz). O app escuta via **Supabase Realtime (WebSocket)** e exibe tudo na hora.
+2. **Do App ➔ Para o Hermes (VPS):** O app envia requisições HTTPS diretamente para o seu domínio já ativo (ex: `https://hermes.housecloud.tec.be/webhook`) protegido por token de segurança.
 
 ---
 
