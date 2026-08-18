@@ -13,6 +13,7 @@ export interface HermesAdvancedConfig {
   vpsSecret: string
   provider: ProviderId
   llmApiKey: string
+  groqApiKey?: string
   llmModel: string
   customBaseUrl: string
   telegramBotUrl: string
@@ -29,6 +30,7 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
         vpsSecret: parsed.vpsSecret || import.meta.env.VITE_HERMES_API_KEY || '',
         provider: parsed.provider || 'groq',
         llmApiKey: parsed.llmApiKey || import.meta.env.VITE_LLM_API_KEY || '',
+        groqApiKey: parsed.groqApiKey || import.meta.env.VITE_GROQ_API_KEY || '',
         llmModel: parsed.llmModel || 'llama-3.3-70b-versatile',
         customBaseUrl: parsed.customBaseUrl || '',
         telegramBotUrl: parsed.telegramBotUrl || '',
@@ -42,6 +44,7 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
     vpsSecret: import.meta.env.VITE_HERMES_API_KEY || '',
     provider: 'groq',
     llmApiKey: import.meta.env.VITE_LLM_API_KEY || '',
+    groqApiKey: import.meta.env.VITE_GROQ_API_KEY || '',
     llmModel: 'llama-3.3-70b-versatile',
     customBaseUrl: '',
     telegramBotUrl: '',
@@ -370,7 +373,11 @@ export async function queryHermesAI(
  */
 export async function transcribeAudioWithWhisper(audioBlob: Blob): Promise<string | null> {
   const config = getHermesAdvancedConfig()
-  const apiKey = config.llmApiKey || import.meta.env.VITE_LLM_API_KEY
+  const apiKey =
+    config.groqApiKey ||
+    (config.provider === 'groq' ? config.llmApiKey : '') ||
+    import.meta.env.VITE_GROQ_API_KEY ||
+    import.meta.env.VITE_LLM_API_KEY
   if (!apiKey) return null
 
   try {

@@ -13,6 +13,8 @@ import {
   Eye,
   EyeOff,
   ClipboardPaste,
+  Mic,
+  Sparkles,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -39,11 +41,37 @@ export function SettingsHermes() {
   const [testMessage, setTestMessage] = useState<string | null>(null)
   const [latencyMs, setLatencyMs] = useState<number | null>(null)
   const [showKey, setShowKey] = useState(false)
+  const [showGroqKey, setShowGroqKey] = useState(false)
+  const [testingGroq, setTestingGroq] = useState(false)
 
   const updateConfig = (patch: Partial<HermesAdvancedConfig>) => {
     const next = { ...config, ...patch }
     setConfigState(next)
     saveHermesAdvancedConfig(next)
+  }
+
+  const handleTestGroqKey = async () => {
+    const keyToTest = config.groqApiKey || (config.provider === 'groq' ? config.llmApiKey : '')
+    if (!keyToTest) {
+      toast.warning('Insira a chave da API da Groq primeiro.')
+      return
+    }
+
+    setTestingGroq(true)
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { Authorization: `Bearer ${keyToTest}` },
+      })
+      if (res.ok) {
+        toast.success('Chave Groq validada com sucesso! Whisper IA e modelos rápidos ativos. 🚀')
+      } else {
+        toast.error(`Chave Groq inválida ou não autorizada (HTTP ${res.status}).`)
+      }
+    } catch {
+      toast.error('Erro de conexão ao validar chave Groq.')
+    } finally {
+      setTestingGroq(false)
+    }
   }
 
   const handleFetchModels = async (showToast = true) => {
@@ -267,6 +295,111 @@ export function SettingsHermes() {
               ? `${models.length} modelos sincronizados com a sua conta.`
               : 'Clique em "Buscar modelos disponíveis" para listar todos os modelos ativos da sua chave.'}
           </p>
+        </div>
+
+        {/* Dedicated Groq Whisper Audio Transcription Section */}
+        <div className="space-y-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 sm:p-5">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                <Mic className="h-4 w-4" />
+              </span>
+              <div>
+                <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
+                  Transcrição por Voz com IA (Groq Whisper)
+                </h4>
+                <p className="text-[11px] text-zinc-400">
+                  Transcreve áudios do Life-Log com pontuação perfeita e sem limites de silêncio.
+                </p>
+              </div>
+            </div>
+
+            <a
+              href="https://console.groq.com/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium hover:underline flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20"
+            >
+              Criar chave Groq grátis <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+
+          {config.provider === 'groq' && !config.groqApiKey && config.llmApiKey ? (
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800 text-xs text-zinc-300">
+              <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                <Check className="h-3.5 w-3.5" /> Usando a mesma chave Groq configurada acima
+              </span>
+              <button
+                type="button"
+                onClick={() => updateConfig({ groqApiKey: config.llmApiKey })}
+                className="text-[11px] text-zinc-400 hover:text-zinc-200 underline"
+              >
+                Personalizar
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-zinc-300 font-medium">
+                  Chave da API da Groq (Whisper Large V3)
+                </label>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText()
+                      if (text) {
+                        updateConfig({ groqApiKey: text.trim() })
+                        toast.success('Chave Groq colada com sucesso! 📋')
+                      }
+                    } catch {
+                      toast.info('Cole sua chave Groq diretamente no campo.')
+                    }
+                  }}
+                  className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                >
+                  <ClipboardPaste className="h-3 w-3" />
+                  <span>Colar</span>
+                </button>
+              </div>
+
+              <div className="relative">
+                <input
+                  type={showGroqKey ? 'text' : 'password'}
+                  placeholder="gsk_..."
+                  value={config.groqApiKey || (config.provider === 'groq' ? config.llmApiKey : '')}
+                  onChange={(e) => updateConfig({ groqApiKey: e.target.value })}
+                  className="input-base pr-20 font-mono text-xs py-2.5 bg-zinc-950/80 border-emerald-500/20 focus:border-emerald-500/50"
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-zinc-400">
+                  <button
+                    type="button"
+                    onClick={() => setShowGroqKey(!showGroqKey)}
+                    className="p-1 hover:text-zinc-200"
+                    title={showGroqKey ? 'Ocultar chave' : 'Mostrar chave'}
+                  >
+                    {showGroqKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-zinc-500" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-1">
+            <p className="text-[10px] text-zinc-500 flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-emerald-400" /> Modelo ativo: whisper-large-v3-turbo (Latência &lt;400ms)
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleTestGroqKey}
+              disabled={testingGroq}
+              className="h-7 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 gap-1.5"
+            >
+              {testingGroq ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+              <span>Testar Chave Groq</span>
+            </Button>
+          </div>
         </div>
 
         {/* VPS & Cloudflare Tunnel Settings */}
