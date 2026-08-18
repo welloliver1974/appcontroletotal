@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Shield, CloudOff, Smartphone, Check, RefreshCw, Wifi, WifiOff, Database, Shield as ShieldIcon, Clock, Download, Bell, Palette } from 'lucide-react'
+import { Shield, CloudOff, Smartphone, Check, RefreshCw, Wifi, WifiOff, Database, Shield as ShieldIcon, Clock, Download, Bell, Palette, Bot } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { SettingsBackup } from './SettingsBackup'
+import { SettingsHermes } from './SettingsHermes'
 import { SettingsWebhook } from './SettingsWebhook'
 import { SettingsTheme } from './SettingsTheme'
 import { SettingsNotifications } from './SettingsNotifications'
@@ -288,7 +289,7 @@ function PWASettings() {
 }
 
 export function SettingsPage() {
-  const [activeSection, setActiveSection] = useState<'backup' | 'webhook' | 'pwa' | 'theme' | 'notifications'>('backup')
+  const [activeSection, setActiveSection] = useState<'hermes' | 'backup' | 'webhook' | 'pwa' | 'theme' | 'notifications'>('hermes')
 
   return (
     <div className="space-y-6 h-[calc(100vh-120px)] flex flex-col">
@@ -303,7 +304,7 @@ export function SettingsPage() {
               Configurações
             </h1>
             <p className="mt-0.5 text-sm text-zinc-500">
-              Backup, Webhook Hermes, Temas e Notificações PWA
+              Hermes Agent & IA, Backup, Temas e Notificações PWA
             </p>
           </div>
         </div>
@@ -313,6 +314,20 @@ export function SettingsPage() {
         {/* Sidebar Navigation */}
         <aside className="lg:w-56 flex-shrink-0 space-y-1">
           <nav className="space-y-1" role="tablist" aria-label="Configurações">
+            <button
+              role="tab"
+              aria-selected={activeSection === 'hermes'}
+              onClick={() => setActiveSection('hermes')}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
+                activeSection === 'hermes'
+                  ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100'
+              )}
+            >
+              <Bot className="h-4 w-4" />
+              Hermes & IA
+            </button>
             <button
               role="tab"
               aria-selected={activeSection === 'backup'}
@@ -339,7 +354,7 @@ export function SettingsPage() {
               )}
             >
               <Smartphone className="h-4 w-4" />
-              Hermes Webhook
+              Webhooks & Eventos
             </button>
             <button
               role="tab"
@@ -388,6 +403,7 @@ export function SettingsPage() {
 
         {/* Content */}
         <div className="flex-1 min-w-0 overflow-y-auto">
+          {activeSection === 'hermes' && <SettingsHermes />}
           {activeSection === 'backup' && <SettingsBackup />}
           {activeSection === 'webhook' && <SettingsWebhook />}
           {activeSection === 'theme' && <SettingsTheme />}

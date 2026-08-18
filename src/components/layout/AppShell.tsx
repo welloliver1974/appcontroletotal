@@ -8,6 +8,7 @@ import { BottomNav } from './BottomNav'
 import { Header } from './Header'
 import { CommandPalette } from './CommandPalette'
 import { QuickAddModal } from './QuickAddModal'
+import { HermesChatDrawer } from '@/components/hermes/HermesChatDrawer'
 
 /**
  * Responsive app shell:
@@ -58,6 +59,7 @@ export function AppShell() {
       <BottomNav />
       <CommandPalette />
       <QuickAddModal />
+      <HermesChatDrawer />
     </div>
   )
 }
