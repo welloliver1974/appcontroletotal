@@ -321,7 +321,24 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - Monitoramento contínuo em background (`setInterval` 60s) que dispara notificação no PWA/Navegador quando um compromisso da agenda estiver a ≤ 15 minutos de iniciar.
 
 ---
+
+## ⚡ 16. Proxy Serverless de LLMs & Resolução de CORS (NVIDIA / Groq / OpenRouter)
+
+* **Proxy Serverless Dedicado ([api/llm/proxy.js](file:///e:/Apps/AppControleTotal/api/llm/proxy.js)):**
+  - Endpoint: `POST /api/llm/proxy`
+  - Bypassa restrições de CORS impostas pelos servidores da **NVIDIA AI Foundation** e outros provedores quando chamados diretamente do navegador.
+  - Suporta as ações:
+    - `action: 'models'`: Consulta a lista de modelos do provedor via Node.js backend.
+    - `action: 'chat'`: Executa chat completions com streaming e parsing de respostas.
+* **Resiliência e Modelos Padrão ([src/lib/llmProviders.ts](file:///e:/Apps/AppControleTotal/src/lib/llmProviders.ts)):**
+  - Lista curada com os principais modelos da NVIDIA AI Foundation (`meta/llama-3.3-70b-instruct`, `deepseek-ai/deepseek-r1`, `nvidia/llama-3.1-nemotron-70b-instruct`, `deepseek-ai/deepseek-v3`, `mistralai/mistral-large-2407`, etc.).
+  - Fallback automático para garantir que a lista de modelos nunca fique vazia ou bloqueie o usuário caso a API de metadados esteja temporariamente instável.
+* **Hermes Chat via Proxy ([src/lib/hermes.ts](file:///e:/Apps/AppControleTotal/src/lib/hermes.ts)):**
+  - Integração prioritária com o proxy para envio de prompts e execução de ações do Hermes.
+
+---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 
 
 

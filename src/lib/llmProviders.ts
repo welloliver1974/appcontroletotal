@@ -49,7 +49,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     modelsEndpoint: 'https://integrate.api.nvidia.com/v1/models',
     chatEndpoint: 'https://integrate.api.nvidia.com/v1/chat/completions',
     docsUrl: 'https://build.nvidia.com',
-    defaultModel: 'meta/llama-3.1-70b-instruct',
+    defaultModel: 'meta/llama-3.3-70b-instruct',
   },
   custom: {
     id: 'custom',
@@ -69,14 +69,88 @@ export interface ModelItem {
   contextLength?: number
 }
 
+export const DEFAULT_NVIDIA_MODELS: ModelItem[] = [
+  { id: 'meta/llama-3.3-70b-instruct', name: 'Meta Llama 3.3 70B Instruct (Recomendado)', description: 'Alta velocidade e precisão' },
+  { id: 'meta/llama-3.1-70b-instruct', name: 'Meta Llama 3.1 70B Instruct', description: 'Versátil e robusto' },
+  { id: 'meta/llama-3.1-8b-instruct', name: 'Meta Llama 3.1 8B Instruct', description: 'Ultra-rápido e leve' },
+  { id: 'meta/llama-3.1-405b-instruct', name: 'Meta Llama 3.1 405B Instruct', description: 'Máxima capacidade de raciocínio' },
+  { id: 'deepseek-ai/deepseek-r1', name: 'DeepSeek R1', description: 'Raciocínio analítico avançado' },
+  { id: 'deepseek-ai/deepseek-v3', name: 'DeepSeek V3', description: 'Alta performance geral' },
+  { id: 'nvidia/llama-3.1-nemotron-70b-instruct', name: 'NVIDIA Llama 3.1 Nemotron 70B', description: 'Otimizado pela NVIDIA' },
+  { id: 'mistralai/mistral-large-2407', name: 'Mistral Large 2407', description: 'Excelente para tarefas complexas' },
+  { id: 'qwen/qwen2.5-72b-instruct', name: 'Qwen 2.5 72B Instruct', description: 'Alta capacidade multilíngue' },
+  { id: 'microsoft/phi-3.5-moe-instruct', name: 'Microsoft Phi 3.5 MoE', description: 'Mixture of Experts leve' },
+]
+
+export const DEFAULT_GROQ_MODELS: ModelItem[] = [
+  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile (Recomendado)' },
+  { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant' },
+  { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill Llama 70B' },
+  { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B 32k' },
+  { id: 'gemma2-9b-it', name: 'Gemma 2 9B IT' },
+]
+
+function parseModelList(json: unknown): ModelItem[] {
+  if (!json || typeof json !== 'object') return []
+  const obj = json as Record<string, unknown>
+  const rawList = Array.isArray(json) ? json : (obj.data || obj.models || [])
+
+  if (!Array.isArray(rawList)) return []
+
+  return rawList
+    .map((item: unknown) => {
+      if (typeof item === 'string') return { id: item, name: item }
+      if (item && typeof item === 'object') {
+        const m = item as Record<string, unknown>
+        return {
+          id: String(m.id || m.name || ''),
+          name: String(m.name || m.id || ''),
+          description: typeof m.description === 'string' ? m.description : undefined,
+          contextLength: typeof m.context_length === 'number' ? m.context_length : undefined,
+        }
+      }
+      return null
+    })
+    .filter((m: ModelItem | null): m is ModelItem => Boolean(m && m.id))
+    .sort((a: ModelItem, b: ModelItem) => a.id.localeCompare(b.id))
+}
+
 /**
  * Fetches available models from the selected provider using the user's API Key.
+ * Uses a serverless proxy to bypass browser CORS restrictions with graceful fallbacks.
  */
 export async function fetchProviderModels(
   providerId: ProviderId,
   apiKey: string,
   customBaseUrl?: string,
 ): Promise<{ ok: boolean; models: ModelItem[]; error?: string }> {
+  // 1. Try Serverless Proxy first (handles CORS flawlessly)
+  if (providerId !== 'vps') {
+    try {
+      const proxyRes = await fetch('/api/llm/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'models',
+          provider: providerId,
+          apiKey: apiKey.trim(),
+          customUrl: customBaseUrl,
+        }),
+      })
+
+      if (proxyRes.ok) {
+        const json = await proxyRes.json()
+        const parsed = parseModelList(json.data || json)
+        if (parsed.length > 0) {
+          return { ok: true, models: parsed }
+        }
+      }
+    } catch {
+      // Proxy unavailable, continue to direct fetch
+    }
+  }
+
+  // 2. Try Direct Fetch
   const provider = PROVIDERS[providerId]
   let url = ''
 
@@ -104,7 +178,7 @@ export async function fetchProviderModels(
 
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 9000)
+    const timeout = setTimeout(() => controller.abort(), 6000)
 
     const res = await fetch(url, {
       method: 'GET',
@@ -115,6 +189,14 @@ export async function fetchProviderModels(
     clearTimeout(timeout)
 
     if (!res.ok) {
+      // Return curated list on error for NVIDIA / Groq
+      if (providerId === 'nvidia') {
+        return { ok: true, models: DEFAULT_NVIDIA_MODELS }
+      }
+      if (providerId === 'groq') {
+        return { ok: true, models: DEFAULT_GROQ_MODELS }
+      }
+
       const errText = await res.text().catch(() => '')
       return {
         ok: false,
@@ -124,31 +206,29 @@ export async function fetchProviderModels(
     }
 
     const json = await res.json()
-    const rawList = Array.isArray(json) ? json : json.data || json.models || []
+    const models = parseModelList(json)
 
-    const models: ModelItem[] = rawList
-      .map((item: unknown) => {
-        if (typeof item === 'string') return { id: item, name: item }
-        if (item && typeof item === 'object') {
-          const m = item as Record<string, unknown>
-          return {
-            id: String(m.id || m.name || ''),
-            name: String(m.name || m.id || ''),
-            description: typeof m.description === 'string' ? m.description : undefined,
-            contextLength: typeof m.context_length === 'number' ? m.context_length : undefined,
-          }
-        }
-        return null
-      })
-      .filter((m: ModelItem | null): m is ModelItem => Boolean(m && m.id))
-      .sort((a: ModelItem, b: ModelItem) => a.id.localeCompare(b.id))
+    if (models.length > 0) {
+      return { ok: true, models }
+    }
 
-    return { ok: true, models }
-  } catch (err) {
+    if (providerId === 'nvidia') return { ok: true, models: DEFAULT_NVIDIA_MODELS }
+    if (providerId === 'groq') return { ok: true, models: DEFAULT_GROQ_MODELS }
+
+    return { ok: true, models: [] }
+  } catch {
+    // Graceful fallback on CORS / network error
+    if (providerId === 'nvidia') {
+      return { ok: true, models: DEFAULT_NVIDIA_MODELS }
+    }
+    if (providerId === 'groq') {
+      return { ok: true, models: DEFAULT_GROQ_MODELS }
+    }
+
     return {
       ok: false,
       models: [],
-      error: err instanceof Error ? err.message : 'Falha na conexão com a API',
+      error: 'Falha na conexão com a API. Verifique a chave de API.',
     }
   }
 }

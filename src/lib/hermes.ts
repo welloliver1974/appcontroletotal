@@ -232,12 +232,43 @@ export async function sendHermesChat(
     }
   }
 
-  // LLM Provider Direct (Groq, OpenRouter, NVIDIA, Custom)
+  // LLM Provider Setup (Groq, OpenRouter, NVIDIA, Custom)
   const provider = PROVIDERS[config.provider] || PROVIDERS.groq
   let endpoint = provider.chatEndpoint
   if (config.provider === 'custom' && config.customBaseUrl) {
     endpoint = `${config.customBaseUrl.replace(/\/+$/, '')}/chat/completions`
   }
+
+  // 1. Try Serverless Proxy first (bypasses browser CORS for NVIDIA / OpenRouter / Groq)
+  if (config.provider !== 'vps' && config.llmApiKey) {
+    try {
+      const proxyRes = await fetch('/api/llm/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'chat',
+          provider: config.provider,
+          apiKey: config.llmApiKey.trim(),
+          model: config.llmModel || provider.defaultModel,
+          messages: fullMessages,
+          customUrl: config.customBaseUrl,
+        }),
+      })
+
+      if (proxyRes.ok) {
+        const data = await proxyRes.json()
+        const rawReply = data.data?.choices?.[0]?.message?.content || data.choices?.[0]?.message?.content || ''
+        if (rawReply) {
+          const { cleanedReply, actions } = await extractAndExecuteHermesActions(rawReply)
+          return { reply: cleanedReply, actions, source: 'llm' }
+        }
+      }
+    } catch {
+      // Proxy unavailable, fallback to direct fetch
+    }
+  }
+
+  // 2. Direct LLM Provider Fetch (Fallback)
 
   if (config.llmApiKey && endpoint) {
     try {
