@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/feedback'
 import { api } from '@/data/api'
+import { toast } from '@/stores/toastStore'
 import { cn } from '@/lib/utils'
 import type { DailyHabit } from '@/data/types'
 
@@ -23,19 +24,13 @@ export function DailyHabitsCard() {
     api
       .list<DailyHabit>('habits')
       .then((res) => {
-        if (Array.isArray(res) && res.length > 0) {
+        if (Array.isArray(res)) {
           setHabits(res.sort((a, b) => (a.order || 0) - (b.order || 0)))
-        } else {
-          // Default habits
-          setHabits([
-            { id: 'hb-1', title: 'Tomar 2L de água', icon: '💧', completedDates: [today], order: 1 },
-            { id: 'hb-2', title: 'Treino / Exercício físico 30 min', icon: '🏃', completedDates: [today], order: 2 },
-            { id: 'hb-3', title: 'Leitura de 15 páginas', icon: '📖', completedDates: [], order: 3 },
-            { id: 'hb-4', title: 'Revisar agenda e prioridades', icon: '🎯', completedDates: [today], order: 4 },
-          ])
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('Erro ao carregar hábitos:', err)
+      })
       .finally(() => setLoading(false))
   }, [today])
 
@@ -69,11 +64,17 @@ export function DailyHabitsCard() {
     setHabits((prev) => [...prev, created])
     setNewTitle('')
     setAdding(false)
+    toast.success('Hábito adicionado à rotina!')
   }
 
   const handleRemoveHabit = async (id: string) => {
     setHabits((prev) => prev.filter((h) => h.id !== id))
-    await api.remove<DailyHabit>('habits', id).catch(() => {})
+    try {
+      await api.remove<DailyHabit>('habits', id)
+      toast.success('Hábito removido 🗑️')
+    } catch (err) {
+      console.error('Erro ao remover hábito:', err)
+    }
   }
 
   const completedCount = habits.filter((h) => (h.completedDates || []).includes(today)).length
@@ -136,60 +137,66 @@ export function DailyHabitsCard() {
       )}
 
       {/* Lista de Hábitos */}
-      <div className="space-y-1.5">
-        {habits.map((habit) => {
-          const isDone = (habit.completedDates || []).includes(today)
+      {habits.length === 0 ? (
+        <p className="py-4 text-center text-xs text-zinc-500">
+          Nenhum hábito cadastrado. Clique em <span className="text-emerald-400 font-semibold">+ Novo</span> para criar sua rotina diária.
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {habits.map((habit) => {
+            const isDone = (habit.completedDates || []).includes(today)
 
-          return (
-            <div
-              key={habit.id}
-              className={cn(
-                'group flex items-center justify-between p-2.5 rounded-xl border transition-all',
-                isDone
-                  ? 'bg-emerald-500/5 border-emerald-500/20 text-zinc-300'
-                  : 'bg-zinc-900/80 border-zinc-800/80 hover:border-zinc-700 text-zinc-100',
-              )}
-            >
-              <button
-                type="button"
-                onClick={() => toggleHabit(habit)}
-                className="flex items-center gap-2.5 min-w-0 flex-1 text-left"
+            return (
+              <div
+                key={habit.id}
+                className={cn(
+                  'group flex items-center justify-between p-2.5 rounded-xl border transition-all',
+                  isDone
+                    ? 'bg-emerald-500/5 border-emerald-500/20 text-zinc-300'
+                    : 'bg-zinc-900/80 border-zinc-800/80 hover:border-zinc-700 text-zinc-100',
+                )}
               >
-                <span
-                  className={cn(
-                    'h-5 w-5 rounded-lg flex items-center justify-center border transition-colors shrink-0',
-                    isDone
-                      ? 'bg-emerald-500 border-emerald-400 text-zinc-950 shadow-sm'
-                      : 'border-zinc-700 bg-zinc-800 group-hover:border-zinc-600',
-                  )}
+                <button
+                  type="button"
+                  onClick={() => toggleHabit(habit)}
+                  className="flex items-center gap-2.5 min-w-0 flex-1 text-left"
                 >
-                  {isDone && <Check className="h-3.5 w-3.5 stroke-[3]" />}
-                </span>
+                  <span
+                    className={cn(
+                      'h-5 w-5 rounded-lg flex items-center justify-center border transition-colors shrink-0',
+                      isDone
+                        ? 'bg-emerald-500 border-emerald-400 text-zinc-950 shadow-sm'
+                        : 'border-zinc-700 bg-zinc-800 group-hover:border-zinc-600',
+                    )}
+                  >
+                    {isDone && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                  </span>
 
-                <span className="text-xs shrink-0">{habit.icon || '🎯'}</span>
+                  <span className="text-xs shrink-0">{habit.icon || '🎯'}</span>
 
-                <span
-                  className={cn(
-                    'text-xs font-medium truncate',
-                    isDone && 'line-through text-zinc-500',
-                  )}
+                  <span
+                    className={cn(
+                      'text-xs font-medium truncate',
+                      isDone && 'line-through text-zinc-500',
+                    )}
+                  >
+                    {habit.title}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleRemoveHabit(habit.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-500 hover:text-rose-400 p-1"
+                  title="Excluir hábito"
                 >
-                  {habit.title}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleRemoveHabit(habit.id)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-500 hover:text-rose-400 p-1"
-                title="Excluir hábito"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-          )
-        })}
-      </div>
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </Card>
   )
 }
