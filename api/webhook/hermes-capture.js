@@ -8,10 +8,10 @@ const genId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto
 
 function inferPantryCategory(itemName) {
   const t = (itemName || '').toLowerCase();
-  if (/(coca|refrigerante|suco|cerveja|vinho|leite|caf[eé]|ch[aá]|água|bebida|energetico)/.test(t)) return 'bebidas';
-  if (/(sab[aã]o|detergente|amaciante|papel higi[eê]nico|desinfetante|limpeza|esponja|veja)/.test(t)) return 'limpeza';
-  if (/(shampoo|sabonete|pasta de dente|creme|desodorante|higiene|fio dental|escova)/.test(t)) return 'higiene';
-  if (/(carne|frango|peixe|ovos|queijo|presunto|iogurte|manteiga|requeij[aã]o)/.test(t)) return 'frescos';
+  if (/(coca|coke|refrigerante|suco|cerveja|vinho|leite|caf[eé]|ch[aá]|água|bebida|energetico|pepsi|guaran[aá])/i.test(t)) return 'bebidas';
+  if (/(sab[aã]o|detergente|amaciante|papel higi[eê]nico|desinfetante|limpeza|esponja|veja|cloro|yp[eê])/i.test(t)) return 'limpeza';
+  if (/(shampoo|sabonete|pasta de dente|creme|desodorante|higiene|fio dental|escova|cotonete)/i.test(t)) return 'higiene';
+  if (/(carne|frango|peixe|ovos|queijo|presunto|iogurte|manteiga|requeij[aã]o|fruta|maç[aã]|banana|tomate|legume)/i.test(t)) return 'frescos';
   return 'alimentos';
 }
 
@@ -74,36 +74,59 @@ export default async function handler(req, res) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   const body = req.body || {};
 
+  // Extração ampla de texto (compatível com Telegram Webhook, n8n, Hermes, formulários e JSON livre)
+  const tgMsg = body.message || body.edited_message || body.channel_post || {};
+  const tgText = typeof tgMsg.text === 'string' ? tgMsg.text : (typeof tgMsg.caption === 'string' ? tgMsg.caption : '');
+
+  const rawText = String(
+    body.text ||
+    tgText ||
+    body.content ||
+    body.summary ||
+    body.title ||
+    body.name ||
+    body.body ||
+    body.input ||
+    body.prompt ||
+    body.query ||
+    body.description ||
+    (typeof body === 'string' ? body : '')
+  ).trim();
+
+  const lowerText = rawText.toLowerCase();
+
   // Normalização do payload
   const action = body.action || body.event || body.type || '';
   let platform = String(body.platform || body.kind || '').toLowerCase();
-  const title = typeof body.title === 'string' ? body.title.slice(0, 250) : '';
-  const summary = typeof body.summary === 'string' ? body.summary.slice(0, 4000) : (typeof body.body === 'string' ? body.body : '');
-  const rawText = (title || summary || (typeof body === 'string' ? body : '')).trim();
-  const lowerText = rawText.toLowerCase();
-  const url = typeof body.url === 'string' && body.url ? body.url : null;
+  const title = typeof body.title === 'string' && body.title ? body.title.slice(0, 250) : rawText.slice(0, 250);
+  const summary = typeof body.summary === 'string' && body.summary ? body.summary.slice(0, 4000) : rawText.slice(0, 4000);
+  const url = typeof body.url === 'string' && body.url ? body.url : (rawText.match(/https?:\/\/[^\s]+/)?.[0] || null);
   const tags = Array.isArray(body.tags) ? body.tags.map(String).filter(Boolean).slice(0, 10) : ['hermes', 'telegram'];
 
   // Smart Intent Detection para mensagens livres do Telegram
   if (!platform && !action) {
-    if (/^(comprar|compra|mercado|despensa|preciso de|falta|comprar:)/i.test(lowerText) || /(lista de compras)/i.test(lowerText)) {
+    if (
+      /^(comprar|compra|mercado|despensa|preciso de|falta|comprar:|comprar\s+|pegar\s+)/i.test(lowerText) ||
+      /(lista de compras|precisamos de)/i.test(lowerText)
+    ) {
       platform = 'pantry';
     } else if (/^(gastei|paguei|despesa|gasto)/i.test(lowerText) || /r\$\s*\d+/i.test(lowerText)) {
       platform = 'spending';
     } else if (/^(reuni[aã]o|compromisso|consulta|dentista|m[eé]dico|call|agendar)/i.test(lowerText)) {
       platform = 'event';
+    } else if (url && (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('instagram.com'))) {
+      platform = 'media';
     } else if (/^(di[aá]rio|hoje eu|me sinto|gratid[aã]o|pensamento)/i.test(lowerText)) {
       platform = 'life_log';
     }
   }
 
-  let name = typeof body.name === 'string' ? body.name.slice(0, 250) : (title || 'Item sem nome');
-  if (platform === 'pantry' && !body.name && rawText) {
-    name = rawText.replace(/^(comprar|compra|adicionar [aà] despensa|adicionar|falta|preciso de|mercado:|despensa:)\s*/i, '').trim();
-    if (name) {
-      name = name.charAt(0).toUpperCase() + name.slice(1);
-    } else {
-      name = rawText;
+  // Tratamento do nome do produto na Despensa
+  let name = typeof body.name === 'string' && body.name ? body.name.slice(0, 250) : title;
+  if (platform === 'pantry' && rawText) {
+    const cleaned = rawText.replace(/^(comprar|compra|adicionar [aà] despensa|adicionar|falta|preciso de|mercado:|despensa:|pegar)\s*/i, '').trim();
+    if (cleaned) {
+      name = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
     }
   }
 
@@ -129,7 +152,7 @@ export default async function handler(req, res) {
             id: it.id || genId(),
             name: itName,
             category: it.category || inferPantryCategory(itName),
-            qty: Number(it.qty ?? it.quantity ?? 1),
+            qty: Number(it.qty ?? it.quantity ?? 0),
             unit: it.unit || 'un',
             low_threshold: Number(it.lowThreshold ?? it.low_threshold ?? 1),
             expires_at: it.expiresAt || it.expires_at || null,
@@ -141,6 +164,7 @@ export default async function handler(req, res) {
         }
 
         return res.status(201).json({
+          ok: true,
           success: true,
           table: 'pantry',
           itemsCount: inserted.length,
@@ -149,28 +173,52 @@ export default async function handler(req, res) {
         });
       }
 
-      // Item individual
-      const itemRow = {
-        id: body.id || genId(),
-        name: name || 'Item',
-        category: body.category || inferPantryCategory(name),
-        qty: Number(body.qty ?? body.quantity ?? 1),
-        unit: body.unit || 'un',
-        low_threshold: Number(body.lowThreshold ?? body.low_threshold ?? 1),
-        expires_at: body.expiresAt || body.expires_at || null,
-        created_at: nowIso(),
-        updated_at: nowIso(),
-      };
+      // Item individual: Verifica se já existe pelo nome para atualizar ou inserir
+      const itemName = name || 'Item sem nome';
+      const itemCategory = body.category || inferPantryCategory(itemName);
 
-      const { data, error } = await supabase.from('pantry').insert(itemRow).select().single();
-      if (error) throw error;
+      const { data: existing } = await supabase
+        .from('pantry')
+        .select('*')
+        .ilike('name', itemName)
+        .limit(1);
+
+      let savedId;
+      if (existing && existing.length > 0) {
+        // Marca item existente como precisando comprar (qty: 0 para disparar alerta na Dashboard)
+        const updatedRow = {
+          qty: Number(body.qty ?? body.quantity ?? 0),
+          updated_at: nowIso(),
+        };
+        const { error } = await supabase.from('pantry').update(updatedRow).eq('id', existing[0].id);
+        if (error) throw error;
+        savedId = existing[0].id;
+      } else {
+        const itemRow = {
+          id: body.id || genId(),
+          name: itemName,
+          category: itemCategory,
+          qty: Number(body.qty ?? body.quantity ?? 0), // 0 = precisa comprar (entra na lista de compras e alerta da dashboard)
+          unit: body.unit || 'un',
+          low_threshold: Number(body.lowThreshold ?? body.low_threshold ?? 1),
+          expires_at: body.expiresAt || body.expires_at || null,
+          created_at: nowIso(),
+          updated_at: nowIso(),
+        };
+
+        const { data: insertedData, error } = await supabase.from('pantry').insert(itemRow).select().single();
+        if (error) throw error;
+        savedId = insertedData.id;
+      }
 
       return res.status(201).json({
+        ok: true,
         success: true,
         table: 'pantry',
-        id: data.id,
-        item: itemRow,
-        message: `Item "${itemRow.name}" adicionado à despensa`,
+        id: savedId,
+        name: itemName,
+        category: itemCategory,
+        message: `Item "${itemName}" adicionado à lista de compras da despensa! 🛒`,
       });
     }
 
@@ -178,8 +226,8 @@ export default async function handler(req, res) {
     // B. MÍDIAS & LINKS (YouTube / Instagram / Web)
     // -------------------------------------------------------------
     const isUrl = url && /^(http|https):\/\/[^ "]+$/.test(url);
-    const isMediaPlatform = ['youtube', 'instagram', 'web', 'tiktok', 'artigo', 'video'].includes(platform);
-    const hasMediaUrl = isUrl && (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('instagram.com'));
+    const isMediaPlatform = ['youtube', 'instagram', 'web', 'tiktok', 'artigo', 'video', 'media'].includes(platform);
+    const hasMediaUrl = isUrl && (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('instagram.com') || url.includes('tiktok.com'));
 
     if (isMediaPlatform || hasMediaUrl) {
       let kind = 'youtube';
@@ -206,11 +254,12 @@ export default async function handler(req, res) {
       if (error) throw error;
 
       return res.status(201).json({
+        ok: true,
         success: true,
         table: 'media',
         id: data.id,
         kind,
-        message: `Mídia "${mediaRow.title}" salva no Life-Log`,
+        message: `Mídia "${mediaRow.title}" salva no Life-Log! 🎬`,
       });
     }
 
@@ -232,10 +281,11 @@ export default async function handler(req, res) {
       if (error) throw error;
 
       return res.status(201).json({
+        ok: true,
         success: true,
         table: 'spending',
         id: data.id,
-        message: 'Gasto registrado com sucesso',
+        message: 'Gasto registrado com sucesso! 💸',
       });
     }
 
@@ -259,10 +309,11 @@ export default async function handler(req, res) {
       if (error) throw error;
 
       return res.status(201).json({
+        ok: true,
         success: true,
         table: 'events',
         id: data.id,
-        message: `Compromisso "${eventRow.title}" agendado`,
+        message: `Compromisso "${eventRow.title}" agendado! 📅`,
       });
     }
 
@@ -284,10 +335,11 @@ export default async function handler(req, res) {
       if (error) throw error;
 
       return res.status(201).json({
+        ok: true,
         success: true,
         table: 'life_log',
         id: data.id,
-        message: `Entrada criada no Diário: "${logRow.title}"`,
+        message: `Entrada criada no Diário: "${logRow.title}"! 📝`,
       });
     }
 
@@ -296,7 +348,7 @@ export default async function handler(req, res) {
     // -------------------------------------------------------------
     const factRow = {
       id: body.id || genId(),
-      content: summary || title || (typeof body === 'string' ? body : JSON.stringify(body)),
+      content: rawText || (typeof body === 'string' ? body : JSON.stringify(body)),
       source: body.source || 'telegram',
       tags,
       created_at: nowIso(),
@@ -307,10 +359,11 @@ export default async function handler(req, res) {
     if (error) throw error;
 
     return res.status(201).json({
+      ok: true,
       success: true,
       table: 'facts',
       id: data.id,
-      message: 'Nota salva no Cofre de Fatos',
+      message: 'Nota salva no Cofre de Fatos! 💡',
     });
   } catch (err) {
     console.error('[HermesCaptureWebhook Error]:', err);
