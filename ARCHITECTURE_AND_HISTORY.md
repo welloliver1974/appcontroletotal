@@ -450,7 +450,31 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - No computador, orienta de forma limpa que o recurso é dedicado para o uso no smartphone.
 
 ---
+
+## ⚡ 22. Redesign da Dashboard: Ações Rápidas em 1 Toque e Foco Sem Gráficos
+
+* **⚡ Barra de Ações Rápidas no Topo ([src/features/dashboard/DashboardQuickActions.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/DashboardQuickActions.tsx)):**
+  - Permite realizar os lançamentos mais frequentes da rotina sem precisar navegar pelos menus:
+    - `💸 + Gasto`: Abre modal de lançamento de despesa rápida.
+    - `🧾 Escanear Cupom`: Abre o leitor de cupom fiscal com IA Vision integrada.
+    - `🎙️ Gravar Voz`: Abre o gravador de áudio com transcrição e estruturação automática no Diário.
+    - `📅 + Evento`: Abre modal de agendamento de compromisso.
+    - `⛽ Abastecer`: Abre a calculadora de consumo real e histórico de combustível.
+
+* **💰 Resumo Financeiro Direto e Prático ([src/features/dashboard/FinanceQuickSummaryCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/FinanceQuickSummaryCard.tsx)):**
+  - Substitui gráficos pesados e complexos por métricas numéricas objetivas:
+    - **Total Gasto no Mês** em R$ e contagem de lançamentos.
+    - **Contas Fixas Pendentes** no mês e contagem de quitadas vs pendentes.
+    - **Barra de Progresso do Orçamento Mensal** (consumo vs limite restante).
+
+* **📐 Layout Inteligente em 2 Colunas ([src/features/dashboard/DashboardPage.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/DashboardPage.tsx)):**
+  - **Coluna da Esquerda (Foco Pessoal & Rotina):** Rotina & Hábitos do Dia ([`DailyHabitsCard.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/DailyHabitsCard.tsx)), Próximos Compromissos da Agenda ([`UpcomingCard`](file:///e:/Apps/AppControleTotal/src/features/dashboard/Widgets.tsx)) e Diário Recente ([`RecentLogCard`](file:///e:/Apps/AppControleTotal/src/features/dashboard/Widgets.tsx)).
+  - **Coluna da Direita (Finanças & Operações):** Resumo Financeiro do Mês, Radar de Alertas Críticos ([`AlertsGrid.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/Alerts.tsx)) e Emails Filtrados pelo Hermes ([`EmailsCard`](file:///e:/Apps/AppControleTotal/src/features/dashboard/Widgets.tsx)).
+  - Remoção dos gráficos de tendência no rodapé (`LifeInsights`), economizando +380 kB de bundle inicial e tornando a página ultra rápida e focada em ações.
+
+---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 
 
 

@@ -1,61 +1,57 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { MODULE_BY_ID } from '@/lib/modules'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/feedback'
-import { checkPantryExpiringNotifications, checkTodayEventsNotifications, checkUpcomingEventsReminders } from '@/lib/notifications'
+import {
+  checkPantryExpiringNotifications,
+  checkTodayEventsNotifications,
+  checkUpcomingEventsReminders,
+} from '@/lib/notifications'
 import { useDashboardData } from './dashboardData'
 import { KpiRow } from './KpiRow'
 import { AlertsGrid } from './Alerts'
-import { LifeInsights } from './LifeInsights'
 import { EmailsCard, RecentLogCard, UpcomingCard } from './Widgets'
 import { HermesBriefingCard } from './HermesBriefingCard'
 import { DailyHabitsCard } from './DailyHabitsCard'
+import { DashboardQuickActions } from './DashboardQuickActions'
+import { FinanceQuickSummaryCard } from './FinanceQuickSummaryCard'
 
 function todayLabel() {
-  return new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })
+  return new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+  })
 }
 
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
+      <Skeleton className="h-16 w-full rounded-2xl" />
+      <Skeleton className="h-28 w-full rounded-2xl" />
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="card space-y-4 p-5">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-10 w-10 rounded-xl" />
-              <Skeleton className="h-3 w-24 rounded-full" />
-            </div>
-            <Skeleton className="h-7 w-16 rounded-lg" />
-            <Skeleton className="h-3 w-20 rounded-full" />
-          </div>
+          <Skeleton key={i} className="h-24 rounded-2xl" />
         ))}
       </div>
-      <div>
-        <Skeleton className="mb-3 h-4 w-40 rounded-full" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 rounded-xl" />
-          ))}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-4">
+          <Skeleton className="h-48 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
         </div>
-      </div>
-      <div className="grid gap-3 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-64 rounded-xl" />
-        ))}
-      </div>
-      <div className="grid gap-3 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-48 rounded-xl" />
-        ))}
+        <div className="space-y-4">
+          <Skeleton className="h-48 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
+        </div>
       </div>
     </div>
   )
 }
 
-/** Fase 1 — Dashboard polido: KPIs, radar de alertas, widgets e Life Insights. */
 export function DashboardPage() {
   const data = useDashboardData()
   const module = MODULE_BY_ID.dashboard
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     if (data) {
@@ -72,12 +68,10 @@ export function DashboardPage() {
   }, [data])
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        module={module}
-      >
-        <span className="chip mt-1 hidden sm:inline-flex">
-          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-indigo-400" />
+    <div className="space-y-6 pb-8">
+      <PageHeader module={module}>
+        <span className="chip mt-1 hidden sm:inline-flex capitalize">
+          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />
           {todayLabel()}
         </span>
       </PageHeader>
@@ -86,16 +80,31 @@ export function DashboardPage() {
         <DashboardSkeleton />
       ) : (
         <>
+          {/* Barra de Ações Rápidas em 1 Toque */}
+          <DashboardQuickActions onRefresh={() => setRefreshKey((k) => k + 1)} />
+
+          {/* Resumo Matinal do Hermes IA */}
           <HermesBriefingCard data={data} />
+
+          {/* Linha de KPIs Rápidos */}
           <KpiRow data={data} loading={false} />
-          <AlertsGrid data={data} />
-          <DailyHabitsCard />
-          <div className="grid gap-3 lg:grid-cols-3">
-            <UpcomingCard data={data} />
-            <EmailsCard data={data} />
-            <RecentLogCard data={data} />
+
+          {/* Layout Principal em 2 Colunas */}
+          <div className="grid gap-6 lg:grid-cols-12 items-start">
+            {/* Coluna da Esquerda: Foco Pessoal & Rotina (7 colunas) */}
+            <div className="space-y-5 lg:col-span-7">
+              <DailyHabitsCard key={`habits-${refreshKey}`} />
+              <UpcomingCard data={data} />
+              <RecentLogCard data={data} />
+            </div>
+
+            {/* Coluna da Direita: Finanças, Radar de Alertas & Inbox (5 colunas) */}
+            <div className="space-y-5 lg:col-span-5">
+              <FinanceQuickSummaryCard key={`finance-${refreshKey}`} />
+              <AlertsGrid data={data} />
+              <EmailsCard data={data} />
+            </div>
           </div>
-          <LifeInsights data={data} />
         </>
       )}
     </div>
