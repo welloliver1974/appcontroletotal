@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Plus, Search, Settings } from 'lucide-react'
+import { Plus, Search, Settings, Smartphone } from 'lucide-react'
 import { MODULE_BY_PATH } from '@/lib/modules'
 import { useUiStore } from '@/stores/uiStore'
 import { useOfflineQueueStore } from '@/stores/offlineQueueStore'
 import { useSupabase } from '@/lib/db'
+import { checkStandalone } from '@/lib/pwa'
+import { toast } from '@/stores/toastStore'
 import { cn } from '@/lib/utils'
 import { Omnibox } from './Omnibox'
 import { SettingsModal } from '@/features/agenda/SettingsModal'
@@ -64,6 +66,25 @@ export function Header() {
               <span className="pulse-dot" />
               Hermes Local
             </span>
+          )}
+
+          {/* Install Button (when not standalone) */}
+          {!checkStandalone() && (
+            <button
+              onClick={() => {
+                const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent || '')
+                if (isIosDevice) {
+                  toast.info('No iPhone: toque no ícone de Compartilhar ⎋ e em "Adicionar à Tela de Início ➕"!')
+                } else {
+                  toast.info('Para instalar: toque no menu dos 3 pontinhos do navegador e escolha "Instalar Aplicativo / Adicionar à Tela Inicial". 📲')
+                }
+              }}
+              className="chip hidden sm:inline-flex items-center gap-1 border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 transition-colors"
+              title="Instalar App no Celular ou PC"
+            >
+              <Smartphone className="h-3 w-3 text-indigo-400" />
+              <span>Instalar App</span>
+            </button>
           )}
 
           {/* Settings */}
