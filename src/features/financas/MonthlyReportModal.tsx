@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Copy, Share2 } from 'lucide-react'
+import { Copy, Send, Share2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/stores/toastStore'
@@ -126,10 +126,16 @@ export function MonthlyReportModal({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(formattedText)
-      toast.success('Relatório copiado para colar no WhatsApp / Telegram! 📋')
+      toast.success('Relatório copiado com sucesso! 📋')
     } catch {
       toast.info(formattedText)
     }
+  }
+
+  const handleSendTelegram = () => {
+    const telegramUrl = `https://t.me/share/url?text=${encodeURIComponent(formattedText)}`
+    window.open(telegramUrl, '_blank', 'noopener,noreferrer')
+    toast.success('Abrindo Telegram para envio do relatório! ✈️')
   }
 
   const handleNativeShare = async () => {
@@ -141,7 +147,7 @@ export function MonthlyReportModal({
         })
       } catch {}
     } else {
-      handleCopy()
+      handleSendTelegram()
     }
   }
 
@@ -180,7 +186,7 @@ export function MonthlyReportModal({
         {/* Prévia Formatada para Mensagem */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-zinc-300 flex items-center justify-between">
-            <span>Prévia do Relatório Formatado (WhatsApp / Telegram)</span>
+            <span>Prévia do Relatório Formatado (Telegram / Mensagens)</span>
             <span className="text-[10px] text-zinc-500 font-mono">Markdown pronto</span>
           </label>
           <pre className="p-3.5 bg-zinc-950/90 border border-zinc-800 rounded-xl text-xs font-mono text-zinc-300 whitespace-pre-wrap max-h-56 overflow-y-auto select-all leading-relaxed">
@@ -194,7 +200,16 @@ export function MonthlyReportModal({
             Fechar
           </Button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopy}
+              className="gap-1.5 text-xs text-zinc-300 hover:text-white border border-zinc-800"
+            >
+              <Copy className="h-3.5 w-3.5" /> Copiar Texto
+            </Button>
+
             <Button
               variant="ghost"
               size="sm"
@@ -207,10 +222,10 @@ export function MonthlyReportModal({
             <Button
               variant="primary"
               size="md"
-              onClick={handleCopy}
-              className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20"
+              onClick={handleSendTelegram}
+              className="gap-2 bg-sky-600 hover:bg-sky-500 text-white shadow-md shadow-sky-600/20 font-medium"
             >
-              <Copy className="h-4 w-4" /> Copiar para WhatsApp
+              <Send className="h-4 w-4" /> Enviar para Telegram
             </Button>
           </div>
         </div>
