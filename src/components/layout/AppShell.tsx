@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useUiStore } from '@/stores/uiStore'
+import { useOfflineQueueStore } from '@/stores/offlineQueueStore'
+import { toast } from '@/stores/toastStore'
 import { MODULES } from '@/lib/modules'
 import { Sidebar } from './Sidebar'
 import { NavRail } from './NavRail'
@@ -20,10 +22,31 @@ export function AppShell() {
   const navigate = useNavigate()
   const setCommandOpen = useUiStore((s) => s.setCommandOpen)
   const setQuickAddOpen = useUiStore((s) => s.setQuickAddOpen)
+  const setOnline = useOfflineQueueStore((s) => s.setOnline)
+  const retryAll = useOfflineQueueStore((s) => s.retryAll)
 
   useEffect(() => {
     window.scrollTo({ top: 0 })
   }, [location.pathname])
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setOnline(true)
+      toast.success('Conexão restabelecida! Sincronizando dados com o Supabase... 🚀')
+      void retryAll()
+    }
+    const handleOffline = () => {
+      setOnline(false)
+      toast.warning('Você está offline. As alterações serão salvas localmente e sincronizadas depois. 📴')
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [setOnline, retryAll])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

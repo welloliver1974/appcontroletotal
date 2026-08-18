@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bot, Sparkles, RefreshCw } from 'lucide-react'
+import { Bot, Copy, RefreshCw, Send, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import type { DashboardData } from './dashboardData'
@@ -68,9 +68,61 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
     return parts.join('. ') + '.'
   }
 
+  const formatTelegramBriefing = () => {
+    const todayFormatted = now.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+    })
+
+    const lines = [
+      `☀️ *BOM DIA! RESUMO MATINAL — LIFE OS HUB*`,
+      `📅 *Data:* ${todayFormatted}`,
+      ``,
+      `🤖 *Mensagem do Hermes:*`,
+      `"${briefing || smartSummary()}"`,
+      ``,
+      `📌 *Compromissos de Hoje (${todayEvents.length}):*`,
+      todayEvents.length > 0
+        ? todayEvents.map((e) => `• ${e.timeStart} - ${e.title}${e.location ? ` (${e.location})` : ''}`).join('\n')
+        : `• Nenhum compromisso agendado para hoje.`,
+      ``,
+      `🛒 *Lista de Compras & Despensa (${lowStock.length} pendentes):*`,
+      lowStock.length > 0
+        ? lowStock.map((i) => `• ${i.name} (Comprar: ${i.lowThreshold} ${i.unit})`).join('\n')
+        : `• Tudo abastecido em casa!`,
+      ``,
+      `🚗 *Manutenção & Ativos:*`,
+      urgentAssets.length > 0
+        ? urgentAssets.map((a) => `• ⚠️ ${a.name} (Vida útil: ${a.lifePct}%)`).join('\n')
+        : `• Todos os ativos em dia.`,
+      ``,
+      `🚀 _Gerado automaticamente pelo Life OS Hub_`,
+    ]
+
+    return lines.join('\n')
+  }
+
+  const handleShareTelegram = () => {
+    const text = formatTelegramBriefing()
+    const url = `https://t.me/share/url?url=${encodeURIComponent(window.location.origin)}&text=${encodeURIComponent(text)}`
+    window.open(url, '_blank')
+    toast.success('Abrindo Telegram... ✈️')
+  }
+
+  const handleCopy = async () => {
+    const text = formatTelegramBriefing()
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Resumo matinal copiado para a área de transferência! 📋')
+    } catch {
+      toast.info('Texto pronto para envio.')
+    }
+  }
+
   return (
     <Card className="relative overflow-hidden border-indigo-500/30 bg-gradient-to-r from-indigo-950/30 via-zinc-900/60 to-cyan-950/20 p-5 shadow-lg shadow-indigo-950/20">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5 min-w-0">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shadow-lg shadow-indigo-500/10">
             <Bot className="h-5 w-5" />
@@ -89,16 +141,40 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
           </div>
         </div>
 
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={generateAIBriefing}
-          disabled={loading}
-          className="shrink-0 flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Analisando...' : 'Gerar com IA'}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopy}
+            className="text-xs text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/60 border border-zinc-700/60 gap-1.5"
+            title="Copiar texto do resumo"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            <span>Copiar</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleShareTelegram}
+            className="text-xs text-sky-300 hover:text-sky-200 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 gap-1.5"
+            title="Enviar resumo formatado para o Telegram"
+          >
+            <Send className="h-3.5 w-3.5" />
+            <span>Telegram ✈️</span>
+          </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={generateAIBriefing}
+            disabled={loading}
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 text-xs"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>{loading ? 'Analisando...' : 'Gerar com IA'}</span>
+          </Button>
+        </div>
       </div>
     </Card>
   )

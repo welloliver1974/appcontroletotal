@@ -10,20 +10,39 @@ async function buildIndex(): Promise<SearchDoc[]> {
   const push = (module: string, kind: SearchDoc['kind'], title: string, body: string, tags: string[] = []) =>
     docs.push({ id: `${module}-${title}-${docs.length}`, module, kind, title, body, tags })
 
-  const [events, emails, lifeLog, facts, reading, media, assets, maintenance, pantry, trips, places] =
-    await Promise.all([
-      db.get<RowWithId>('events'),
-      db.get<RowWithId>('emails'),
-      db.get<RowWithId>('lifeLog'),
-      db.get<RowWithId>('facts'),
-      db.get<RowWithId>('reading'),
-      db.get<RowWithId>('media'),
-      db.get<RowWithId>('assets'),
-      db.get<RowWithId>('maintenance'),
-      db.get<RowWithId>('pantry'),
-      db.get<RowWithId>('trips'),
-      db.get<RowWithId>('places'),
-    ])
+  const [
+    events,
+    emails,
+    lifeLog,
+    facts,
+    reading,
+    media,
+    assets,
+    maintenance,
+    pantry,
+    trips,
+    places,
+    docVault,
+    spendingEntries,
+    fixedBills,
+    habits,
+  ] = await Promise.all([
+    db.get<RowWithId>('events'),
+    db.get<RowWithId>('emails'),
+    db.get<RowWithId>('lifeLog'),
+    db.get<RowWithId>('facts'),
+    db.get<RowWithId>('reading'),
+    db.get<RowWithId>('media'),
+    db.get<RowWithId>('assets'),
+    db.get<RowWithId>('maintenance'),
+    db.get<RowWithId>('pantry'),
+    db.get<RowWithId>('trips'),
+    db.get<RowWithId>('places'),
+    db.get<RowWithId>('docVault'),
+    db.get<RowWithId>('spendingEntries'),
+    db.get<RowWithId>('fixedBills'),
+    db.get<RowWithId>('habits'),
+  ])
 
   for (const e of events) {
     push('agenda', 'evento', String(e.title), `${String(e.location ?? '')} ${String(e.category)}`, ['agenda'])
@@ -67,6 +86,18 @@ async function buildIndex(): Promise<SearchDoc[]> {
   }
   for (const p of places) {
     push('viagens', 'viagem', String(p.name), `${String(p.where)} · ${p.visited ? 'visitado' : 'a visitar'}`, ['viagem', 'lugar'])
+  }
+  for (const d of docVault) {
+    push('life-log', 'doc', String(d.title), `${String(d.value)} · ${String(d.extra ?? '')} · ${String(d.category)}`, ['cofre', 'documento', 'doc'])
+  }
+  for (const s of spendingEntries) {
+    push('financas', 'gasto', String(s.note || s.category), `R$ ${Number(s.amount).toFixed(2)} em ${String(s.date)} · ${String(s.category)}`, ['financas', 'gasto'])
+  }
+  for (const b of fixedBills) {
+    push('financas', 'gasto', String(b.name), `Conta Fixa: R$ ${Number(b.amount).toFixed(2)} · Vencimento dia ${String(b.dueDay)}`, ['financas', 'conta'])
+  }
+  for (const h of habits) {
+    push('dashboard', 'anotacao', String(h.title), `Hábito diário: ${String(h.icon ?? '🎯')}`, ['habito', 'rotina'])
   }
   return docs
 }

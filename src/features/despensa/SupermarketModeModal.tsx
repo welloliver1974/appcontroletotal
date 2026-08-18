@@ -24,7 +24,6 @@ export function SupermarketModeModal({
   const neededItems = items.filter((i) => i.qty <= i.lowThreshold)
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
   const [finishing, setFinishing] = useState(false)
-  const [sendingTg, setSendingTg] = useState(false)
 
   const toggleItem = (id: string) => {
     setCheckedIds((prev) => {
@@ -65,10 +64,11 @@ export function SupermarketModeModal({
 
   const formatListText = () => {
     let text = `🛒 *Lista de Compras — Life OS Hub*\n`
-    text += `📅 ${new Date().toLocaleDateString('pt-BR')}\n\n`
+    text += `📅 ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}\n\n`
     for (const it of neededItems) {
       const checked = checkedIds.has(it.id) ? '✅' : '⬜'
-      text += `${checked} *${it.name}* (${it.category})\n`
+      const qtyStr = it.lowThreshold ? `${it.lowThreshold} ${it.unit || 'un'}` : `1 ${it.unit || 'un'}`
+      text += `${checked} *${it.name}* (Qtd: ${qtyStr} · ${it.category})\n`
     }
     return text
   }
@@ -85,30 +85,9 @@ export function SupermarketModeModal({
 
   const handleSendToTelegram = async () => {
     const text = formatListText()
-    setSendingTg(true)
-    try {
-      const res = await fetch('/api/webhook/hermes-capture', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'pantry_shopping_list',
-          platform: 'telegram',
-          summary: text,
-          title: 'Lista de Compras',
-          items: neededItems.map((i) => ({ name: i.name, category: i.category })),
-        }),
-      })
-
-      if (res.ok) {
-        toast.success('Lista de compras enviada para o Hermes Telegram! 🚀')
-      } else {
-        await handleCopyList()
-      }
-    } catch {
-      await handleCopyList()
-    } finally {
-      setSendingTg(false)
-    }
+    const url = `https://t.me/share/url?url=${encodeURIComponent(window.location.origin)}&text=${encodeURIComponent(text)}`
+    window.open(url, '_blank')
+    toast.success('Abrindo Telegram com a lista de compras... ✈️')
   }
 
   // Agrupar por categoria
@@ -159,12 +138,11 @@ export function SupermarketModeModal({
             <Button
               variant="ghost"
               size="sm"
-              disabled={sendingTg}
-              className="h-8 px-2.5 text-xs text-blue-400 hover:text-blue-300 gap-1.5"
+              className="h-8 px-2.5 text-xs text-sky-400 hover:text-sky-300 hover:bg-sky-500/10 gap-1.5"
               onClick={handleSendToTelegram}
             >
               <Send className="h-3.5 w-3.5" />
-              <span>Telegram</span>
+              <span>Telegram ✈️</span>
             </Button>
           </div>
         </div>

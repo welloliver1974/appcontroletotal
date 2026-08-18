@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, CornerDownLeft, Search, Sparkles } from 'lucide-react'
+import { ArrowRight, Copy, CornerDownLeft, Search, Sparkles } from 'lucide-react'
 import { useUiStore } from '@/stores/uiStore'
 import { neuralSearch } from '@/data/neural'
 import { MODULE_BY_ID } from '@/lib/modules'
+import { toast } from '@/stores/toastStore'
 import type { SearchDoc } from '@/data/types'
 import { cn } from '@/lib/utils'
 
 const SUGGESTIONS = [
-  'o que preciso trocar em casa?',
-  'quanto gastei com o carro?',
-  'minha próxima viagem',
-  'fatura do cartão',
+  'coca zero',
+  'cnh',
+  'óleo do carro',
+  'contas fixas',
+  'mercado',
+  'viagem',
 ]
 
 /** Cmd+K — Neural Omnibox. Mock semantic search over every collection. */
@@ -150,7 +153,7 @@ export function CommandPalette() {
                     <span className="min-w-0 flex-1">
                       <span
                         className={cn(
-                          'block truncate text-sm',
+                          'block truncate text-sm font-medium',
                           i === selected ? 'text-zinc-50' : 'text-zinc-200',
                         )}
                       >
@@ -160,6 +163,24 @@ export function CommandPalette() {
                         {doc.module} · {doc.kind} — {doc.body}
                       </span>
                     </span>
+
+                    {doc.kind === 'doc' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const val = doc.body.split('·')[0].trim() || doc.title
+                          navigator.clipboard.writeText(val)
+                          toast.success(`"${doc.title}" copiado! 📋`)
+                        }}
+                        className="px-2 py-1 text-[11px] rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 flex items-center gap-1 shrink-0"
+                        title="Copiar valor"
+                      >
+                        <Copy className="h-3 w-3" />
+                        <span>Copiar</span>
+                      </button>
+                    )}
+
                     <ArrowRight
                       className={cn(
                         'h-4 w-4 shrink-0 text-zinc-600 transition-colors',
