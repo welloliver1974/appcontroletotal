@@ -56,17 +56,42 @@ function buildAlerts(data: DashboardData): AlertItem[] {
     }
   }
 
-  for (const p of data.pantry) {
-    if (p.qty <= p.lowThreshold) {
-      items.push({
-        id: `pan-${p.id}`,
-        kind: 'estoque',
-        title: `Estoque baixo — ${p.name}`,
-        meta: `${p.qty} ${p.unit} restantes (mín. ${p.lowThreshold})`,
-        tone: p.expiresAt ? 'info' : 'atencao',
-        icon: ShoppingBasket,
-      })
-    }
+  // Agrupamento consolidado de itens de despensa
+  const lowStock = data.pantry.filter((p) => p.qty <= p.lowThreshold)
+  if (lowStock.length > 0) {
+    const names = lowStock.slice(0, 4).map((p) => p.name).join(', ')
+    const extra = lowStock.length > 4 ? ` e mais ${lowStock.length - 4}` : ''
+    const hasZero = lowStock.some((p) => p.qty === 0)
+
+    items.push({
+      id: 'pantry-low-stock-grouped',
+      kind: 'estoque',
+      title: `${lowStock.length} ${lowStock.length === 1 ? 'item em falta' : 'itens em falta para comprar'}`,
+      meta: `${names}${extra}`,
+      tone: hasZero ? 'critico' : 'atencao',
+      icon: ShoppingBasket,
+    })
+  }
+
+  const expiring = data.pantry.filter((p) => {
+    if (!p.expiresAt) return false
+    const exp = new Date(p.expiresAt)
+    const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    return diffDays >= 0 && diffDays <= 3
+  })
+
+  if (expiring.length > 0) {
+    const names = expiring.slice(0, 3).map((p) => p.name).join(', ')
+    const extra = expiring.length > 3 ? ` e mais ${expiring.length - 3}` : ''
+
+    items.push({
+      id: 'pantry-expiring-grouped',
+      kind: 'estoque',
+      title: `${expiring.length} ${expiring.length === 1 ? 'item vencendo em breve' : 'itens com validade próxima'}`,
+      meta: `${names}${extra}`,
+      tone: 'info',
+      icon: ShoppingBasket,
+    })
   }
 
   for (const e of data.emails) {

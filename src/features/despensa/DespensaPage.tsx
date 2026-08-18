@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, ShoppingBasket } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { LayoutGrid, List, Plus, Search, ShoppingBasket, X } from 'lucide-react'
 import { MODULE_BY_ID } from '@/lib/modules'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -10,11 +10,14 @@ import type { PantryItem } from '@/data/types'
 import { useDespensaData } from './useDespensaData'
 import { Kpis } from './Kpis'
 import { PantryItemCard } from './PantryItemCard'
+import { PantryListView } from './PantryListView'
 import { PantryItemForm, type PantryItemDraft } from './PantryItemForm'
 import { WebhookExport } from './WebhookExport'
-import { categories, sortItems } from './despensaUtils'
+import { categories, isExpired, isExpiringSoon, isLow, sortItems } from './despensaUtils'
 
 type FormState = null | { mode: 'new' } | { mode: 'edit'; item: PantryItem }
+type StatusTab = 'all' | 'needed' | 'expiring'
+type ViewMode = 'list' | 'grid'
 
 function DespensaSkeleton() {
   return (
@@ -49,23 +52,68 @@ function DespensaSkeleton() {
   )
 }
 
-/** Fase 4 — Consumo & Despensa: estoque visual, CRUD, sinalização e exportação via webhook. */
+/** Fase 4 — Consumo & Despensa: estoque visual, modo lista denso, CRUD, busca e exportação. */
 export function DespensaPage() {
   const module = MODULE_BY_ID['despensa']
   const { data, setItems } = useDespensaData()
   const [form, setForm] = useState<FormState>(null)
-  const [filter, setFilter] = useState<string | null>(null)
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+  const [statusTab, setStatusTab] = useState<StatusTab>('all')
+  const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    try {
+      return (localStorage.getItem('act.pantryViewMode') as ViewMode) || 'list'
+    } catch {
+      return 'list'
+    }
+  })
 
-  const items = data?.items ?? []
-  const cats = categories(items)
-  // If the active category no longer exists (e.g. last item deleted), fall back to "all".
-  const activeFilter = filter && cats.some((c) => c.name === filter) ? filter : null
-  const visible = sortItems(activeFilter ? items.filter((i) => i.category === activeFilter) : items)
+  const handleToggleView = (mode: ViewMode) => {
+    setViewMode(mode)
+    try {
+      localStorage.setItem('act.pantryViewMode', mode)
+    } catch {}
+  }
+
+  const items = useMemo(() => data?.items ?? [], [data?.items])
+  const cats = useMemo(() => categories(items), [items])
+
+  // Contagens para abas de status
+  const neededCount = useMemo(() => items.filter((i) => isLow(i)).length, [items])
+  const expiringCount = useMemo(
+    () => items.filter((i) => isExpiringSoon(i, 7) || isExpired(i)).length,
+    [items],
+  )
+
+  // Filtragem combinada (Status Tab + Categoria + Busca)
+  const visible = useMemo(() => {
+    let list = items
+
+    if (statusTab === 'needed') {
+      list = list.filter((i) => isLow(i))
+    } else if (statusTab === 'expiring') {
+      list = list.filter((i) => isExpiringSoon(i, 7) || isExpired(i))
+    }
+
+    if (categoryFilter) {
+      list = list.filter((i) => i.category.toLowerCase() === categoryFilter.toLowerCase())
+    }
+
+    if (search.trim()) {
+      const q = search.toLowerCase().trim()
+      list = list.filter(
+        (i) => i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q),
+      )
+    }
+
+    return sortItems(list)
+  }, [items, statusTab, categoryFilter, search])
 
   const save = async (draft: PantryItemDraft) => {
     if (!data) return
     if (form?.mode === 'edit') {
-      setItems(await api.update<PantryItem>('pantry', form.item.id, draft))
+      const updated = await api.update<PantryItem>('pantry', form.item.id, draft)
+      setItems(updated)
     } else {
       const created = await api.create<PantryItem>('pantry', draft)
       setItems([created, ...data.items])
@@ -75,6 +123,14 @@ export function DespensaPage() {
 
   const remove = async (id: string) => {
     setItems(await api.remove<PantryItem>('pantry', id))
+  }
+
+  const handleUpdateQty = async (item: PantryItem, delta: number) => {
+    if (!data) return
+    const newQty = Math.max(0, item.qty + delta)
+    const updatedItems = data.items.map((i) => (i.id === item.id ? { ...i, qty: newQty } : i))
+    setItems(updatedItems)
+    await api.update<PantryItem>('pantry', item.id, { qty: newQty })
   }
 
   return (
@@ -87,24 +143,136 @@ export function DespensaPage() {
         <>
           <Kpis items={data.items} />
 
-          <div>
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="eyebrow">Estoque</p>
-              <Button variant="primary" size="sm" onClick={() => setForm({ mode: 'new' })}>
-                <Plus className="h-3.5 w-3.5" /> Novo item
-              </Button>
+          <div className="space-y-3">
+            {/* Header com Ações e Alternador de Visão */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="eyebrow">Estoque & Compras</p>
+                <h3 className="text-base font-medium text-zinc-100">
+                  {visible.length} {visible.length === 1 ? 'item exibido' : 'itens exibidos'}
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Alternador Lista / Cards */}
+                <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-1 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleView('list')}
+                    className={cn(
+                      'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
+                      viewMode === 'list'
+                        ? 'bg-zinc-800 text-purple-300 shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200',
+                    )}
+                    title="Visualização em Lista Compacta"
+                  >
+                    <List className="h-3.5 w-3.5" />
+                    <span>Lista</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleView('grid')}
+                    className={cn(
+                      'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
+                      viewMode === 'grid'
+                        ? 'bg-zinc-800 text-purple-300 shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200',
+                    )}
+                    title="Visualização em Cards"
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                    <span>Cards</span>
+                  </button>
+                </div>
+
+                <Button variant="primary" size="sm" onClick={() => setForm({ mode: 'new' })}>
+                  <Plus className="h-3.5 w-3.5" /> Novo item
+                </Button>
+              </div>
             </div>
 
-            {cats.length >= 2 && (
-              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            {/* Barra de Busca e Filtros Rápidos */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pt-1">
+              {/* Abas de Status */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
                 <button
                   type="button"
-                  onClick={() => setFilter(null)}
+                  onClick={() => setStatusTab('all')}
                   className={cn(
-                    'chip px-2.5 py-1 text-xs transition-colors',
-                    activeFilter === null
-                      ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-                      : 'text-zinc-400 hover:bg-white/5',
+                    'chip px-3 py-1 text-xs font-medium transition-colors',
+                    statusTab === 'all'
+                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                      : 'text-zinc-400 hover:bg-zinc-800/60',
+                  )}
+                >
+                  Todos ({items.length})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusTab('needed')}
+                  className={cn(
+                    'chip px-3 py-1 text-xs font-medium transition-colors flex items-center gap-1.5',
+                    statusTab === 'needed'
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                      : 'text-zinc-400 hover:bg-zinc-800/60',
+                  )}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                  Falta Comprar ({neededCount})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusTab('expiring')}
+                  className={cn(
+                    'chip px-3 py-1 text-xs font-medium transition-colors flex items-center gap-1.5',
+                    statusTab === 'expiring'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : 'text-zinc-400 hover:bg-zinc-800/60',
+                  )}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Vencendo ({expiringCount})
+                </button>
+              </div>
+
+              {/* Campo de Busca */}
+              <div className="relative min-w-[220px] sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar produto ou categoria..."
+                  className="w-full h-8 pl-8 pr-7 bg-zinc-900/80 border border-zinc-800 rounded-xl text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-purple-500/50 transition-colors"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                    aria-label="Limpar busca"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Categorias Secundárias */}
+            {cats.length >= 2 && (
+              <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                <span className="text-[11px] text-zinc-500 mr-1">Filtrar por:</span>
+                <button
+                  type="button"
+                  onClick={() => setCategoryFilter(null)}
+                  className={cn(
+                    'chip px-2 py-0.5 text-[11px] transition-colors',
+                    categoryFilter === null
+                      ? 'bg-zinc-800 text-zinc-200 border-zinc-700'
+                      : 'text-zinc-500 hover:text-zinc-300',
                   )}
                 >
                   Todas
@@ -113,21 +281,24 @@ export function DespensaPage() {
                   <button
                     key={c.name}
                     type="button"
-                    onClick={() => setFilter(c.name)}
+                    onClick={() =>
+                      setCategoryFilter(categoryFilter === c.name ? null : c.name)
+                    }
                     className={cn(
-                      'chip px-2.5 py-1 text-xs transition-colors',
-                      activeFilter === c.name
-                        ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-                        : 'text-zinc-400 hover:bg-white/5',
+                      'chip px-2 py-0.5 text-[11px] transition-colors',
+                      categoryFilter === c.name
+                        ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                        : 'text-zinc-500 hover:text-zinc-300',
                     )}
                   >
                     {c.name}
-                    <span className="ml-1 font-num text-[10px] opacity-70">{c.count}</span>
+                    <span className="ml-1 font-num text-[9px] opacity-70">({c.count})</span>
                   </button>
                 ))}
               </div>
             )}
 
+            {/* Conteúdo: Lista Compacta vs Cards */}
             {data.items.length === 0 ? (
               <EmptyState
                 icon={<ShoppingBasket className="h-5 w-5" />}
@@ -142,8 +313,28 @@ export function DespensaPage() {
             ) : visible.length === 0 ? (
               <EmptyState
                 icon={<ShoppingBasket className="h-5 w-5" />}
-                title={`Nada na categoria "${activeFilter}"`}
-                description="Escolha outra categoria ou cadastre um novo item."
+                title="Nenhum item encontrado"
+                description="Tente ajustar a busca ou os filtros de status e categoria."
+                action={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearch('')
+                      setCategoryFilter(null)
+                      setStatusTab('all')
+                    }}
+                  >
+                    Limpar filtros
+                  </Button>
+                }
+              />
+            ) : viewMode === 'list' ? (
+              <PantryListView
+                items={visible}
+                onEdit={(item) => setForm({ mode: 'edit', item })}
+                onRemove={remove}
+                onUpdateQty={handleUpdateQty}
               />
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
