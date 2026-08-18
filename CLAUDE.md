@@ -88,16 +88,27 @@ src/
 - **Template de env**: `.env.example` com `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `HERMES_WEBHOOK_URL`, `HERMES_API_KEY`.
 - **Migrations Supabase** em `supabase/migrations/`:
   - `20260816000000_initial_schema.sql` — 14 tabelas, índices, RLS, policies dev.
-  - `20260816000001_seed_data.sql` — Seed data (espelha `SEED_VERSION = 8`).
-- **Scripts npm**: `supabase:push`, `supabase:reset` + dependência `supabase` CLI.
-- **Configuração local**: `supabase/config.toml`.
-- **Docs consolidadas**: `DATABASE.md` (une antigos `DATABASE_INSTRUCTIONS.md`, `database.md`, `PROJECT_INSTRUCTIONS.md`).
+  - `20260816000001_text_ids_compat.sql` — Compatibilidade de tipos.
+  - `20260816000002_seed_data.sql` — Seed data inicial.
+  - `20260817001000_remove_demo_seed_data.sql` — Limpeza de seeds de teste.
+
+### Fase 9 — Hermes AI Copilot, Realtime Sync, PWA Notifications & Temas ✅ (2026-08-17)
+
+- **Copiloto Hermes AI com Chat Flutuante ([src/components/hermes/HermesChatDrawer.tsx](file:///e:/Apps/AppControleTotal/src/components/hermes/HermesChatDrawer.tsx)):** Chat flutuante em todas as telas, histórico, suporte a microfone/voz (Web Speech API) e atalhos rápidos.
+- **Busca Dinâmica de Modelos LLM ([src/lib/llmProviders.ts](file:///e:/Apps/AppControleTotal/src/lib/llmProviders.ts)):** Busca automática de modelos via `/models` para Groq, OpenRouter, NVIDIA e VPS.
+- **Ações Automáticas / Function Calling ([src/lib/hermesActions.ts](file:///e:/Apps/AppControleTotal/src/lib/hermesActions.ts)):** O Hermes adiciona itens na despensa, gastos no financeiro, eventos na agenda ou diário em linguagem natural direto no Supabase.
+- **Supabase Realtime Live Sync ([src/lib/useRealtimeSync.ts](file:///e:/Apps/AppControleTotal/src/lib/useRealtimeSync.ts)):** Sincronização instantânea de dados entre dispositivos e agente sem necessidade de recarregar a tela.
+- **Seletor de 4 Temas Visuais ([src/stores/themeStore.ts](file:///e:/Apps/AppControleTotal/src/stores/themeStore.ts)):** Midnight Indigo, Emerald Cyberpunk, Obsidian Minimal, Rose Gold.
+- **Notificações Nativas do Navegador & PWA ([src/lib/notifications.ts](file:///e:/Apps/AppControleTotal/src/lib/notifications.ts)):** Alertas de despensa próxima ao vencimento e compromissos do dia.
+- **Code Splitting & Bundle Otimizado (>92% redução):** Chunks divididos via Rollup em `vite.config.ts`, inicial baixando apenas 76 kB.
+- **Documentação de Longo Prazo:** Consulte [ARCHITECTURE_AND_HISTORY.md](ARCHITECTURE_AND_HISTORY.md) para detalhes completos de arquitetura.
 
 ## Validação
 
 - `npm run build` limpo (TS strict + bundle).
+- `npx oxlint src` 0 erros e 0 warnings.
 - Revisão visual responsiva nas 3 larguras via DevTools (mobile/tablet/desktop).
 - Atalhos: `⌘/Ctrl+K` omnibox · `⌘/Ctrl+N` adição rápida · `Alt+1..6` troca de módulo.
 - Fluxo Emergency Gate na 1ª abertura (código demo `2468`), persiste dispositivo confiável.
 
-**Status atual:** Todas as 9 fases implementadas e aprovadas. App completo, deploy Vercel configurado, docs organizadas.
+**Status atual:** Todas as fases implementadas e aprovadas. App completo, deploy Vercel configurado, docs organizadas.

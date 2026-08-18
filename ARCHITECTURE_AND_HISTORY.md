@@ -1,0 +1,223 @@
+# AppControleTotal (Life OS Hub) — Arquitetura Completa & Memória de Desenvolvimento
+
+> **Este documento contém o estado completo, histórico de decisões, arquitetura do sistema, esquema do banco de dados, integrações com IA (Hermes Agent / LLMs) e convenções de código para que qualquer Inteligência Artificial ou desenvolvedor possa compreender e continuar a evolução do projeto.**
+
+---
+
+## 📌 1. Visão Geral do Projeto
+
+O **AppControleTotal (Life OS Hub)** é um Sistema Operacional Pessoal moderno no formato **PWA (Progressive Web App)** com interface *Dark Mode Premium* (estilo Linear.app, Vercel e Apple Human Interface Guidelines).
+
+O app centraliza a gestão de 6 áreas da vida:
+1. **📊 Dashboard:** KPIs consolidados, radar de alertas, próximos compromissos, emails urgentes, Life Insights (gráficos Recharts) e Briefing Matinal com IA.
+2. **📝 Life-Log & Leitura:** Diário pessoal, rastreador de livros, cofre de anotações/fatos (*Fact Vault*), captura de mídias (YouTube & Instagram) e consulta semântica ao Hermes AI.
+3. **🛠️ Manutenção & Ativos:** Gestão de patrimônio (veículos, residência, eletrônicos), barras de vida útil, odômetro e histórico de manutenções.
+4. **🛒 Consumo & Despensa:** Controle de estoque de mantimentos, alertas de vencimento (≤ 3 dias), limite mínimo e exportação da lista de compras via Webhook direto para o Hermes / WhatsApp.
+5. **✈️ Viagens & Experiências:** Roteiros cronológicos dia a dia e lista de locais salvos (*bucket list*).
+6. **📅 Agenda & Inbox (Hermes Bridge):** Calendário mensal/semanal integrado com emails filtrados pelo Hermes e central de configurações avançadas.
+
+---
+
+## 🛠️ 2. Stack Tecnológica
+
+* **Core & Build:** React 19, TypeScript 5 (strict mode), Vite 8 (`@tailwindcss/vite`).
+* **Estilização:** Tailwind CSS v4 + Vanilla CSS moderno com tokens HSL, gradientes dinâmicos e *glassmorphism* em `src/styles/index.css`.
+* **Roteamento:** React Router v7 (SPA) com *code splitting* via `React.lazy` e `Suspense`.
+* **Gerenciamento de Estado:** Zustand (persistência local com `persist` middleware).
+* **Banco de Dados Híbrido:**
+  * **Nuvem:** Supabase PostgreSQL com **Realtime WebSockets** (`supabase-js`).
+  * **Fallback Local:** `localStorage` mock adapter automático com fila offline e sincronização em background (`offlineQueueStore` + `backgroundSync.ts`).
+* **Inteligência Artificial (Copiloto Hermes):**
+  * Provedores suportados: **Groq**, **OpenRouter**, **NVIDIA AI Foundation**, **Sua VPS Hermes (Cloudflare Tunnel)** e endpoints OpenAI-compatíveis.
+  * Busca dinâmica de modelos em tempo real (`GET /models`).
+  * Execução de ações automáticas no Supabase (*Function Calling*).
+  * Ditado por voz via **Web Speech API**.
+* **PWA & Offline:** `vite-plugin-pwa`, Service Worker com pré-cache e Workbox runtime caching.
+* **Linter & Qualidade:** Oxlint (configurado em `.oxlintrc.json`).
+
+---
+
+## 📁 3. Estrutura de Diretórios
+
+```
+e:/Apps/AppControleTotal/
+├── public/                # Favicons, ícones do PWA e manifest
+├── supabase/
+│   ├── migrations/        # Migrações SQL versionadas (schema, RLS e compatibilidade)
+│   └── config.toml        # Configurações do Supabase CLI
+├── src/
+│   ├── app/
+│   │   └── App.tsx        # Router principal, lazy routes e Emergency Gate
+│   ├── components/
+│   │   ├── auth/          # EmergencyGate (autenticação por código)
+│   │   ├── hermes/        # HermesChatDrawer.tsx (Chat flutuante com IA e voz)
+│   │   ├── layout/        # AppShell, Header, Sidebar, NavRail, BottomNav, Omnibox, QuickAdd
+│   │   └── ui/            # Primitivas: Button, Card, Modal, KpiCard, Skeleton, Toast, etc.
+│   ├── data/
+│   │   ├── api.ts         # Fake async API (para fallback local)
+│   │   ├── db.ts          # LocalStorage mock driver
+│   │   ├── neural.ts      # Motor de busca fuzzy/semântica local
+│   │   ├── seed.ts        # Dados iniciais para demonstração offline
+│   │   └── types.ts       # Modelos e interfaces TypeScript de todo o domínio
+│   ├── features/
+│   │   ├── agenda/        # AgendaPage, CalendarView, SettingsHermes, SettingsTheme, etc.
+│   │   ├── dashboard/     # DashboardPage, HermesBriefingCard, KpiRow, LifeInsights, etc.
+│   │   ├── despensa/      # DespensaPage, PantryItemCard, WebhookExport, etc.
+│   │   ├── life-log/      # LifeLogPage, HermesAsk, LogsSection, ReadingSection, etc.
+│   │   ├── manutencao/    # ManutencaoPage, AssetCard, RecordsSection, etc.
+│   │   └── viagens/       # ViagensPage, TripCard, PlacesSection, etc.
+│   ├── lib/
+│   │   ├── backgroundSync.ts   # Sincronização em segundo plano da fila offline
+│   │   ├── backupScheduler.ts  # Agendador de exportação e backup JSON
+│   │   ├── db.ts               # Database Adapter unificado (Supabase + LocalStorage)
+│   │   ├── hermes.ts           # Cliente central do Hermes Agent & LLMs
+│   │   ├── hermesActions.ts    # Interpretador de ações automáticas no banco
+│   │   ├── llmProviders.ts     # Configurações de provedores e busca de modelos
+│   │   ├── modules.ts          # Registro e metadados dos 6 módulos
+│   │   ├── notifications.ts    # Serviço de notificações nativas e PWA
+│   │   ├── pwa.ts              # Utilitários de registro do Service Worker
+│   │   ├── safeApi.ts          # Wrapper tolerante a falhas
+│   │   ├── supabase.ts         # Inicialização do cliente Supabase
+│   │   ├── usePendingDelete.ts # Hook com suporte a "desfazer" exclusões
+│   │   ├── useRealtimeSync.ts  # Hook de escuta de canais Realtime do Supabase
+│   │   └── utils.ts            # Funções utilitárias (cn, formatação de datas, etc.)
+│   ├── stores/
+│   │   ├── authStore.ts        # Estado do dispositivo confiável (Emergency Gate)
+│   │   ├── backupStore.ts      # Configurações de agendamento de backup
+│   │   ├── offlineQueueStore.ts# Fila de mutações offline pendentes
+│   │   ├── themeStore.ts       # Seletor e persistência dos 4 temas visuais
+│   │   ├── toastStore.ts       # Sistema de toasts de notificação
+│   │   └── uiStore.ts          # Controle de modais, command palette e drawer
+│   ├── styles/
+│   │   └── index.css           # Estilos base, design tokens, temas e animações
+│   └── main.tsx                # Ponto de entrada, inicialização de temas e serviços
+├── vite.config.ts              # Configuração Vite, PWA e Rollup manualChunks
+├── CLAUDE.md                   # Instruções de desenvolvimento e governança
+├── PRD.md                      # Documento de Requisitos do Produto
+└── ARCHITECTURE_AND_HISTORY.md # ESTE ARQUIVO (Memória de longo prazo)
+```
+
+---
+
+## 🗄️ 4. Esquema do Banco de Dados (Supabase / PostgreSQL)
+
+O Supabase está configurado com as seguintes tabelas principais:
+
+| Tabela | Descrição | Campos Chave |
+|---|---|---|
+| `events` | Compromissos e reuniões | `id`, `title`, `date`, `time_start`, `time_end`, `category`, `location` |
+| `emails` | Caixa de entrada inteligente | `id`, `from_address`, `subject`, `preview`, `importance`, `sent_at`, `tags`, `read` |
+| `life_log` | Diário pessoal | `id`, `title`, `body`, `tags`, `mood`, `created_at` |
+| `books` | Leituras e progresso | `id`, `title`, `author`, `status`, `current_page`, `total_pages`, `cover` |
+| `facts` | Cofre de fatos e notas rápidas | `id`, `content`, `source`, `tags`, `created_at` |
+| `media` | Mídias capturadas (YouTube/Insta) | `id`, `kind`, `url`, `title`, `source_label`, `summary`, `minutes`, `status`, `tags` |
+| `assets` | Ativos (Carro/Casa/Equipamentos) | `id`, `name`, `type`, `total_life_months`, `used_months`, `icon` |
+| `maintenance_records` | Histórico de serviços | `id`, `asset_id`, `description`, `cost`, `date`, `odometer_km` |
+| `pantry` | Itens da despensa | `id`, `name`, `category`, `qty`, `unit`, `low_threshold`, `expires_at` |
+| `trips` | Viagens planejadas | `id`, `destination`, `start_date`, `end_date`, `status` |
+| `trip_stops` | Paradas do itinerário | `id`, `trip_id`, `day`, `time`, `title`, `note` |
+| `places` | Locais salvos (Bucket list) | `id`, `name`, `where_location`, `visited`, `note` |
+| `spending` | Registro de despesas | `id`, `amount`, `category`, `note`, `date` |
+
+### Tratamento de Tipos e Nomenclatura:
+O adapter [`src/lib/db.ts`](file:///e:/Apps/AppControleTotal/src/lib/db.ts) faz o mapeamento transparente entre `snake_case` do Postgres e `camelCase` do TypeScript:
+- `time_start` ↔ `timeStart`
+- `low_threshold` ↔ `lowThreshold`
+- `created_at` ↔ `createdAt`
+- `odometer_km` ↔ `odometerKm`
+
+---
+
+## 🤖 5. Arquitetura do Hermes AI & LLM Engine
+
+### Modos de Comunicação:
+1. **VPS Própria com Cloudflare:**
+   - URL do túnel: `https://hermes.seu-dominio.com`
+   - Autenticação via `X-Hermes-Signature` e `Authorization: Bearer <token>`.
+2. **Provedores Diretos de LLM:**
+   - **Groq:** `https://api.groq.com/openai/v1` (Modelo recomendado: `llama-3.3-70b-versatile`).
+   - **OpenRouter:** `https://openrouter.ai/api/v1` (Acesso a Llama, Claude, DeepSeek, Qwen).
+   - **NVIDIA AI Foundation:** `https://integrate.api.nvidia.com/v1`.
+   - **Endpoint Customizado:** Qualquer backend compatível com OpenAI.
+
+### Funcionalidades de IA Implementadas:
+- **Busca de Modelos Dinâmica ([llmProviders.ts](file:///e:/Apps/AppControleTotal/src/lib/llmProviders.ts)):** Ao inserir a API Key, o app busca a lista de modelos ativos da conta em tempo real via endpoint `/models`.
+- **Chat Flutuante com Ditado por Voz ([HermesChatDrawer.tsx](file:///e:/Apps/AppControleTotal/src/components/hermes/HermesChatDrawer.tsx)):** Acessível de qualquer tela, com transcrição de voz (Web Speech API) e histórico de conversa.
+- **Ações Automáticas / Function Calling ([hermesActions.ts](file:///e:/Apps/AppControleTotal/src/lib/hermesActions.ts)):** O Hermes pode responder ao usuário e executar inserções no Supabase anexando a tag:
+  `ACTION: {"action": "pantry_add" | "spending_add" | "event_add" | "lifelog_add", "payload": {...}}`
+- **Briefing Matinal no Dashboard ([HermesBriefingCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/HermesBriefingCard.tsx)):** Gera um resumo inteligente dos compromissos e prioridades do dia.
+- **Exportação da Despensa ([WebhookExport.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/WebhookExport.tsx)):** Envia a lista de compras gerada para o webhook do Hermes/WhatsApp com confirmação HTTP.
+
+---
+
+## 🎨 6. Sistema de Temas e Design
+
+Configurável em **Configurações ➔ Temas & Visual** ([`themeStore.ts`](file:///e:/Apps/AppControleTotal/src/stores/themeStore.ts)):
+1. 🌌 **Midnight Indigo** (Padrão): Tons de índigo profundo, roxo e ciano.
+2. ⚡ **Emerald Cyberpunk:** Tons de esmeralda, verde neon e alto contraste.
+3. 🖤 **Obsidian Minimal:** Carbono puro e vidro fosco elegante.
+4. 🌹 **Rose Gold:** Quartzo rosa, âmbar e acentos acolhedores.
+
+Os temas definem o atributo `data-theme` na tag `<html>` e acionam gradientes ambientes no `index.css`.
+
+---
+
+## 🔔 7. Sistema de Notificações Nativas (PWA / Navegador)
+
+Implementado em [`src/lib/notifications.ts`](file:///e:/Apps/AppControleTotal/src/lib/notifications.ts):
+- Solicitação de permissão nativa em 1 clique em **Configurações ➔ Notificações**.
+- Disparo de notificações via Service Worker ou Notification API para:
+  - Alimentos próximos da data de validade (≤ 3 dias).
+  - Compromissos da Agenda para o dia de hoje.
+  - Teste manual imediato com botão na UI.
+
+---
+
+## ⚡ 8. Otimização de Performance & Bundle
+
+Configurado em [`vite.config.ts`](file:///e:/Apps/AppControleTotal/vite.config.ts):
+- **Code Splitting com Rollup `manualChunks`:**
+  - `vendor-react`: `react`, `react-dom`, `react-router-dom`, `zustand` (~70 kB gzip).
+  - `vendor-charts`: `recharts` (~111 kB gzip, carregado somente no Dashboard).
+  - `vendor-icons`: `lucide-react`.
+  - `vendor-supabase`: `@supabase/supabase-js`.
+- **Resultado:** O carregamento inicial caiu de **1.013 KB** para apenas **76 KB** (**22 KB gzipped**), garantindo carregamento instantâneo em conexões móveis.
+
+---
+
+## 🚀 9. Guia de Comandos e Desenvolvimento
+
+```bash
+# Iniciar ambiente de desenvolvimento
+npm run dev
+
+# Validar tipos TypeScript e compilar bundle de produção
+npm run build
+
+# Executar linter ultra-rápido (Oxlint)
+npm run lint
+
+# Visualizar build localmente
+npm run preview
+
+# Sincronizar migrações com o Supabase
+npm run supabase:push
+```
+
+---
+
+## 📝 10. Variáveis de Ambiente (.env)
+
+```env
+# Conexão com o Supabase
+VITE_SUPABASE_URL=https://fxjdaqpfjdntbyjettun.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Configurações do Hermes (opcionais via .env, também configuráveis na UI)
+VITE_HERMES_WEBHOOK_URL=https://hermes.seu-dominio.com/webhook
+VITE_HERMES_API_KEY=sua_chave_secreta
+VITE_LLM_API_KEY=gsk_... ou sk-or-...
+```
+
+---
+*Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
