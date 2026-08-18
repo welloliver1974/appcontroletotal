@@ -363,3 +363,42 @@ export async function queryHermesAI(
   }
   return null
 }
+
+/**
+ * High-fidelity Audio Transcription via Groq Whisper API.
+ * Rapid (<400ms), handles accents, punctuation, background noise and long speech.
+ */
+export async function transcribeAudioWithWhisper(audioBlob: Blob): Promise<string | null> {
+  const config = getHermesAdvancedConfig()
+  const apiKey = config.llmApiKey || import.meta.env.VITE_LLM_API_KEY
+  if (!apiKey) return null
+
+  try {
+    const formData = new FormData()
+    const mime = audioBlob.type || 'audio/webm'
+    const ext = mime.includes('mp4') || mime.includes('m4a') ? 'm4a' : 'webm'
+    formData.append('file', audioBlob, `audio.${ext}`)
+    formData.append('model', 'whisper-large-v3-turbo')
+    formData.append('language', 'pt')
+    formData.append('response_format', 'json')
+
+    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: formData,
+    })
+
+    if (!res.ok) {
+      console.warn('[Whisper] Groq API returned status:', res.status)
+      return null
+    }
+
+    const data = (await res.json()) as { text?: string }
+    return data.text ? data.text.trim() : null
+  } catch (err) {
+    console.warn('[Whisper] Audio transcription error:', err)
+    return null
+  }
+}
