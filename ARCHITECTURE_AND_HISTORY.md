@@ -433,7 +433,25 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - **Correção Implementada:** Removida a reinserção automática no carregamento, garantindo que exclusões no banco (`api.remove`) e no estado local reflitam 100% da ação do usuário com feedback via toast.
 
 ---
+
+## 📱 21. Biometria Nativa no Celular (WebAuthn / Impressão Digital & Face ID)
+
+* **📱 Módulo de Biometria Mobile ([src/lib/biometrics.ts](file:///e:/Apps/AppControleTotal/src/lib/biometrics.ts)):**
+  - **Detecção Exclusiva para Celular:** Identifica se o usuário está acessando por smartphone/tablet touchscreen (Android/iOS) e se o hardware possui autenticador biométrico de plataforma (`isUserVerifyingPlatformAuthenticatorAvailable`).
+  - **WebAuthn / Passkeys:** Utiliza a API criptográfica de chaves públicas do navegador (`navigator.credentials.create` e `navigator.credentials.get`), registrando e autenticando a digital/Face ID com padrão militar local.
+  - **Experiência no Computador:** No computador/desktop, a biometria permanece desativada sem poluir a interface, priorizando o login normal por email/senha.
+
+* **🚀 Desbloqueio Rápido na Tela de Login ([src/components/auth/AuthGate.tsx](file:///e:/Apps/AppControleTotal/src/components/auth/AuthGate.tsx)):**
+  - Quando a biometria estiver configurada e o usuário abrir o app no celular, surge o botão **`Desbloquear com Impressão Digital 📱`**.
+  - 1 toque no sensor de digital ou reconhecimento facial do celular libera o Life OS Hub instantaneamente sem precisar digitar senhas.
+
+* **⚙️ Gerenciamento em Minha Conta ([src/features/agenda/SettingsAccount.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsAccount.tsx)):**
+  - No celular, exibe o painel para **Ativar / Desativar Biometria** com 1 clique.
+  - No computador, orienta de forma limpa que o recurso é dedicado para o uso no smartphone.
+
+---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 
 
 

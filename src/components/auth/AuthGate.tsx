@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AlertCircle,
   ArrowRight,
   CheckCircle2,
   Eye,
   EyeOff,
+  Fingerprint,
   KeyRound,
   Loader2,
   Lock,
@@ -15,6 +16,12 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
+import {
+  authenticateWithBiometrics,
+  isBiometricsAvailable,
+  isBiometricsEnabled,
+  isMobileDevice,
+} from '@/lib/biometrics'
 import { toast } from '@/stores/toastStore'
 import { cn } from '@/lib/utils'
 
@@ -38,6 +45,37 @@ export function AuthGate() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [magicSent, setMagicSent] = useState(false)
+  const [biometricsReady, setBiometricsReady] = useState(false)
+
+  useEffect(() => {
+    async function checkBiometrics() {
+      if (isMobileDevice() && isBiometricsEnabled()) {
+        const available = await isBiometricsAvailable()
+        if (available) {
+          setBiometricsReady(true)
+        }
+      }
+    }
+    checkBiometrics()
+  }, [])
+
+  const handleBiometricLogin = async () => {
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await authenticateWithBiometrics()
+      if (res.ok) {
+        trustThisDevice(res.email)
+        toast.success('Desbloqueado com sucesso via Biometria! 📱✨')
+      } else {
+        setError(res.error || 'Autenticação biométrica falhou.')
+      }
+    } catch {
+      setError('Erro ao ler biometria.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -165,6 +203,38 @@ export function AuthGate() {
           <div className="flex items-center gap-2 p-3 rounded-xl border border-rose-500/30 bg-rose-500/10 text-xs text-rose-300">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {/* Botão de Biometria Rápida (Celular) */}
+        {biometricsReady && mode === 'login' && !magicSent && (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 space-y-2 text-center">
+            <div className="flex items-center justify-center gap-2 text-emerald-300">
+              <Fingerprint className="h-5 w-5 animate-pulse" />
+              <span className="text-xs font-bold">Biometria Disponível</span>
+            </div>
+            <p className="text-[11px] text-zinc-300">
+              Entre instantaneamente usando sua digital ou Face ID.
+            </p>
+            <Button
+              variant="primary"
+              size="md"
+              type="button"
+              onClick={handleBiometricLogin}
+              disabled={loading}
+              className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 font-semibold text-xs"
+            >
+              <Fingerprint className="h-4 w-4" />
+              <span>Desbloquear com Impressão Digital</span>
+            </Button>
+            <div className="relative py-1">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-zinc-800" />
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase">
+                <span className="bg-zinc-950 px-2 text-zinc-500 font-semibold">Ou com email e senha</span>
+              </div>
+            </div>
           </div>
         )}
 
