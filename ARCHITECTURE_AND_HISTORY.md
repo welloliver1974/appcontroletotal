@@ -126,6 +126,32 @@ O adapter [`src/lib/db.ts`](file:///e:/Apps/AppControleTotal/src/lib/db.ts) faz 
 - `created_at` ↔ `createdAt`
 - `odometer_km` ↔ `odometerKm`
 
+### 📋 Exemplos de Inserção SQL (Hermes Agent ➔ Supabase):
+
+#### 1. Inserir Gasto / Despesa (`spending`):
+```sql
+INSERT INTO spending (id, amount, category, note, date)
+VALUES (gen_random_uuid()::text, 45.50, 'Alimentação', 'Almoço com a equipe', '2026-08-17');
+```
+
+#### 2. Inserir Item na Despensa (`pantry`):
+```sql
+INSERT INTO pantry (id, name, category, qty, unit, low_threshold, expires_at)
+VALUES (gen_random_uuid()::text, 'Café Torrado', 'alimentos', 2, 'un', 1, '2026-12-31');
+```
+
+#### 3. Inserir Compromisso na Agenda (`events`):
+```sql
+INSERT INTO events (id, title, date, time_start, time_end, category, location)
+VALUES (gen_random_uuid()::text, 'Reunião de Alinhamento', '2026-08-18', '14:00', '15:00', 'reuniao', 'Google Meet');
+```
+
+#### 4. Inserir Nota no Diário / Life-Log (`life_log`):
+```sql
+INSERT INTO life_log (id, title, body, tags, mood, created_at)
+VALUES (gen_random_uuid()::text, 'Reflexão do dia', 'Dia produtivo com ótimos avanços.', ARRAY['foco', 'trabalho'], 5, NOW());
+```
+
 ---
 
 ## 🤖 5. Arquitetura do Hermes AI & LLM Engine
