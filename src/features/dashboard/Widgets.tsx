@@ -2,7 +2,7 @@ import { CalendarClock, Inbox as InboxIcon, NotebookPen } from 'lucide-react'
 import type { DashboardData } from './dashboardData'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/feedback'
-import { cn, relativeDayLabel, shortDate, shortDateTime } from '@/lib/utils'
+import { cn, formatDayAndMonth, relativeDayLabel, shortDateTime } from '@/lib/utils'
 
 const CATEGORY: Record<string, string> = {
   reuniao: 'text-rose-300 bg-rose-500/15 border-rose-500/30',
@@ -46,30 +46,33 @@ export function UpcomingCard({ data }: { data: DashboardData }) {
         </div>
       ) : (
         <div className="divide-y divide-zinc-800/70">
-          {upcoming.map((e) => (
-            <div key={e.id} className="flex items-center gap-3 px-4 py-3">
-              <div
-                className={cn(
-                  'flex h-10 w-11 shrink-0 flex-col items-center justify-center rounded-lg border',
-                  CATEGORY[e.category],
-                )}
-              >
-                <span className="font-num text-[13px] font-semibold leading-none">
-                  {shortDate(e.date).split(' ')[0]}
-                </span>
-                <span className="text-[9px] uppercase leading-tight">
-                  {shortDate(e.date).split(' ')[1]}
-                </span>
+          {upcoming.map((e) => {
+            const dm = formatDayAndMonth(e.date)
+            return (
+              <div key={e.id} className="flex items-center gap-3 px-4 py-3">
+                <div
+                  className={cn(
+                    'flex h-10 w-11 shrink-0 flex-col items-center justify-center rounded-lg border',
+                    CATEGORY[e.category],
+                  )}
+                >
+                  <span className="font-num text-[13px] font-semibold leading-none">
+                    {dm.day}
+                  </span>
+                  <span className="text-[9px] font-bold uppercase leading-tight mt-0.5">
+                    {dm.month}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-zinc-100">{e.title}</p>
+                  <p className="truncate text-xs text-zinc-500">
+                    <span className="font-num">{e.timeStart}</span>
+                    {e.location ? ` · ${e.location}` : ''} · {relativeDayLabel(e.date)}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-zinc-100">{e.title}</p>
-                <p className="truncate text-xs text-zinc-500">
-                  <span className="font-num">{e.timeStart}</span>
-                  {e.location ? ` · ${e.location}` : ''} · {relativeDayLabel(e.date)}
-                </p>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </Card>

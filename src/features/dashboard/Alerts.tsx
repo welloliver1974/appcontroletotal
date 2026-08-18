@@ -1,4 +1,4 @@
-import { CheckCircle2, Mail, ShoppingBasket, Wrench } from 'lucide-react'
+import { CalendarClock, CheckCircle2, Mail, ShoppingBasket, Wrench } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { DashboardData } from './dashboardData'
 import { upcomingWindowDays } from './dashboardData'
@@ -10,7 +10,7 @@ type Tone = 'critico' | 'atencao' | 'info'
 
 interface AlertItem {
   id: string
-  kind: 'manutencao' | 'estoque' | 'email'
+  kind: 'manutencao' | 'estoque' | 'email' | 'agenda'
   title: string
   meta: string
   tone: Tone
@@ -78,6 +78,24 @@ function buildAlerts(data: DashboardData): AlertItem[] {
         meta: e.from,
         tone: 'critico',
         icon: Mail,
+      })
+    }
+  }
+
+  const y = today.getFullYear()
+  const m = String(today.getMonth() + 1).padStart(2, '0')
+  const d = String(today.getDate()).padStart(2, '0')
+  const localToday = `${y}-${m}-${d}`
+
+  for (const ev of data.events) {
+    if (ev.date === localToday) {
+      items.push({
+        id: `ev-${ev.id}`,
+        kind: 'agenda',
+        title: `Hoje: ${ev.title}`,
+        meta: `${ev.timeStart}${ev.timeEnd ? ` – ${ev.timeEnd}` : ''}${ev.location ? ` · ${ev.location}` : ''}`,
+        tone: 'info',
+        icon: CalendarClock,
       })
     }
   }

@@ -55,6 +55,7 @@ export function checkPantryExpiringNotifications(items: PantryItem[]): void {
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+  const todayStr = today.toISOString().slice(0, 10)
 
   const expiring = items.filter((item) => {
     if (!item.expiresAt) return false
@@ -64,6 +65,12 @@ export function checkPantryExpiringNotifications(items: PantryItem[]): void {
   })
 
   if (expiring.length > 0) {
+    try {
+      const sessionKey = `act.notif.pantry.${todayStr}.${expiring.length}`
+      if (sessionStorage.getItem(sessionKey)) return
+      sessionStorage.setItem(sessionKey, '1')
+    } catch {}
+
     const names = expiring.slice(0, 3).map((i) => i.name).join(', ')
     const extra = expiring.length > 3 ? ` e mais ${expiring.length - 3} itens` : ''
     sendLocalNotification('⚠️ Alerta da Despensa: Itens Vencendo', {
@@ -79,14 +86,27 @@ export function checkPantryExpiringNotifications(items: PantryItem[]): void {
 export function checkTodayEventsNotifications(events: AgendaEvent[]): void {
   if (getNotificationPermission() !== 'granted') return
 
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const todayEvents = events.filter((e) => e.date?.startsWith(todayStr))
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  const localToday = `${y}-${m}-${d}`
+
+  const todayEvents = events
+    .filter((e) => e.date === localToday)
+    .sort((a, b) => a.timeStart.localeCompare(b.timeStart))
 
   if (todayEvents.length > 0) {
+    try {
+      const sessionKey = `act.notif.events.${localToday}.${todayEvents.length}`
+      if (sessionStorage.getItem(sessionKey)) return
+      sessionStorage.setItem(sessionKey, '1')
+    } catch {}
+
     const count = todayEvents.length
     const first = todayEvents[0]
     sendLocalNotification(`📅 Agenda de Hoje (${count} compromisso${count > 1 ? 's' : ''})`, {
-      body: `Próximo: ${first.title}${first.timeStart ? ` às ${first.timeStart}` : ''}`,
+      body: `Próximo: ${first.title}${first.timeStart ? ` às ${first.timeStart}` : ''}${first.location ? ` (${first.location})` : ''}`,
       tag: 'today-events',
     })
   }

@@ -20,8 +20,21 @@ export function fuzzyScore(query: string, target: string): number {
 
 const DAY = 86_400_000
 
+const MONTHS_PT = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+
 /** Friendly relative label for a date: "hoje", "amanhã", "em 5 dias", "há 3 dias". */
 export function relativeDayLabel(input: string | Date, now = new Date()): string {
+  if (typeof input === 'string' && /^\d{4}-\d{2}-\d{2}/.test(input)) {
+    const [y, m, d] = input.slice(0, 10).split('-').map(Number)
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const target = new Date(y, m - 1, d).getTime()
+    const diff = Math.round((target - today) / DAY)
+    if (diff === 0) return 'hoje'
+    if (diff === 1) return 'amanhã'
+    if (diff === -1) return 'ontem'
+    if (diff > 0) return `em ${diff} dias`
+    return `há ${Math.abs(diff)} dias`
+  }
   const d = typeof input === 'string' ? new Date(input) : input
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
@@ -33,10 +46,27 @@ export function relativeDayLabel(input: string | Date, now = new Date()): string
   return `há ${Math.abs(diff)} dias`
 }
 
+/** Returns clean { day: '21', month: 'AGO' } for date badges without "de". */
+export function formatDayAndMonth(input: string | Date): { day: string; month: string } {
+  if (typeof input === 'string' && /^\d{4}-\d{2}-\d{2}/.test(input)) {
+    const parts = input.slice(0, 10).split('-')
+    const mIdx = Number(parts[1]) - 1
+    return {
+      day: parts[2],
+      month: MONTHS_PT[mIdx] || 'MÊS',
+    }
+  }
+  const d = typeof input === 'string' ? new Date(input) : input
+  return {
+    day: String(d.getDate()).padStart(2, '0'),
+    month: MONTHS_PT[d.getMonth()] || '',
+  }
+}
+
 /** "10 ago" style short date for PT-BR. */
 export function shortDate(input: string | Date): string {
-  const d = typeof input === 'string' ? new Date(input) : input
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  const { day, month } = formatDayAndMonth(input)
+  return `${day} ${month.toLowerCase()}`
 }
 
 export function shortDateTime(input: string | Date): string {

@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import { MODULE_BY_ID } from '@/lib/modules'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/feedback'
+import { checkPantryExpiringNotifications, checkTodayEventsNotifications } from '@/lib/notifications'
 import { useDashboardData } from './dashboardData'
 import { KpiRow } from './KpiRow'
 import { AlertsGrid } from './Alerts'
@@ -53,6 +55,13 @@ function DashboardSkeleton() {
 export function DashboardPage() {
   const data = useDashboardData()
   const module = MODULE_BY_ID.dashboard
+
+  useEffect(() => {
+    if (data) {
+      checkTodayEventsNotifications(data.events)
+      checkPantryExpiringNotifications(data.pantry)
+    }
+  }, [data])
 
   return (
     <div className="space-y-6">
