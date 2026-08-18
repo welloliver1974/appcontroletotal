@@ -274,13 +274,24 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 * **Endpoint Serverless Proxy ([api/calendar/sync-ical.js](file:///e:/Apps/AppControleTotal/api/calendar/sync-ical.js)):**
   - Rota: `POST /api/calendar/sync-ical`
   - Faz o download do `.ics` diretamente dos servidores do Google (evitando bloqueios de CORS no navegador), realiza o parse dos eventos e faz upsert em lote no Supabase (`events`).
-* **Gerenciador de Sincronização ([src/lib/googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts)):**
-  - Persiste a URL do iCal e preferências no `localStorage` (`act.googleCalendarConfig`).
-  - Suporta sincronização automática ao abrir a Agenda e botão manual.
-* **Interface de Configuração ([src/features/agenda/SettingsGoogleCalendar.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsGoogleCalendar.tsx)):**
-  - Aba dedicada em **Configurações ➔ Google Calendar** com guia passo a passo ilustrado, input de URL e botão de teste com feedback em tempo real.
-* **Botão Rápido na Agenda ([src/features/agenda/AgendaPage.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/AgendaPage.tsx)):**
-  - Botão **"Google Calendar"** direto no topo da tela para sincronização instantânea em 1 clique.
+* **Sincronização Avançada & Expansão de Recorrência (RRULE):**
+  - Expansão automática de eventos recorrentes do Google Calendar (`FREQ=DAILY`, `FREQ=WEEKLY`, `FREQ=MONTHLY`, `FREQ=YEARLY`) para garantir que compromissos periódicos apareçam nas datas vigentes.
+  - Inserção atômica em lote com `db.upsertMany('events', ...)` no adapter central.
+  - Suporte a múltiplos proxies de fallback (`allorigins`, `corsproxy.io`) para ambiente local e produção.
+
+---
+
+## 🔔 13. Sistema de Notificações & Ajustes Visuais na Dashboard
+
+* **Notificações Push / PWA ([src/lib/notifications.ts](file:///e:/Apps/AppControleTotal/src/lib/notifications.ts)):**
+  - Alertas automáticos ao abrir a Dashboard:
+    - 📅 **Agenda do Dia**: Notifica os compromissos agendados para o dia atual com horário e local.
+    - ⚠️ **Despensa**: Alerta itens próximos da data de validade (≤ 3 dias).
+  - Deduplicação inteligente por sessão (`sessionStorage`) para evitar notificações repetitivas ao navegar entre telas.
+* **Correção dos Badges de Data da Dashboard ([src/features/dashboard/Widgets.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/Widgets.tsx) & [src/lib/utils.ts](file:///e:/Apps/AppControleTotal/src/lib/utils.ts)):**
+  - Função `formatDayAndMonth()` para extrair o dia numérico e o mês abreviado em maiúsculas (`21 AGO`, `06 SET`), eliminando a preposição `"DE"` que quebrava o layout.
+  - **Radar de Alertas da Dashboard ([src/features/dashboard/Alerts.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/Alerts.tsx)):** Inclui eventos da agenda de hoje diretamente no card de radar.
 
 ---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
