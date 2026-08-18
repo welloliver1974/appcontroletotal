@@ -91,7 +91,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json}'],
         // Navigate fallback for SPA
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//, /^\/share-target/],
+        navigateFallbackDenylist: [/^\/api\//],
         // Runtime caching
         runtimeCaching: [
           // Google Fonts — stale while revalidate (fast + fresh)

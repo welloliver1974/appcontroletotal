@@ -12,6 +12,7 @@ const ManutencaoPage = lazy(() => import('@/features/manutencao/ManutencaoPage')
 const DespensaPage = lazy(() => import('@/features/despensa/DespensaPage').then((m) => ({ default: m.DespensaPage })))
 const ViagensPage = lazy(() => import('@/features/viagens/ViagensPage').then((m) => ({ default: m.ViagensPage })))
 const AgendaPage = lazy(() => import('@/features/agenda/AgendaPage').then((m) => ({ default: m.AgendaPage })))
+const ShareTargetHandler = lazy(() => import('@/features/life-log/ShareTargetHandler').then((m) => ({ default: m.ShareTargetHandler })))
 
 function PageLoading() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
                 <Route path="/despensa" element={<DespensaPage />} />
                 <Route path="/viagens" element={<ViagensPage />} />
                 <Route path="/agenda" element={<AgendaPage />} />
+                <Route path="/share-target" element={<ShareTargetHandler />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Route>
             </Routes>

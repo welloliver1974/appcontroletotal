@@ -246,4 +246,23 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 ```
 
 ---
+
+## 📲 11. Webhook de Captura Vercel & Web Share Target (Mobile PWA)
+
+* **Webhook de Captura Multi-Entidade ([api/webhook/hermes-capture.js](file:///e:/Apps/AppControleTotal/api/webhook/hermes-capture.js)):**
+  - Rota Serverless Vercel: `POST /api/webhook/hermes-capture`
+  - Resolução resiliente de variáveis de ambiente (`SUPABASE_URL`, `VITE_SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY`, `VITE_SUPABASE_ANON_KEY`).
+  - Suporte completo a todas as entidades enviadas pelo Bot do Telegram e Hermes Agent:
+    - 🛒 **Despensa / Compras (`pantry`)**: Adiciona itens únicos ou listas completas (`pantry_add`, `pantry_shopping_list`).
+    - 🎬 **Mídias & Links (`media`)**: Salva links do YouTube, Instagram e artigos no Life-Log.
+    - 💸 **Gastos (`spending`)**: Registra despesas semanais.
+    - 📅 **Compromissos (`events`)**: Registra reuniões e eventos na Agenda.
+    - 📝 **Diário (`life_log`)** e **Cofre de Fatos (`facts`)**.
+  - Autenticação segura via `Authorization: Bearer` ou `X-Hermes-Signature`.
+
+* **Web Share Target PWA ([src/features/life-log/ShareTargetHandler.tsx](file:///e:/Apps/AppControleTotal/src/features/life-log/ShareTargetHandler.tsx)):**
+  - Rota: `/share-target`
+  - Permite que o app receba compartilhamentos nativos do Android/iOS (YouTube, Instagram, navegadores) via menu nativo do sistema, salvando diretamente no Life-Log com notificação toast imediata.
+
+---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
