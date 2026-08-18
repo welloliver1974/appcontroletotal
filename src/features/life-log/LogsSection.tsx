@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { Mic, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import type { LifeLogEntry } from '@/data/types'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/feedback'
@@ -27,12 +27,14 @@ function Mood({ value }: { value: LifeLogEntry['mood'] }) {
 export function LogsSection({
   logs,
   onNew,
+  onVoiceNote,
   onEdit,
   onRemove,
   className,
 }: {
   logs: LifeLogEntry[]
   onNew: () => void
+  onVoiceNote?: () => void
   onEdit: (entry: LifeLogEntry) => void
   onRemove: (id: string) => Promise<void> | void
   className?: string
@@ -59,7 +61,7 @@ export function LogsSection({
         score: Math.max(
           fuzzyScore(q, l.title),
           fuzzyScore(q, l.body),
-          fuzzyScore(q, l.tags.join(' ')),
+          ...l.tags.map((t) => fuzzyScore(q, t)),
         ),
       }))
       .filter((h) => h.score > 0)
@@ -73,9 +75,22 @@ export function LogsSection({
         eyebrow="Anotações"
         title="Diário pessoal"
         action={
-          <Button variant="primary" size="sm" onClick={onNew}>
-            <Plus className="h-3.5 w-3.5" /> Nova anotação
-          </Button>
+          <div className="flex items-center gap-2">
+            {onVoiceNote && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onVoiceNote}
+                className="gap-1.5 text-xs text-emerald-300 border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20"
+              >
+                <Mic className="h-3.5 w-3.5" />
+                <span>Gravar Voz</span>
+              </Button>
+            )}
+            <Button variant="primary" size="sm" onClick={onNew}>
+              <Plus className="h-3.5 w-3.5" /> Nova anotação
+            </Button>
+          </div>
         }
       />
 

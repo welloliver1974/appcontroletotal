@@ -14,6 +14,7 @@ import { FactVault, type FactDraft } from './FactVault'
 import { DocVaultSection } from './DocVaultSection'
 import { LogEntryForm, type LogDraft } from './LogEntryForm'
 import { ReadingForm, type ReadingDraft } from './ReadingForm'
+import { VoiceNoteRecorderModal } from './VoiceNoteRecorderModal'
 
 type LogFormState = null | { mode: 'new' } | { mode: 'edit'; entry: LifeLogEntry }
 type ReadingFormState = null | { mode: 'new' } | { mode: 'edit'; entry: ReadingEntry }
@@ -49,6 +50,7 @@ export function LifeLogPage() {
   const { data, setLogs, setReading, setMedia, setFacts } = useLifeLogData()
   const [openLog, setOpenLog] = useState<LogFormState>(null)
   const [openReading, setOpenReading] = useState<ReadingFormState>(null)
+  const [openVoiceNote, setOpenVoiceNote] = useState(false)
 
   const saveLog = async (draft: LogDraft) => {
     if (!data) return
@@ -128,6 +130,7 @@ export function LifeLogPage() {
               logs={data.logs}
               className="lg:col-span-2"
               onNew={() => setOpenLog({ mode: 'new' })}
+              onVoiceNote={() => setOpenVoiceNote(true)}
               onEdit={(entry) => setOpenLog({ mode: 'edit', entry })}
               onRemove={deleteLog}
             />
@@ -149,6 +152,13 @@ export function LifeLogPage() {
           mode={openLog.mode}
           entry={openLog.mode === 'edit' ? openLog.entry : undefined}
           onClose={() => setOpenLog(null)}
+          onSubmit={saveLog}
+        />
+      )}
+      {openVoiceNote && (
+        <VoiceNoteRecorderModal
+          open={openVoiceNote}
+          onClose={() => setOpenVoiceNote(false)}
           onSubmit={saveLog}
         />
       )}

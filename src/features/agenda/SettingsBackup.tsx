@@ -24,6 +24,10 @@ const COLLECTIONS = [
   'places',
   'spending',
   'maintMonths',
+  'spendingEntries',
+  'fixedBills',
+  'habits',
+  'docVault',
 ] as const
 
 type Collection = typeof COLLECTIONS[number]

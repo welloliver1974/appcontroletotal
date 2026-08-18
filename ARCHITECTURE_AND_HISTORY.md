@@ -387,7 +387,37 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - Botão **`Preencher Gasto`** que auto-preenche o formulário de lançamento com 1 toque.
 
 ---
+
+## 🚀 19. Power Features: Voice Notes IA, Relatório WhatsApp, Backup JSON Completo & Calculadora de Combustível
+
+* **🎙️ Voice Notes com Transcrição IA no Diário ([src/features/life-log/VoiceNoteRecorderModal.tsx](file:///e:/Apps/AppControleTotal/src/features/life-log/VoiceNoteRecorderModal.tsx)):**
+  - Gravação de notas de voz em tempo real via Web Speech API nativa (0 latência e 0 consumo de tokens).
+  - Microfone pulsante com ondas de áudio e contador de tempo.
+  - Botão **`✨ Estruturar com Hermes IA`**: envia o texto falado para a LLM que pontua, organiza em parágrafos, sugere um título, avalia o humor (1 a 5) e infere tags temáticas automaticamente.
+  - Botão de acesso rápido `🎙️ Gravar Voz` no cabeçalho do diário ([`LogsSection.tsx`](file:///e:/Apps/AppControleTotal/src/features/life-log/LogsSection.tsx)).
+
+* **📋 Relatório Executivo Mensal em 1 Clique para WhatsApp ([src/features/financas/MonthlyReportModal.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/MonthlyReportModal.tsx)):**
+  - Compila gastos totais do mês, saldo do teto orçamentário, detalhamento percentual por categoria e status das contas fixas pagas e pendentes.
+  - Gera mensagem formatada e limpa em Markdown com emojis, pronta para cópia em 1 clique ou compartilhamento nativo (`navigator.share`).
+  - Botão de acesso `📋 Relatório do Mês` no topo do módulo de Finanças ([`FinancasPage.tsx`](file:///e:/Apps/AppControleTotal/src/features/financas/FinancasPage.tsx)).
+
+* **💾 Backup & Restauração Completa de Todas as Coleções (.json) ([src/features/agenda/SettingsBackup.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsBackup.tsx)):**
+  - Exportação e importação integral cobrindo todas as 15 coleções do sistema (`events`, `emails`, `lifeLog`, `facts`, `reading`, `media`, `assets`, `maintenance`, `pantry`, `trips`, `places`, `spending`, `maintMonths`, `spendingEntries`, `fixedBills`, `habits`, `docVault`).
+  - Sincronização garantida tanto no storage local (`localStorageDb`) quanto no Supabase remoto.
+
+* **⛽ Calculadora de Abastecimento & Consumo Real (km/L) ([src/features/manutencao/FuelLogModal.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/FuelLogModal.tsx)):**
+  - Lançamento rápido de abastecimento por veículo cadastrado com campos de Odômetro (km), Litros abastecidos, Valor Total Pago (R$), Tipo de Combustível e Posto.
+  - Cálculo instantâneo em tempo real de:
+    - Distância percorrida desde o último abastecimento (`Delta Km`)
+    - Consumo médio do veículo (`km/L`)
+    - Preço real por litro (`R$/L`)
+    - Custo por quilômetro rodado (`R$/km`)
+  - Salva o registro no histórico de manutenção e atualiza automaticamente o odômetro do veículo.
+  - Botão de acesso rápido `⛽ Abastecimento` no topo de Manutenção ([`ManutencaoPage.tsx`](file:///e:/Apps/AppControleTotal/src/features/manutencao/ManutencaoPage.tsx)).
+
+---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 
 
 

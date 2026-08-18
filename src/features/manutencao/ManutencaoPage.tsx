@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Wrench } from 'lucide-react'
+import { Fuel, Plus, Wrench } from 'lucide-react'
 import { MODULE_BY_ID } from '@/lib/modules'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -12,6 +12,7 @@ import { AssetCard } from './AssetCard'
 import { RecordsSection } from './RecordsSection'
 import { AssetForm, type AssetDraft } from './AssetForm'
 import { RecordForm, type RecordDraft } from './RecordForm'
+import { FuelLogModal } from './FuelLogModal'
 import { sortAssetsByUrgency } from './maintUtils'
 
 type AssetFormState = null | { mode: 'new' } | { mode: 'edit'; asset: Asset }
@@ -55,6 +56,7 @@ export function ManutencaoPage() {
   const { data, setAssets, setRecords } = useManutencaoData()
   const [openAsset, setOpenAsset] = useState<AssetFormState>(null)
   const [openRecord, setOpenRecord] = useState(false)
+  const [openFuelLog, setOpenFuelLog] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // Keep a selection: default = most urgent asset; fall back after deletes.
@@ -115,9 +117,20 @@ export function ManutencaoPage() {
           <div>
             <div className="mb-3 flex items-center justify-between">
               <p className="eyebrow">Ativos</p>
-              <Button variant="primary" size="sm" onClick={() => setOpenAsset({ mode: 'new' })}>
-                <Plus className="h-3.5 w-3.5" /> Novo ativo
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setOpenFuelLog(true)}
+                  className="gap-1.5 text-xs text-amber-300 border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20"
+                >
+                  <Fuel className="h-3.5 w-3.5" />
+                  <span>Abastecimento</span>
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => setOpenAsset({ mode: 'new' })}>
+                  <Plus className="h-3.5 w-3.5" /> Novo ativo
+                </Button>
+              </div>
             </div>
             {data.assets.length === 0 ? (
               <EmptyState
@@ -177,6 +190,15 @@ export function ManutencaoPage() {
           assets={data?.assets ?? []}
           defaultAssetId={selectedId ?? undefined}
           onClose={() => setOpenRecord(false)}
+          onSubmit={saveRecord}
+        />
+      )}
+      {openFuelLog && (
+        <FuelLogModal
+          open={openFuelLog}
+          onClose={() => setOpenFuelLog(false)}
+          assets={data?.assets ?? []}
+          records={data?.records ?? []}
           onSubmit={saveRecord}
         />
       )}

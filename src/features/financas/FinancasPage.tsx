@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 import { useFinancasData } from './useFinancasData'
 import { SpendingFormModal } from './SpendingFormModal'
 import { FixedBillFormModal } from './FixedBillFormModal'
+import { MonthlyReportModal } from './MonthlyReportModal'
 
 const CATEGORY_ICONS: Record<string, { icon: typeof Utensils; color: string; bg: string }> = {
   alimentação: { icon: Utensils, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
@@ -72,6 +73,7 @@ export function FinancasPage() {
   const [billModalOpen, setBillModalOpen] = useState(false)
   const [editingBudget, setEditingBudget] = useState(false)
   const [budgetInput, setBudgetInput] = useState('')
+  const [reportModalOpen, setReportModalOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
 
@@ -318,8 +320,18 @@ export function FinancasPage() {
                 </button>
               </div>
 
-              {/* Botão de Adição Rápida */}
-              <div>
+              {/* Botões de Ação */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setReportModalOpen(true)}
+                  className="gap-1.5 text-xs text-zinc-300 hover:text-white border border-zinc-800 bg-zinc-900/60"
+                >
+                  <Receipt className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Relatório do Mês</span>
+                </Button>
+
                 {tab === 'extrato' ? (
                   <Button
                     variant="primary"
@@ -646,6 +658,16 @@ export function FinancasPage() {
           onSubmit={async (draft) => {
             await addFixedBill(draft)
           }}
+        />
+      )}
+
+      {reportModalOpen && data && (
+        <MonthlyReportModal
+          open={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          spending={data.spending}
+          fixedBills={data.fixedBills}
+          monthlyBudget={data.monthlyBudget}
         />
       )}
     </div>

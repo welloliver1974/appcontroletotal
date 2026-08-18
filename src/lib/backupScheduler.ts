@@ -18,6 +18,10 @@ const COLLECTIONS = [
   'places',
   'spending',
   'maintMonths',
+  'spendingEntries',
+  'fixedBills',
+  'habits',
+  'docVault',
 ] as const
 
 type CollectionKey = (typeof COLLECTIONS)[number]
