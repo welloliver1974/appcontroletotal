@@ -1,6 +1,14 @@
 import { useState, useMemo } from 'react'
 import type { KeyboardEvent } from 'react'
-import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin, Tag, MoreHorizontal } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  Clock,
+  MapPin,
+  MoreHorizontal,
+  Plus,
+} from 'lucide-react'
 import type { AgendaEvent } from '@/data/types'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -9,10 +17,10 @@ import { cn } from '@/lib/utils'
 type ViewMode = 'month' | 'week' | 'list'
 
 const CATEGORY_COLORS: Record<AgendaEvent['category'], string> = {
-  reuniao: 'bg-blue-500',
-  pessoal: 'bg-emerald-500',
-  habit: 'bg-violet-500',
-  viagem: 'bg-cyan-500',
+  reuniao: 'bg-blue-500 text-white',
+  pessoal: 'bg-emerald-500 text-white',
+  habit: 'bg-violet-500 text-white',
+  viagem: 'bg-cyan-500 text-white',
 }
 
 const CATEGORY_LABELS: Record<AgendaEvent['category'], string> = {
@@ -72,7 +80,16 @@ function getWeekDays(date: Date): Date[] {
   return days
 }
 
-function DayCell({ date, events, today, selectedDate, currentMonth, currentYear, onClick, onCreate }: {
+function DayCell({
+  date,
+  events,
+  today,
+  selectedDate,
+  currentMonth,
+  currentYear,
+  onClick,
+  onCreate,
+}: {
   date: Date
   events: AgendaEvent[]
   today: string
@@ -101,54 +118,102 @@ function DayCell({ date, events, today, selectedDate, currentMonth, currentYear,
       onClick={() => onClick(date)}
       onKeyDown={handleKeyDown}
       className={cn(
-        'relative h-24 w-full p-2 transition-all flex flex-col',
-        !isCurrentMonth && 'bg-zinc-900/50 text-zinc-500',
-        isCurrentMonth && 'hover:bg-zinc-800/50',
-        isToday && 'ring-2 ring-rose-500/50',
-        isSelected && 'bg-rose-500/10',
+        'relative min-h-[56px] sm:min-h-[72px] md:min-h-[100px] w-full p-1 sm:p-1.5 md:p-2 transition-all flex flex-col items-center md:items-start rounded-xl border border-transparent',
+        !isCurrentMonth && 'bg-zinc-950/30 text-zinc-600 opacity-40',
+        isCurrentMonth && 'bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-200 border-zinc-800/40',
+        isToday && 'border-rose-500/60 bg-rose-500/10 shadow-sm shadow-rose-500/20 font-bold',
+        isSelected && 'border-indigo-500 bg-indigo-500/20 ring-1 ring-indigo-500',
       )}
     >
-      <span className={cn(
-        'text-sm font-medium',
-        isToday ? 'text-rose-400' : isCurrentMonth ? 'text-zinc-100' : 'text-zinc-500'
-      )}>
-        {date.getDate()}
-      </span>
-      <div className="flex-1 overflow-hidden space-y-1 mt-1">
+      <div className="flex items-center justify-between w-full">
+        <span
+          className={cn(
+            'flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold',
+            isToday
+              ? 'bg-rose-500 text-white'
+              : isSelected
+              ? 'bg-indigo-500 text-white'
+              : isCurrentMonth
+              ? 'text-zinc-200'
+              : 'text-zinc-600',
+          )}
+        >
+          {date.getDate()}
+        </span>
+
+        {/* Quick add button (desktop only) */}
+        {isCurrentMonth && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onCreate(dateStr)
+            }}
+            className="hidden md:flex h-5 w-5 rounded-full bg-zinc-800/60 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 transition-colors items-center justify-center opacity-0 group-hover:opacity-100"
+            aria-label="Adicionar evento"
+          >
+            <Plus className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+
+      {/* Mobile Indicator Dots (clean, high-density, no squishing!) */}
+      {dayEvents.length > 0 && (
+        <div className="flex items-center justify-center gap-1 mt-1.5 md:hidden">
+          {dayEvents.slice(0, 3).map((event, idx) => (
+            <span
+              key={idx}
+              className={cn(
+                'h-1.5 w-1.5 rounded-full shadow-sm',
+                event.category === 'reuniao'
+                  ? 'bg-blue-400'
+                  : event.category === 'pessoal'
+                  ? 'bg-emerald-400'
+                  : event.category === 'viagem'
+                  ? 'bg-cyan-400'
+                  : 'bg-violet-400',
+              )}
+            />
+          ))}
+          {dayEvents.length > 3 && (
+            <span className="h-1 w-1 rounded-full bg-zinc-400" />
+          )}
+        </div>
+      )}
+
+      {/* Desktop Detailed Pills */}
+      <div className="hidden md:flex flex-col flex-1 overflow-hidden space-y-1 mt-1.5 w-full">
         {dayEvents.slice(0, 3).map((event) => (
           <div
             key={event.id}
             className={cn(
-              'h-5 px-1.5 py-0.5 rounded text-[10px] font-medium truncate flex items-center gap-1',
-              CATEGORY_COLORS[event.category]
+              'h-5 px-1.5 py-0.5 rounded text-[10px] font-medium truncate flex items-center gap-1 shadow-sm',
+              CATEGORY_COLORS[event.category],
             )}
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-zinc-900/50" />
-            {event.timeStart} {event.title}
+            <span className="font-mono text-[9px] opacity-80 shrink-0">{event.timeStart}</span>
+            <span className="truncate">{event.title}</span>
           </div>
         ))}
         {dayEvents.length > 3 && (
-          <div className="text-[10px] text-zinc-500 text-center pt-0.5">
+          <div className="text-[9px] text-zinc-400 text-center font-medium">
             +{dayEvents.length - 3} mais
           </div>
         )}
       </div>
-      {isCurrentMonth && !isToday && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onCreate(dateStr); }}
-          className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-zinc-800/50 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 transition-colors flex items-center justify-center"
-          aria-label="Adicionar evento"
-        >
-          <Calendar className="h-3 w-3" />
-        </button>
-      )}
     </div>
   )
 }
 
-function WeekDayCell({ date, events, today, selectedDate, onClick, onCreate }: {
+function WeekDayCell({
+  date,
+  events,
+  today,
+  selectedDate,
+  onClick,
+  onCreate,
+}: {
   date: Date
   events: AgendaEvent[]
   today: string
@@ -159,49 +224,70 @@ function WeekDayCell({ date, events, today, selectedDate, onClick, onCreate }: {
   const dateStr = formatDate(date)
   const isToday = dateStr === today
   const isSelected = dateStr === selectedDate
-  const dayEvents = events.filter((e) => e.date === dateStr).sort((a, b) => a.timeStart.localeCompare(b.timeStart))
+  const dayEvents = events
+    .filter((e) => e.date === dateStr)
+    .sort((a, b) => a.timeStart.localeCompare(b.timeStart))
 
   const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col min-w-[130px] sm:min-w-[140px] md:min-w-0 md:flex-1 h-full rounded-2xl border border-zinc-800/80 bg-zinc-900/50 overflow-hidden">
       <button
         type="button"
         onClick={() => onClick(date)}
         className={cn(
-          'px-3 py-2 text-center transition-colors',
-          isToday ? 'bg-rose-500/10 text-rose-400 font-semibold' : 'text-zinc-300 hover:bg-zinc-800/50',
-          isSelected && 'bg-rose-500/10'
+          'p-2.5 text-center transition-colors border-b border-zinc-800/80 flex items-center justify-between md:flex-col md:justify-center',
+          isToday
+            ? 'bg-rose-500/15 text-rose-300 font-semibold'
+            : 'text-zinc-300 hover:bg-zinc-800/50',
+          isSelected && 'bg-indigo-500/20 text-indigo-200',
         )}
       >
-        <div className="text-xs text-zinc-500 uppercase">{dayNames[date.getDay()]}</div>
-        <div className={cn('text-lg font-medium', isToday && 'text-rose-400')}>{date.getDate()}</div>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+          {dayNames[date.getDay()]}
+        </span>
+        <span className={cn('text-sm md:text-base font-bold', isToday && 'text-rose-400')}>
+          {date.getDate()}
+        </span>
       </button>
-      <div className="flex-1 overflow-y-auto p-1 space-y-1 border-l border-zinc-800">
+
+      <div className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-[220px]">
         {dayEvents.map((event) => (
           <div
             key={event.id}
             className={cn(
-              'px-2 py-1.5 rounded-r-lg text-xs cursor-pointer hover:opacity-80',
-              CATEGORY_COLORS[event.category]
+              'p-2 rounded-xl text-xs cursor-pointer hover:opacity-90 shadow-md space-y-0.5',
+              CATEGORY_COLORS[event.category],
             )}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick(date)
+            }}
           >
-            <div className="flex items-center gap-1 mb-0.5">
-              <span className="font-medium">{event.timeStart}</span>
-              {event.timeEnd && <span className="text-zinc-200/70">–{event.timeEnd}</span>}
+            <div className="flex items-center justify-between text-[10px] font-mono opacity-90">
+              <span>{event.timeStart}</span>
+              {event.timeEnd && <span>{event.timeEnd}</span>}
             </div>
-            <div className="font-medium truncate">{event.title}</div>
-            {event.location && <div className="text-[10px] opacity-80 truncate">{event.location}</div>}
+            <div className="font-semibold text-xs leading-snug line-clamp-2">{event.title}</div>
+            {event.location && (
+              <div className="text-[10px] opacity-80 truncate flex items-center gap-1">
+                <MapPin className="h-2.5 w-2.5 shrink-0" />
+                <span>{event.location}</span>
+              </div>
+            )}
           </div>
         ))}
         {dayEvents.length === 0 && (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onCreate(dateStr); }}
-            className="w-full h-full flex items-center justify-center text-zinc-600 hover:text-zinc-400 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation()
+              onCreate(dateStr)
+            }}
+            className="w-full h-full min-h-[60px] flex flex-col items-center justify-center text-zinc-600 hover:text-zinc-400 border border-dashed border-zinc-800/60 rounded-xl transition-colors gap-1 py-4"
           >
-            <Calendar className="h-4 w-4 opacity-50" />
+            <Plus className="h-4 w-4 opacity-50" />
+            <span className="text-[10px]">Livre</span>
           </button>
         )}
       </div>
@@ -209,71 +295,114 @@ function WeekDayCell({ date, events, today, selectedDate, onClick, onCreate }: {
   )
 }
 
-function ListView({ events, today, onEdit }: {
+function ListView({
+  events,
+  today,
+  onEdit,
+  onCreate,
+}: {
   events: AgendaEvent[]
   today: string
   onEdit: (event: AgendaEvent) => void
+  onCreate: () => void
 }) {
-  const sortedEvents = useMemo(() => [...events].sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date)
-    return a.timeStart.localeCompare(b.timeStart)
-  }), [events])
+  const sortedEvents = useMemo(() => {
+    return [...events].sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date)
+      return a.timeStart.localeCompare(b.timeStart)
+    })
+  }, [events])
 
   if (sortedEvents.length === 0) {
     return (
-      <Card className="p-8 text-center">
-        <Calendar className="h-12 w-12 mx-auto text-zinc-600 mb-4" />
-        <h3 className="font-medium text-zinc-100 mb-1">Nenhum evento</h3>
-        <p className="text-zinc-500 text-sm">Crie seu primeiro evento clicando no +</p>
+      <Card className="p-8 text-center border-zinc-800 bg-zinc-900/50 space-y-3">
+        <Calendar className="h-10 w-10 mx-auto text-zinc-600" />
+        <h3 className="font-semibold text-sm text-zinc-200">Nenhum evento agendado</h3>
+        <p className="text-zinc-500 text-xs">Crie seu primeiro compromisso tocando no botão abaixo.</p>
+        <Button variant="primary" size="sm" onClick={onCreate} className="gap-1.5 text-xs bg-indigo-600">
+          <Plus className="h-3.5 w-3.5" />
+          <span>Novo Evento</span>
+        </Button>
       </Card>
     )
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {sortedEvents.map((event) => {
         const isPast = event.date < today
+        const isToday = event.date === today
         return (
-          <Card
+          <div
             key={event.id}
+            onClick={() => onEdit(event)}
             className={cn(
-              'flex items-center gap-4 p-4 transition-colors hover:bg-zinc-800/50',
-              isPast && 'opacity-60'
+              'flex items-center justify-between p-3 sm:p-4 rounded-2xl border border-zinc-800/80 bg-zinc-900/60 hover:border-zinc-700 transition-all cursor-pointer shadow-lg shadow-black/20 gap-3',
+              isPast && 'opacity-60 bg-zinc-950/40',
+              isToday && 'border-rose-500/40 bg-rose-950/15',
             )}
           >
-            <div className={cn('h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0', CATEGORY_COLORS[event.category])}>
-              <Tag className="h-5 w-5 text-zinc-900" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h4 className="font-medium text-zinc-100 truncate">{event.title}</h4>
-                <span className={cn('chip text-[10px]', CATEGORY_COLORS[event.category].replace('bg-', 'bg-').replace('500', '500/20'), 'text-zinc-100')}>
-                  {CATEGORY_LABELS[event.category]}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 mt-1 text-sm text-zinc-400">
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {new Date(event.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" />
-                  {event.timeStart}{event.timeEnd ? ` – ${event.timeEnd}` : ''}
-                </span>
-                {event.location && (
-                  <span className="flex items-center gap-1 truncate">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {event.location}
-                  </span>
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div
+                className={cn(
+                  'h-10 w-10 rounded-xl flex flex-col items-center justify-center shrink-0 font-bold',
+                  isToday
+                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                    : 'bg-zinc-800 text-zinc-300 border border-zinc-700',
                 )}
+              >
+                <span className="text-[9px] uppercase tracking-tighter">
+                  {new Date(event.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' }).slice(0, 3)}
+                </span>
+                <span className="text-xs font-num font-bold leading-none">
+                  {event.date.slice(8, 10)}
+                </span>
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-semibold text-xs text-zinc-100 truncate">{event.title}</h4>
+                  <span
+                    className={cn(
+                      'chip text-[9px] py-0 px-1.5 rounded-md uppercase font-semibold',
+                      event.category === 'reuniao'
+                        ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                        : event.category === 'pessoal'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                        : event.category === 'viagem'
+                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                        : 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+                    )}
+                  >
+                    {CATEGORY_LABELS[event.category]}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3 mt-1 text-[11px] text-zinc-400 flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3 text-zinc-500" />
+                    {event.timeStart}
+                    {event.timeEnd ? ` – ${event.timeEnd}` : ''}
+                  </span>
+                  {event.location && (
+                    <span className="flex items-center gap-1 truncate max-w-[150px] sm:max-w-xs">
+                      <MapPin className="h-3 w-3 text-zinc-500" />
+                      {event.location}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" onClick={() => onEdit(event)} aria-label="Editar">
-                <MoreHorizontal className="h-4 w-4 rotate-90" />
-              </Button>
-            </div>
-          </Card>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-zinc-500 hover:text-zinc-200 shrink-0"
+              aria-label="Editar"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </div>
         )
       })}
     </div>
@@ -283,11 +412,17 @@ function ListView({ events, today, onEdit }: {
 export function CalendarView({ events, onCreateEvent, onEditEvent }: CalendarViewProps) {
   const [view, setView] = useState<ViewMode>('month')
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const today = formatDate(new Date())
+  const [selectedDate, setSelectedDate] = useState<string>(today)
 
   const monthDays = useMemo(() => getMonthDays(currentDate), [currentDate])
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate])
+
+  const selectedDayEvents = useMemo(() => {
+    return events
+      .filter((e) => e.date === selectedDate)
+      .sort((a, b) => a.timeStart.localeCompare(b.timeStart))
+  }, [events, selectedDate])
 
   const navigate = (direction: 'prev' | 'next') => {
     setCurrentDate((prev) => {
@@ -307,85 +442,218 @@ export function CalendarView({ events, onCreateEvent, onEditEvent }: CalendarVie
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header with navigation */}
-      <div className="flex items-center justify-between gap-4 p-4 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('prev')} aria-label="Período anterior">
-            <ChevronLeft className="h-5 w-5" />
+    <div className="flex flex-col space-y-4">
+      {/* Responsive Calendar Navigation Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl border border-zinc-800/80 bg-zinc-900/60 shadow-lg shadow-black/20">
+        <div className="flex items-center justify-between sm:justify-start gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('prev')}
+            className="h-8 w-8 text-zinc-300 hover:text-white"
+            aria-label="Período anterior"
+          >
+            <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="text-center min-w-[180px]">
-            <p className="font-display text-lg font-semibold text-zinc-100">
+
+          <div className="text-center min-w-[140px] sm:min-w-[180px]">
+            <p className="font-semibold text-sm sm:text-base text-zinc-100 capitalize">
               {view === 'month'
                 ? currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-                : `${weekDays[0].toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} – ${weekDays[6].toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}`}
+                : `${weekDays[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – ${weekDays[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`}
             </p>
-            <p className="text-xs text-zinc-500">{view === 'month' ? 'Visão mensal' : view === 'week' ? 'Visão semanal' : 'Lista'}</p>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => navigate('next')} aria-label="Próximo período">
-            <ChevronRight className="h-5 w-5" />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('next')}
+            className="h-8 w-8 text-zinc-300 hover:text-white"
+            aria-label="Próximo período"
+          >
+            <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={goToday}>
+
+        <div className="flex items-center justify-between sm:justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={goToday}
+            className="h-8 px-2.5 text-xs text-zinc-300 hover:text-white border border-zinc-800"
+          >
             Hoje
           </Button>
-          <div className="flex items-center gap-1 bg-zinc-800/50 rounded-lg p-1">
-            {(['month', 'week', 'list'] as ViewMode[]).map((v) => (
-              <Button
-                key={v}
-                variant={view === v ? 'primary' : 'ghost'}
-                size="sm"
-                className="h-8 px-3"
-                onClick={() => setView(v)}
-              >
-                {v === 'month' && <Calendar className="h-4 w-4" />}
-                {v === 'week' && <Calendar className="h-4 w-4" />}
-                {v === 'list' && <Calendar className="h-4 w-4" />}
-              </Button>
-            ))}
+
+          {/* View mode switcher */}
+          <div className="flex items-center gap-1 bg-zinc-950/80 rounded-xl p-1 border border-zinc-800/80">
+            <button
+              onClick={() => setView('month')}
+              className={cn(
+                'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all',
+                view === 'month'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200',
+              )}
+            >
+              Mês
+            </button>
+            <button
+              onClick={() => setView('week')}
+              className={cn(
+                'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all',
+                view === 'week'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200',
+              )}
+            >
+              Semana
+            </button>
+            <button
+              onClick={() => setView('list')}
+              className={cn(
+                'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all',
+                view === 'list'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200',
+              )}
+            >
+              Lista
+            </button>
           </div>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => onCreateEvent(selectedDate)}
+            className="h-8 px-2.5 sm:px-3 text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 font-semibold"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Novo Evento</span>
+            <span className="sm:hidden">Novo</span>
+          </Button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto p-4">
+      {/* Calendar Grid / Content */}
+      <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-2 sm:p-3 shadow-lg shadow-black/20">
         {view === 'month' && (
-          <div className="grid grid-cols-7 gap-1">
-            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
-              <div key={day} className="text-center text-xs text-zinc-500 py-2 font-medium uppercase">
-                {day}
+          <>
+            <div className="grid grid-cols-7 gap-1 mb-1">
+              {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
+                <div
+                  key={day}
+                  className="text-center text-[10px] sm:text-xs text-zinc-500 py-1.5 font-bold uppercase tracking-wider"
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {monthDays.map((day) => (
+                <DayCell
+                  key={formatDate(day)}
+                  date={day}
+                  events={events}
+                  today={today}
+                  selectedDate={selectedDate}
+                  currentMonth={currentDate.getMonth()}
+                  currentYear={currentDate.getFullYear()}
+                  onClick={(d) => setSelectedDate(formatDate(d))}
+                  onCreate={onCreateEvent}
+                />
+              ))}
+            </div>
+
+            {/* Selected Day Agenda Drawer (Mobile-first friendly) */}
+            <div className="mt-4 pt-4 border-t border-zinc-800/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 text-rose-400" />
+                  <span>
+                    Compromissos de{' '}
+                    {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', {
+                      weekday: 'long',
+                      day: '2-digit',
+                      month: 'long',
+                    })}
+                  </span>
+                </h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onCreateEvent(selectedDate)}
+                  className="h-7 px-2 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 gap-1"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>Adicionar</span>
+                </Button>
               </div>
-            ))}
-            {monthDays.map((day) => (
-              <DayCell
-                key={formatDate(day)}
-                date={day}
-                events={events}
-                today={today}
-                selectedDate={selectedDate}
-                currentMonth={currentDate.getMonth()}
-                currentYear={currentDate.getFullYear()}
-                onClick={(d) => setSelectedDate(formatDate(d))}
-                onCreate={onCreateEvent}
-              />
-            ))}
-          </div>
+
+              {selectedDayEvents.length === 0 ? (
+                <div className="text-center py-4 text-xs text-zinc-500 bg-zinc-950/40 rounded-xl border border-zinc-800/40">
+                  Nenhum compromisso marcado para este dia.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {selectedDayEvents.map((ev) => (
+                    <div
+                      key={ev.id}
+                      onClick={() => onEditEvent(ev)}
+                      className="flex items-center justify-between p-3 rounded-xl border border-zinc-800/80 bg-zinc-950/70 hover:border-zinc-700 transition-colors cursor-pointer"
+                    >
+                      <div className="min-w-0 flex items-center gap-2.5">
+                        <span
+                          className={cn(
+                            'h-2.5 w-2.5 rounded-full shrink-0',
+                            ev.category === 'reuniao'
+                              ? 'bg-blue-400'
+                              : ev.category === 'pessoal'
+                              ? 'bg-emerald-400'
+                              : ev.category === 'viagem'
+                              ? 'bg-cyan-400'
+                              : 'bg-violet-400',
+                          )}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-zinc-100 truncate">{ev.title}</p>
+                          <p className="text-[11px] text-zinc-400 flex items-center gap-2 mt-0.5">
+                            <span className="flex items-center gap-1 font-mono">
+                              <Clock className="h-3 w-3 text-zinc-500" />
+                              {ev.timeStart}
+                              {ev.timeEnd ? ` – ${ev.timeEnd}` : ''}
+                            </span>
+                            {ev.location && <span className="truncate">📍 {ev.location}</span>}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md border border-zinc-800 text-zinc-400 capitalize shrink-0 ml-2">
+                        {CATEGORY_LABELS[ev.category]}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {view === 'week' && (
-          <div className="grid grid-cols-7 gap-1 h-[calc(100vh-300px)] min-h-[500px]">
-            {weekDays.map((day) => (
-              <WeekDayCell
-                key={day.toISOString()}
-                date={day}
-                events={events}
-                today={today}
-                selectedDate={selectedDate}
-                onClick={(d) => setSelectedDate(formatDate(d))}
-                onCreate={onCreateEvent}
-              />
-            ))}
+          <div className="overflow-x-auto pb-2 no-scrollbar">
+            <div className="flex gap-2 min-w-[700px] md:min-w-full">
+              {weekDays.map((day) => (
+                <WeekDayCell
+                  key={day.toISOString()}
+                  date={day}
+                  events={events}
+                  today={today}
+                  selectedDate={selectedDate}
+                  onClick={(d) => setSelectedDate(formatDate(d))}
+                  onCreate={onCreateEvent}
+                />
+              ))}
+            </div>
           </div>
         )}
 
@@ -394,6 +662,7 @@ export function CalendarView({ events, onCreateEvent, onEditEvent }: CalendarVie
             events={events}
             today={today}
             onEdit={onEditEvent}
+            onCreate={() => onCreateEvent(today)}
           />
         )}
       </div>

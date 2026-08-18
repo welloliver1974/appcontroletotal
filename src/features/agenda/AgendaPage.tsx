@@ -129,7 +129,7 @@ export function AgendaPage() {
   const criticalCount = data?.emails.filter((e) => e.importance === 'critico' && !e.read).length ?? 0
 
   return (
-    <div className="space-y-6 h-[calc(100vh-120px)] flex flex-col">
+    <div className="space-y-5 pb-10 flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <PageHeader module={module} />
         
@@ -200,10 +200,10 @@ export function AgendaPage() {
       {!data ? (
         <AgendaSkeleton />
       ) : (
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1">
           {/* Calendar Tab */}
           {activeTab === 'calendar' && (
-            <div className="h-full flex flex-col">
+            <div className="flex flex-col">
               <CalendarView
                 events={data.events}
                 onCreateEvent={handleCreateEvent}
