@@ -6,6 +6,15 @@ import { createClient } from '@supabase/supabase-js';
 const nowIso = () => new Date().toISOString();
 const genId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
 
+function inferPantryCategory(itemName) {
+  const t = (itemName || '').toLowerCase();
+  if (/(coca|refrigerante|suco|cerveja|vinho|leite|caf[eé]|ch[aá]|água|bebida|energetico)/.test(t)) return 'bebidas';
+  if (/(sab[aã]o|detergente|amaciante|papel higi[eê]nico|desinfetante|limpeza|esponja|veja)/.test(t)) return 'limpeza';
+  if (/(shampoo|sabonete|pasta de dente|creme|desodorante|higiene|fio dental|escova)/.test(t)) return 'higiene';
+  if (/(carne|frango|peixe|ovos|queijo|presunto|iogurte|manteiga|requeij[aã]o)/.test(t)) return 'frescos';
+  return 'alimentos';
+}
+
 export default async function handler(req, res) {
   // Configura CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -67,12 +76,36 @@ export default async function handler(req, res) {
 
   // Normalização do payload
   const action = body.action || body.event || body.type || '';
-  const platform = String(body.platform || body.kind || '').toLowerCase();
+  let platform = String(body.platform || body.kind || '').toLowerCase();
   const title = typeof body.title === 'string' ? body.title.slice(0, 250) : '';
-  const name = typeof body.name === 'string' ? body.name.slice(0, 250) : (title || 'Item sem nome');
   const summary = typeof body.summary === 'string' ? body.summary.slice(0, 4000) : (typeof body.body === 'string' ? body.body : '');
+  const rawText = (title || summary || (typeof body === 'string' ? body : '')).trim();
+  const lowerText = rawText.toLowerCase();
   const url = typeof body.url === 'string' && body.url ? body.url : null;
   const tags = Array.isArray(body.tags) ? body.tags.map(String).filter(Boolean).slice(0, 10) : ['hermes', 'telegram'];
+
+  // Smart Intent Detection para mensagens livres do Telegram
+  if (!platform && !action) {
+    if (/^(comprar|compra|mercado|despensa|preciso de|falta|comprar:)/i.test(lowerText) || /(lista de compras)/i.test(lowerText)) {
+      platform = 'pantry';
+    } else if (/^(gastei|paguei|despesa|gasto)/i.test(lowerText) || /r\$\s*\d+/i.test(lowerText)) {
+      platform = 'spending';
+    } else if (/^(reuni[aã]o|compromisso|consulta|dentista|m[eé]dico|call|agendar)/i.test(lowerText)) {
+      platform = 'event';
+    } else if (/^(di[aá]rio|hoje eu|me sinto|gratid[aã]o|pensamento)/i.test(lowerText)) {
+      platform = 'life_log';
+    }
+  }
+
+  let name = typeof body.name === 'string' ? body.name.slice(0, 250) : (title || 'Item sem nome');
+  if (platform === 'pantry' && !body.name && rawText) {
+    name = rawText.replace(/^(comprar|compra|adicionar [aà] despensa|adicionar|falta|preciso de|mercado:|despensa:)\s*/i, '').trim();
+    if (name) {
+      name = name.charAt(0).toUpperCase() + name.slice(1);
+    } else {
+      name = rawText;
+    }
+  }
 
   try {
     // -------------------------------------------------------------
@@ -91,10 +124,11 @@ export default async function handler(req, res) {
         const inserted = [];
 
         for (const it of rawItems) {
+          const itName = it.name || 'Item sem nome';
           const itemRow = {
             id: it.id || genId(),
-            name: it.name || 'Item sem nome',
-            category: it.category || 'alimentos',
+            name: itName,
+            category: it.category || inferPantryCategory(itName),
             qty: Number(it.qty ?? it.quantity ?? 1),
             unit: it.unit || 'un',
             low_threshold: Number(it.lowThreshold ?? it.low_threshold ?? 1),
@@ -118,8 +152,8 @@ export default async function handler(req, res) {
       // Item individual
       const itemRow = {
         id: body.id || genId(),
-        name: body.name || title || 'Item',
-        category: body.category || 'alimentos',
+        name: name || 'Item',
+        category: body.category || inferPantryCategory(name),
         qty: Number(body.qty ?? body.quantity ?? 1),
         unit: body.unit || 'un',
         low_threshold: Number(body.lowThreshold ?? body.low_threshold ?? 1),
@@ -135,6 +169,7 @@ export default async function handler(req, res) {
         success: true,
         table: 'pantry',
         id: data.id,
+        item: itemRow,
         message: `Item "${itemRow.name}" adicionado à despensa`,
       });
     }
