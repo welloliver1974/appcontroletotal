@@ -265,4 +265,22 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - Permite que o app receba compartilhamentos nativos do Android/iOS (YouTube, Instagram, navegadores) via menu nativo do sistema, salvando diretamente no Life-Log com notificação toast imediata.
 
 ---
+
+## 📅 12. Sincronização com Google Calendar (iCal Feed .ics)
+
+* **Parser RFC 5545 iCalendar ([src/lib/ical.ts](file:///e:/Apps/AppControleTotal/src/lib/ical.ts)):**
+  - Parser resiliente para arquivos `.ics` do Google Calendar.
+  - Conversão inteligente de datas UTC/Timezone, status, localização e categorização automática de eventos (`reuniao`, `viagem`, `habit`, `pessoal`).
+* **Endpoint Serverless Proxy ([api/calendar/sync-ical.js](file:///e:/Apps/AppControleTotal/api/calendar/sync-ical.js)):**
+  - Rota: `POST /api/calendar/sync-ical`
+  - Faz o download do `.ics` diretamente dos servidores do Google (evitando bloqueios de CORS no navegador), realiza o parse dos eventos e faz upsert em lote no Supabase (`events`).
+* **Gerenciador de Sincronização ([src/lib/googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts)):**
+  - Persiste a URL do iCal e preferências no `localStorage` (`act.googleCalendarConfig`).
+  - Suporta sincronização automática ao abrir a Agenda e botão manual.
+* **Interface de Configuração ([src/features/agenda/SettingsGoogleCalendar.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsGoogleCalendar.tsx)):**
+  - Aba dedicada em **Configurações ➔ Google Calendar** com guia passo a passo ilustrado, input de URL e botão de teste com feedback em tempo real.
+* **Botão Rápido na Agenda ([src/features/agenda/AgendaPage.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/AgendaPage.tsx)):**
+  - Botão **"Google Calendar"** direto no topo da tela para sincronização instantânea em 1 clique.
+
+---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*

@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react'
-import { Calendar, Mail, Bell } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { Calendar, Mail, Bell, RefreshCw, Loader2 } from 'lucide-react'
 import { MODULE_BY_ID } from '@/lib/modules'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/feedback'
@@ -7,11 +7,14 @@ import { useAgendaData } from './useAgendaData'
 import { CalendarView } from './CalendarView'
 import { EventModal } from './EventModal'
 import { EmailCard } from './EmailCard'
+import { SettingsModal } from './SettingsModal'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/primitives'
 import { cn } from '@/lib/utils'
 import type { AgendaEvent, InboxEmail } from '@/data/types'
 import { api } from '@/data/api'
+import { getGoogleCalendarConfig, syncGoogleCalendar } from '@/lib/googleCalendarSync'
+import { toast } from '@/stores/toastStore'
 
 function AgendaSkeleton() {
   return (
@@ -38,13 +41,47 @@ type FilterType = 'all' | 'critico' | 'nao-lidos' | 'lidos'
 
 export function AgendaPage() {
   const module = MODULE_BY_ID['agenda']
-  const { data, setEvents, setEmails } = useAgendaData()
+  const { data, reload, setEvents, setEmails } = useAgendaData()
 
   const [activeTab, setActiveTab] = useState<Tab>('calendar')
   const [eventModalOpen, setEventModalOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<AgendaEvent | null>(null)
   const [emailFilter, setEmailFilter] = useState<FilterType>('all')
   const [showOnlyHermes, setShowOnlyHermes] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [syncingGcal, setSyncingGcal] = useState(false)
+
+  // Auto-sync Google Calendar on mount if enabled
+  useEffect(() => {
+    const config = getGoogleCalendarConfig()
+    if (config.autoSync && config.icalUrl) {
+      syncGoogleCalendar().then((res) => {
+        if (res.ok && res.count > 0) {
+          reload()
+        }
+      }).catch(() => {})
+    }
+  }, [reload])
+
+  const handleSyncGoogleCalendar = async () => {
+    const config = getGoogleCalendarConfig()
+    if (!config.icalUrl) {
+      toast.info('Configure seu link iCal do Google Calendar para sincronizar.')
+      setSettingsOpen(true)
+      return
+    }
+
+    setSyncingGcal(true)
+    const res = await syncGoogleCalendar()
+    setSyncingGcal(false)
+
+    if (res.ok) {
+      toast.success(`${res.count} compromissos sincronizados com o Google Calendar! 🎉`)
+      await reload()
+    } else {
+      toast.error(res.error || 'Erro ao sincronizar com o Google Calendar.')
+    }
+  }
 
   const handleCreateEvent = useCallback(() => {
     setEditingEvent(null)
@@ -91,7 +128,42 @@ export function AgendaPage() {
 
   return (
     <div className="space-y-6 h-[calc(100vh-120px)] flex flex-col">
-      <PageHeader module={module} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <PageHeader module={module} />
+        
+        {/* Quick Sync Button */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSyncGoogleCalendar}
+            disabled={syncingGcal}
+            className="h-9 px-3 text-xs bg-zinc-900/60 border border-zinc-800 hover:border-blue-500/40 hover:bg-blue-500/10 text-zinc-300 hover:text-blue-300 transition-colors gap-2"
+          >
+            {syncingGcal ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
+                <span>Sincronizando...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 text-blue-400" />
+                <span className="hidden sm:inline">Google Calendar</span>
+                <span className="sm:hidden">Sync</span>
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSettingsOpen(true)}
+            className="h-9 px-3 text-xs text-zinc-400 hover:text-zinc-200"
+          >
+            Configurações
+          </Button>
+        </div>
+      </div>
 
       {/* Tab Navigation */}
       <div className="flex items-center gap-2 bg-zinc-900/50 rounded-xl p-1 border border-zinc-800">
@@ -224,6 +296,17 @@ export function AgendaPage() {
             setEditingEvent(null)
           }}
           onSave={handleSaveEvent}
+        />
+      )}
+
+      {/* Settings Modal */}
+      {settingsOpen && (
+        <SettingsModal
+          open={settingsOpen}
+          onClose={() => {
+            setSettingsOpen(false)
+            reload()
+          }}
         />
       )}
     </div>
