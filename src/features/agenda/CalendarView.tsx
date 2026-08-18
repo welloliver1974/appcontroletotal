@@ -29,7 +29,10 @@ interface CalendarViewProps {
 }
 
 function formatDate(date: Date): string {
-  return date.toISOString().slice(0, 10)
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 function getMonthDays(date: Date): Date[] {
@@ -69,17 +72,19 @@ function getWeekDays(date: Date): Date[] {
   return days
 }
 
-function DayCell({ date, events, today, selectedDate, onClick, onCreate }: {
+function DayCell({ date, events, today, selectedDate, currentMonth, currentYear, onClick, onCreate }: {
   date: Date
   events: AgendaEvent[]
   today: string
   selectedDate: string | null
+  currentMonth: number
+  currentYear: number
   onClick: (date: Date) => void
   onCreate: (date: string) => void
 }) {
   const dateStr = formatDate(date)
   const isToday = dateStr === today
-  const isCurrentMonth = date.getMonth() === new Date().getMonth()
+  const isCurrentMonth = date.getMonth() === currentMonth && date.getFullYear() === currentYear
   const isSelected = dateStr === selectedDate
   const dayEvents = events.filter((e) => e.date === dateStr)
 
@@ -249,7 +254,7 @@ function ListView({ events, today, onEdit }: {
               <div className="flex items-center gap-3 mt-1 text-sm text-zinc-400">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3.5 w-3.5" />
-                  {new Date(event.date).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
+                  {new Date(event.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" />
@@ -354,11 +359,13 @@ export function CalendarView({ events, onCreateEvent, onEditEvent }: CalendarVie
             ))}
             {monthDays.map((day) => (
               <DayCell
-                key={day.toISOString()}
+                key={formatDate(day)}
                 date={day}
                 events={events}
                 today={today}
                 selectedDate={selectedDate}
+                currentMonth={currentDate.getMonth()}
+                currentYear={currentDate.getFullYear()}
                 onClick={(d) => setSelectedDate(formatDate(d))}
                 onCreate={onCreateEvent}
               />

@@ -208,6 +208,81 @@ export const db = {
     }
   },
 
+  /** Insere ou atualiza uma linha (upsert). */
+  async upsert<T = Row>(collection: string, row: T): Promise<T[]> {
+    assertSupabaseConfig()
+    if (!supabase) {
+      const r = row as T & { id: string }
+      const exists = localStorageDb.get<T & { id: string }>(collection).some((it) => it.id === r.id)
+      if (exists) {
+        localStorageDb.update<T & { id: string }>(collection, r.id, r)
+      } else {
+        localStorageDb.insert<T & { id: string }>(collection, r)
+      }
+      return localStorageDb.get<T>(collection)
+    }
+    try {
+      const { error } = await supabase
+        .from(tableName(collection))
+        .upsert(toSupabaseRow(row) as Record<string, unknown>, { onConflict: 'id' })
+      if (error) throw error
+      return await this.get<T>(collection)
+    } catch (err) {
+      if (localFallbackAllowed()) {
+        const r = row as T & { id: string }
+        const exists = localStorageDb.get<T & { id: string }>(collection).some((it) => it.id === r.id)
+        if (exists) {
+          localStorageDb.update<T & { id: string }>(collection, r.id, r)
+        } else {
+          localStorageDb.insert<T & { id: string }>(collection, r)
+        }
+        return localStorageDb.get<T>(collection)
+      }
+      throw mapSupabaseError(err)
+    }
+  },
+
+  /** Insere ou atualiza múltiplas linhas em lote. */
+  async upsertMany<T = Row>(collection: string, rows: T[]): Promise<T[]> {
+    assertSupabaseConfig()
+    if (rows.length === 0) return await this.get<T>(collection)
+
+    if (!supabase) {
+      for (const row of rows) {
+        const r = row as T & { id: string }
+        const exists = localStorageDb.get<T & { id: string }>(collection).some((it) => it.id === r.id)
+        if (exists) {
+          localStorageDb.update<T & { id: string }>(collection, r.id, r)
+        } else {
+          localStorageDb.insert<T & { id: string }>(collection, r)
+        }
+      }
+      return localStorageDb.get<T>(collection)
+    }
+    try {
+      const supabaseRows = rows.map((r) => toSupabaseRow(r) as Record<string, unknown>)
+      const { error } = await supabase
+        .from(tableName(collection))
+        .upsert(supabaseRows, { onConflict: 'id' })
+      if (error) throw error
+      return await this.get<T>(collection)
+    } catch (err) {
+      if (localFallbackAllowed()) {
+        for (const row of rows) {
+          const r = row as T & { id: string }
+          const exists = localStorageDb.get<T & { id: string }>(collection).some((it) => it.id === r.id)
+          if (exists) {
+            localStorageDb.update<T & { id: string }>(collection, r.id, r)
+          } else {
+            localStorageDb.insert<T & { id: string }>(collection, r)
+          }
+        }
+        return localStorageDb.get<T>(collection)
+      }
+      throw mapSupabaseError(err)
+    }
+  },
+
   /** Atualiza uma linha pelo `id`. */
   async update<T = Row>(collection: string, id: string, patch: Partial<T>): Promise<T[]> {
     assertSupabaseConfig()

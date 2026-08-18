@@ -53,7 +53,7 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
     }
   }
 
-  // 1. Try serverless backend proxy first (avoids CORS)
+  // 1. Try serverless backend proxy first (bypasses CORS and upserts directly to Supabase)
   try {
     const res = await fetch('/api/calendar/sync-ical', {
       method: 'POST',
@@ -64,12 +64,8 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
     if (res.ok) {
       const data = await res.json()
       if (data.success && Array.isArray(data.events)) {
-        // Also save to local db adapter in case of offline/local fallback
-        for (const ev of data.events) {
-          await db.update('events', ev.id, ev).catch(async () => {
-            await db.insert('events', ev).catch(() => {})
-          })
-        }
+        // Save batch to database adapter
+        await db.upsertMany('events', data.events)
 
         const now = new Date().toISOString()
         saveGoogleCalendarConfig({
@@ -87,32 +83,41 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
       }
     }
   } catch {
-    // Continue to direct client-side fallback if running in pure static/local mode
+    // Fallback to client proxy if serverless endpoint is unreachable in dev
   }
 
-  // 2. Direct client fallback (or through a CORS proxy if needed)
+  // 2. Direct client fallback (using proxy to bypass browser CORS)
   try {
-    const res = await fetch(icalUrl).catch(() => {
-      // If direct fetch blocked by CORS, try public proxy fallback
-      return fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(icalUrl)}`)
-    })
+    const proxyUrls = [
+      icalUrl,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(icalUrl)}`,
+      `https://corsproxy.io/?url=${encodeURIComponent(icalUrl)}`,
+    ]
 
-    if (!res.ok) {
+    let icalText = ''
+    for (const url of proxyUrls) {
+      try {
+        const res = await fetch(url)
+        if (res.ok) {
+          const text = await res.text()
+          if (text && text.includes('BEGIN:VCALENDAR')) {
+            icalText = text
+            break
+          }
+        }
+      } catch {}
+    }
+
+    if (!icalText) {
       return {
         ok: false,
         count: 0,
-        error: `Não foi possível baixar o calendário (HTTP ${res.status}). Verifique o link iCal.`,
+        error: 'Não foi possível baixar o calendário do Google. Verifique se o endereço iCal secreto está correto.',
       }
     }
 
-    const icalText = await res.text()
     const parsedEvents = parseIcalToEvents(icalText)
-
-    for (const ev of parsedEvents) {
-      await db.update('events', ev.id, ev).catch(async () => {
-        await db.insert('events', ev).catch(() => {})
-      })
-    }
+    await db.upsertMany('events', parsedEvents)
 
     const now = new Date().toISOString()
     saveGoogleCalendarConfig({

@@ -1,4 +1,4 @@
-// Vercel Serverless Function — Proxy e Sincronizador de iCal do Google Calendar
+// Vercel Serverless Function — Proxy e Sincronizador de iCal do Google Calendar com suporte a RRULE
 // Rota: POST /api/calendar/sync-ical
 import { createClient } from '@supabase/supabase-js';
 
@@ -24,10 +24,14 @@ function parseIcalDateTime(rawStr) {
   const clean = val.trim();
 
   if (/^\d{8}$/.test(clean)) {
-    const y = clean.slice(0, 4);
-    const m = clean.slice(4, 6);
-    const d = clean.slice(6, 8);
-    return { date: `${y}-${m}-${d}`, time: '08:00' };
+    const y = Number(clean.slice(0, 4));
+    const m = Number(clean.slice(4, 6));
+    const d = Number(clean.slice(6, 8));
+    return {
+      date: `${clean.slice(0, 4)}-${clean.slice(4, 6)}-${clean.slice(6, 8)}`,
+      time: '08:00',
+      fullDate: new Date(y, m - 1, d, 8, 0),
+    };
   }
 
   const match = clean.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/);
@@ -40,11 +44,26 @@ function parseIcalDateTime(rawStr) {
       const localD = String(utcDate.getDate()).padStart(2, '0');
       const localH = String(utcDate.getHours()).padStart(2, '0');
       const localMin = String(utcDate.getMinutes()).padStart(2, '0');
-      return { date: `${localY}-${localM}-${localD}`, time: `${localH}:${localMin}` };
+      return {
+        date: `${localY}-${localM}-${localD}`,
+        time: `${localH}:${localMin}`,
+        fullDate: utcDate,
+      };
     }
-    return { date: `${y}-${m}-${d}`, time: `${hh}:${mm}` };
+    return {
+      date: `${y}-${m}-${d}`,
+      time: `${hh}:${mm}`,
+      fullDate: new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm)),
+    };
   }
   return null;
+}
+
+function toIsoDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function unfoldIcal(raw) {
@@ -63,7 +82,7 @@ function unfoldIcal(raw) {
 
 function parseIcalText(icalText) {
   const lines = unfoldIcal(icalText);
-  const events = [];
+  const rawEvents = [];
   let inEvent = false;
   let current = {};
 
@@ -81,23 +100,13 @@ function parseIcalText(icalText) {
 
       const start = parseIcalDateTime(current.DTSTART || '');
       if (!start) continue;
-      const end = parseIcalDateTime(current.DTEND || '');
+      const end = current.DTEND ? parseIcalDateTime(current.DTEND) : null;
       const uid = current.UID || `gcal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      const id = uid.startsWith('gcal-') ? uid : `gcal-${uid.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48)}`;
       const title = (current.SUMMARY || current.DESCRIPTION || 'Compromisso').replace(/\\([,;\\])/g, '$1');
       const location = current.LOCATION ? current.LOCATION.replace(/\\([,;\\])/g, '$1') : null;
+      const rrule = current.RRULE;
 
-      events.push({
-        id,
-        title,
-        date: start.date,
-        time_start: start.time,
-        time_end: end ? end.time : null,
-        category: inferCategory(title, location),
-        location,
-        created_at: nowIso(),
-        updated_at: nowIso(),
-      });
+      rawEvents.push({ uid, title, location, start, end, rrule });
       continue;
     }
     if (inEvent) {
@@ -110,6 +119,84 @@ function parseIcalText(icalText) {
       }
     }
   }
+
+  const now = new Date();
+  const windowStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const windowEnd = new Date(now.getFullYear(), now.getMonth() + 6, 0);
+
+  const events = [];
+  const seenIds = new Set();
+
+  for (const item of rawEvents) {
+    const category = inferCategory(item.title, item.location);
+    const baseId = item.uid.startsWith('gcal-') ? item.uid : `gcal-${item.uid.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40)}`;
+
+    if (!item.rrule) {
+      if (!seenIds.has(baseId)) {
+        seenIds.add(baseId);
+        events.push({
+          id: baseId,
+          title: item.title,
+          date: item.start.date,
+          time_start: item.start.time,
+          time_end: item.end ? item.end.time : null,
+          category,
+          location: item.location,
+          created_at: nowIso(),
+          updated_at: nowIso(),
+        });
+      }
+      continue;
+    }
+
+    const rruleUpper = item.rrule.toUpperCase();
+    const isDaily = rruleUpper.includes('FREQ=DAILY');
+    const isWeekly = rruleUpper.includes('FREQ=WEEKLY');
+    const isMonthly = rruleUpper.includes('FREQ=MONTHLY');
+    const isYearly = rruleUpper.includes('FREQ=YEARLY');
+
+    let untilDate = null;
+    const untilMatch = rruleUpper.match(/UNTIL=([0-9T]+Z?)/);
+    if (untilMatch) {
+      const parsedUntil = parseIcalDateTime(untilMatch[1]);
+      if (parsedUntil) untilDate = parsedUntil.fullDate;
+    }
+
+    const curr = new Date(item.start.fullDate);
+    let count = 0;
+    const maxCount = 200;
+
+    while (curr <= windowEnd && count < maxCount) {
+      if (untilDate && curr > untilDate) break;
+
+      if (curr >= windowStart) {
+        const occDateStr = toIsoDate(curr);
+        const occId = `${baseId}-${occDateStr}`;
+        if (!seenIds.has(occId)) {
+          seenIds.add(occId);
+          events.push({
+            id: occId,
+            title: item.title,
+            date: occDateStr,
+            time_start: item.start.time,
+            time_end: item.end ? item.end.time : null,
+            category,
+            location: item.location,
+            created_at: nowIso(),
+            updated_at: nowIso(),
+          });
+        }
+      }
+
+      if (isDaily) curr.setDate(curr.getDate() + 1);
+      else if (isWeekly) curr.setDate(curr.getDate() + 7);
+      else if (isMonthly) curr.setMonth(curr.getMonth() + 1);
+      else if (isYearly) curr.setFullYear(curr.getFullYear() + 1);
+      else break;
+      count++;
+    }
+  }
+
   return events;
 }
 
@@ -130,7 +217,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Faz o fetch do arquivo .ics do Google Calendar
     const fetchRes = await fetch(icalUrl, {
       headers: {
         'User-Agent': 'LifeOS-Calendar-Sync/1.0',
@@ -139,14 +225,13 @@ export default async function handler(req, res) {
 
     if (!fetchRes.ok) {
       return res.status(fetchRes.status).json({
-        error: `Não foi possível baixar o calendário do Google (HTTP ${fetchRes.status}). Verifique se o endereço iCal secreto está correto.`,
+        error: `Não foi possível baixar o calendário do Google (HTTP ${fetchRes.status}). Verifique se o link secreto está correto.`,
       });
     }
 
     const icalText = await fetchRes.text();
     const parsedEvents = parseIcalText(icalText);
 
-    // 2. Conecta no Supabase e faz upsert dos eventos
     const SUPABASE_URL =
       process.env.SUPABASE_URL ||
       process.env.VITE_SUPABASE_URL ||
@@ -162,8 +247,6 @@ export default async function handler(req, res) {
     let savedCount = 0;
     if (SUPABASE_URL && SUPABASE_KEY && parsedEvents.length > 0) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-      // Upsert em lotes
       const { error } = await supabase.from('events').upsert(parsedEvents, { onConflict: 'id' });
       if (error) {
         console.warn('[SyncIcal] Supabase upsert error:', error.message);
