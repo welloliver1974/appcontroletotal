@@ -111,3 +111,44 @@ export function checkTodayEventsNotifications(events: AgendaEvent[]): void {
     })
   }
 }
+
+/**
+ * Checks if an event is starting within 15 minutes from now and triggers an alert.
+ */
+export function checkUpcomingEventsReminders(events: AgendaEvent[]): void {
+  if (getNotificationPermission() !== 'granted') return
+
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  const localToday = `${y}-${m}-${d}`
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
+
+  const todayEvents = events.filter((e) => e.date === localToday && e.timeStart)
+
+  for (const event of todayEvents) {
+    const parts = event.timeStart.split(':').map(Number)
+    if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) continue
+
+    const eventMinutes = parts[0] * 60 + parts[1]
+    const diffMinutes = eventMinutes - currentMinutes
+
+    // Alerta se faltar entre 0 e 15 minutos
+    if (diffMinutes >= 0 && diffMinutes <= 15) {
+      const notifKey = `act.notif.15min.${event.id}.${localToday}`
+      try {
+        if (localStorage.getItem(notifKey)) continue
+        localStorage.setItem(notifKey, '1')
+      } catch {}
+
+      const timeText = diffMinutes === 0 ? 'Agora' : `Em ${diffMinutes} min`
+      sendLocalNotification(`⏰ ${timeText}: ${event.title}`, {
+        body: `Início: ${event.timeStart}${event.location ? ` · Local: ${event.location}` : ''}`,
+        tag: `event-reminder-${event.id}`,
+      })
+    }
+  }
+}
+

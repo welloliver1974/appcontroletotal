@@ -13,8 +13,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
-        name: 'AppControleTotal — Life OS Hub',
-        short_name: 'Life OS',
+        name: 'Life OS Hub',
+        short_name: 'Life OS Hub',
         description: 'Sistema Operacional Pessoal PWA — Dashboard, Life-Log, Manutenção, Despensa, Viagens e Agenda com IA.',
         start_url: '/',
         display: 'standalone',

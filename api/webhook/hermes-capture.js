@@ -140,17 +140,30 @@ export default async function handler(req, res) {
     // -------------------------------------------------------------
     // A. DESPENSA / LISTA DE COMPRAS (pantry)
     // -------------------------------------------------------------
+    const isBoughtAction =
+      action === 'pantry_restock' ||
+      /^(comprei|comprado|compramos|repus|repor|abasteci)\s+/i.test(lowerText);
+
     if (
+      isBoughtAction ||
       action === 'pantry_add' ||
       action === 'pantry_shopping_list' ||
       platform === 'pantry' ||
       platform === 'despensa' ||
       platform === 'compras'
     ) {
+      // Limpa prefixo de comando se houver
+      let cleanGroceryText = rawText;
+      if (isBoughtAction) {
+        cleanGroceryText = cleanGroceryText.replace(/^(comprei|comprado|compramos|repus|repor|abasteci)\s+/i, '');
+      } else {
+        cleanGroceryText = cleanGroceryText.replace(/^(comprar|compra|preciso de|falta|pegar)\s+/i, '');
+      }
+
       // Se for uma lista múltipla ou texto com múltiplos itens (ex: "Coca zero e batata", "Leite, pão e café")
       const rawItemList = (Array.isArray(body.payload?.items) || Array.isArray(body.items))
         ? (Array.isArray(body.payload?.items) ? body.payload.items : body.items)
-        : splitGroceryItems(rawText || body.name || title).map((name) => ({ name }));
+        : splitGroceryItems(cleanGroceryText || body.name || title).map((name) => ({ name }));
 
       const inserted = [];
 
@@ -158,6 +171,9 @@ export default async function handler(req, res) {
         const itName = it.name ? it.name.trim() : 'Item sem nome';
         const formattedName = itName.charAt(0).toUpperCase() + itName.slice(1);
         const itCategory = it.category || inferPantryCategory(formattedName);
+
+        // Quantidade a definir: se comprou, repõe para 2 (ou especificado), se adicionou na lista, marca como 0 (em falta)
+        const targetQty = isBoughtAction ? (Number(it.qty) > 0 ? Number(it.qty) : 2) : 0;
 
         // Verifica se já existe para atualizar quantidade ou inserir
         const { data: existing } = await supabase
@@ -169,7 +185,7 @@ export default async function handler(req, res) {
         if (existing && existing.length > 0) {
           await supabase
             .from('pantry')
-            .update({ qty: 0, updated_at: nowIso() })
+            .update({ qty: targetQty, updated_at: nowIso() })
             .eq('id', existing[0].id);
           inserted.push(formattedName);
         } else {
@@ -177,7 +193,7 @@ export default async function handler(req, res) {
             id: it.id || genId(),
             name: formattedName,
             category: itCategory,
-            qty: 0, // 0 = precisa comprar (entra na lista de compras e no radar de alertas da dashboard)
+            qty: targetQty,
             unit: it.unit || 'un',
             low_threshold: 1,
             expires_at: it.expiresAt || it.expires_at || null,
@@ -189,13 +205,18 @@ export default async function handler(req, res) {
         }
       }
 
+      const responseMessage = isBoughtAction
+        ? `✅ ${inserted.join(', ')} marcado(s) como comprado(s) e estoque reposto! 🛒`
+        : `🛒 ${inserted.join(', ')} adicionado(s) à lista de compras da despensa!`;
+
       return res.status(201).json({
         ok: true,
         success: true,
         table: 'pantry',
+        isRestocked: isBoughtAction,
         itemsCount: inserted.length,
         items: inserted,
-        message: `${inserted.join(', ')} adicionado(s) à lista de compras da despensa! 🛒`,
+        message: responseMessage,
       });
     }
 

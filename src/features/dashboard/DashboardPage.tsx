@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { MODULE_BY_ID } from '@/lib/modules'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/feedback'
-import { checkPantryExpiringNotifications, checkTodayEventsNotifications } from '@/lib/notifications'
+import { checkPantryExpiringNotifications, checkTodayEventsNotifications, checkUpcomingEventsReminders } from '@/lib/notifications'
 import { useDashboardData } from './dashboardData'
 import { KpiRow } from './KpiRow'
 import { AlertsGrid } from './Alerts'
@@ -60,6 +60,13 @@ export function DashboardPage() {
     if (data) {
       checkTodayEventsNotifications(data.events)
       checkPantryExpiringNotifications(data.pantry)
+      checkUpcomingEventsReminders(data.events)
+
+      const interval = setInterval(() => {
+        checkUpcomingEventsReminders(data.events)
+      }, 60000)
+
+      return () => clearInterval(interval)
     }
   }, [data])
 

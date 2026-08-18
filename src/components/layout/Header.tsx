@@ -27,7 +27,7 @@ export function Header() {
           <div className="flex min-w-0 items-center gap-2.5">
             <span className={cn('h-2 w-2 shrink-0 rounded-full', module?.solid ?? 'bg-zinc-500')} />
             <span className="truncate text-sm font-semibold text-zinc-200">
-              {module?.label ?? 'AppControleTotal'}
+              {module?.label ?? 'Life OS Hub'}
             </span>
           </div>
 

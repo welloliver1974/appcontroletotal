@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { LayoutGrid, List, Plus, Search, ShoppingBasket, X } from 'lucide-react'
+import { LayoutGrid, List, Plus, Search, ShoppingBasket, ShoppingCart, X } from 'lucide-react'
 import { MODULE_BY_ID } from '@/lib/modules'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -12,6 +12,7 @@ import { Kpis } from './Kpis'
 import { PantryItemCard } from './PantryItemCard'
 import { PantryListView } from './PantryListView'
 import { PantryItemForm, type PantryItemDraft } from './PantryItemForm'
+import { SupermarketModeModal } from './SupermarketModeModal'
 import { WebhookExport } from './WebhookExport'
 import { categories, isExpired, isExpiringSoon, isLow, sortItems } from './despensaUtils'
 
@@ -56,6 +57,7 @@ function DespensaSkeleton() {
 export function DespensaPage() {
   const module = MODULE_BY_ID['despensa']
   const { data, setItems } = useDespensaData()
+  const [supermarketOpen, setSupermarketOpen] = useState(false)
   const [form, setForm] = useState<FormState>(null)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [statusTab, setStatusTab] = useState<StatusTab>('all')
@@ -133,6 +135,23 @@ export function DespensaPage() {
     await api.update<PantryItem>('pantry', item.id, { qty: newQty })
   }
 
+  const handleCompleteShopping = async (completedItemIds: string[]) => {
+    if (!data) return
+    const idSet = new Set(completedItemIds)
+    const updated = data.items.map((it) => {
+      if (idSet.has(it.id)) {
+        return { ...it, qty: it.lowThreshold + 1 }
+      }
+      return it
+    })
+    setItems(updated)
+    for (const id of completedItemIds) {
+      const item = data.items.find((i) => i.id === id)
+      const targetQty = (item?.lowThreshold ?? 1) + 1
+      await api.update<PantryItem>('pantry', id, { qty: targetQty })
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader module={module} />
@@ -185,6 +204,22 @@ export function DespensaPage() {
                     <span>Cards</span>
                   </button>
                 </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSupermarketOpen(true)}
+                  className="h-8 px-2.5 text-xs bg-purple-500/10 text-purple-300 border border-purple-500/20 hover:bg-purple-500/20 gap-1.5 font-medium"
+                  title="Abrir checklist interativo do supermercado"
+                >
+                  <ShoppingCart className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Modo Mercado</span>
+                  {neededCount > 0 && (
+                    <span className="h-4 min-w-4 px-1 rounded-full bg-purple-500 text-zinc-950 font-bold text-[10px] flex items-center justify-center">
+                      {neededCount}
+                    </span>
+                  )}
+                </Button>
 
                 <Button variant="primary" size="sm" onClick={() => setForm({ mode: 'new' })}>
                   <Plus className="h-3.5 w-3.5" /> Novo item
@@ -362,6 +397,15 @@ export function DespensaPage() {
           categoryOptions={cats.map((c) => c.name)}
           onClose={() => setForm(null)}
           onSubmit={save}
+        />
+      )}
+
+      {supermarketOpen && (
+        <SupermarketModeModal
+          open={supermarketOpen}
+          items={data?.items ?? []}
+          onClose={() => setSupermarketOpen(false)}
+          onCompleteShopping={handleCompleteShopping}
         />
       )}
     </div>

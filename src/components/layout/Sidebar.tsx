@@ -12,8 +12,8 @@ export function Sidebar() {
           <Sparkles className="h-5 w-5" />
         </div>
         <div className="min-w-0 leading-tight">
-          <p className="font-display truncate text-sm font-bold text-zinc-50">AppControleTotal</p>
-          <p className="text-[11px] text-zinc-500">Life OS Hub · Hermes</p>
+          <p className="font-display truncate text-sm font-bold text-zinc-50">Life OS Hub</p>
+          <p className="text-[11px] text-zinc-500">Hermes Assistant</p>
         </div>
       </div>
 

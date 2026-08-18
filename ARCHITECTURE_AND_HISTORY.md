@@ -302,11 +302,26 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - **Steppers de Estoque Rápido (`-` `+`):** Alteração instantânea de quantidade em 1 clique sem abrir modais.
   - Badges coloridos de status (*"Falta comprar"*, *"Estoque baixo"*, *"OK"*, *"Vencendo em Xd"*).
 * **Controles de Produtividade na Despensa ([src/features/despensa/DespensaPage.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/DespensaPage.tsx)):**
-  - **Alternador de Visualização (Toggle):** `Lista` (padrão compacto) vs `Cards`, com persistência no `localStorage` (`act.pantryViewMode`).
-  - **Barra de Busca Instantânea:** Busca rápida por nome do produto ou categoria.
-  - **Abas de Status:** `Todos`, `🛒 Falta Comprar`, `⏳ Vencendo` com contadores em tempo real.
+---
+
+## 🌟 15. Rebranding para Life OS Hub, Modo Supermercado & Lembretes Prévios
+
+* **Rebranding Oficial para Life OS Hub:**
+  - Atualização do título da página (`<title>Life OS Hub</title>`), PWA Web Manifest (`Life OS Hub`), Header e Sidebar.
+* **Modo Supermercado Interativo ([src/features/despensa/SupermarketModeModal.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/SupermarketModeModal.tsx)):**
+  - Tela dedicada/modal com checkboxes grandes de alta sensibilidade para compras rápidas no celular.
+  - Barra de progresso visual do carrinho (`X de Y itens comprados`).
+  - **Finalizar Compras:** Repõe o estoque dos itens marcados com 1 clique.
+  - **Disparo / Cópia para o Telegram:** Envia a lista formatada com emojis direto para o chat do Hermes ou copia para o clipboard.
+* **Baixa de Compras via Webhook Telegram ([api/webhook/hermes-capture.js](file:///e:/Apps/AppControleTotal/api/webhook/hermes-capture.js)):**
+  - Suporte ao comando `"Comprei X"` ou `"Repus X"` no Telegram. O webhook reconhece a intenção, dá baixa na lista de compras e atualiza o estoque no Supabase.
+* **Briefing com IA do Hermes ([src/features/dashboard/HermesBriefingCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/HermesBriefingCard.tsx)):**
+  - Síntese inteligente matinal combinando agenda do dia, itens em falta na despensa e manutenções críticas.
+* **Lembretes 15 Minutos Antes ([src/lib/notifications.ts](file:///e:/Apps/AppControleTotal/src/lib/notifications.ts)):**
+  - Monitoramento contínuo em background (`setInterval` 60s) que dispara notificação no PWA/Navegador quando um compromisso da agenda estiver a ≤ 15 minutos de iniciar.
 
 ---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 
 
