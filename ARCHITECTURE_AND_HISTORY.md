@@ -484,6 +484,92 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - Estado vazio inteligente: Quando tudo estiver abastecido, exibe selo verde de tranquilidade (*"Tudo abastecido!"*).
 
 ---
+
+## ☁️ 24. Persistência em Nuvem das Configurações do Hermes AI (`app_settings`)
+
+* **Problema Resolvido:** Toda vez que um deploy na Vercel era realizado ou o usuário trocava de dispositivo, as chaves de API e URLs do Hermes precisavam ser recadastradas manualmente porque ficavam restritas ao `localStorage`.
+* **Solução Arquitetural ([src/lib/hermes.ts](file:///e:/Apps/AppControleTotal/src/lib/hermes.ts) e [supabase/migrations/20260819000000_app_settings.sql](file:///e:/Apps/AppControleTotal/supabase/migrations/20260819000000_app_settings.sql)):**
+  - Criada tabela `app_settings` no Supabase (`id text primary key, data jsonb, updated_at timestamptz`).
+  - No boot da aplicação ([`src/main.tsx`](file:///e:/Apps/AppControleTotal/src/main.tsx)), o app busca `app_settings` com `id = 'hermes_config'`.
+  - Se a nuvem estiver vazia mas o celular tiver chaves salvas localmente, o app faz o **auto-seed** automático para a nuvem.
+  - Toda alteração em [`SettingsHermes.tsx`](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsHermes.tsx) faz o upsert transparente no Supabase e atualiza o estado em memória, sincronizando todos os celulares e computadores sem necessidade de alterar variáveis na Vercel.
+
+---
+
+## 📸 25. Scanner OCR de Cupons com IA & Reposição Automática na Despensa
+
+* **Módulo e Componentes ([src/lib/receiptScanner.ts](file:///e:/Apps/AppControleTotal/src/lib/receiptScanner.ts) e [src/features/financas/ReceiptScannerModal.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/ReceiptScannerModal.tsx)):**
+  - **Visão Computacional Multimodal:** Utiliza prompts estruturados para extrair dados financeiros (estabelecimento, total, data, categoria) e itens individuais comprados (`detailedItems: [{ name, qty, unit }]`).
+  - **Painel de Reposição de Estoque:** Ao processar o cupom, exibe checklist interativo dos mantimentos detectados.
+  - **Integração com 1 Toque (`Lançar Gasto & Repor`):** Salva o gasto no módulo de Finanças e automaticamente atualiza ou insere os produtos na coleção `pantry` da Despensa.
+
+---
+
+## 🚗 26. Manutenção Preditiva Automotiva (Cálculo de KM/dia & Previsão de Revisão)
+
+* **Módulo e Componentes ([src/features/manutencao/predictiveMaint.ts](file:///e:/Apps/AppControleTotal/src/features/manutencao/predictiveMaint.ts) e [src/features/manutencao/AssetCard.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/AssetCard.tsx)):**
+  - **Algoritmo de Projeção:** Analisa o histórico de abastecimentos (`FuelLog`), calculando o delta de odômetro dividido pelo tempo decorrido ($\Delta\text{KM} / \Delta\text{Dias}$).
+  - **Estimativa Temporal:** Projeta exatamente em quantos dias e em qual data futura o veículo atingirá a próxima troca de óleo ou revisão periódica de 10.000 km.
+  - **Badges e Alertas:** Exibe badge no card do veículo e injeta alertas preventivos diretamente no Briefing Matinal do Hermes e nas mensagens do Telegram.
+
+---
+
+## 🧠 27. RAG Local & "Pergunte ao meu Life OS"
+
+* **Módulo e Componentes ([src/lib/lifeOsContext.ts](file:///e:/Apps/AppControleTotal/src/lib/lifeOsContext.ts) e [src/components/hermes/HermesChatDrawer.tsx](file:///e:/Apps/AppControleTotal/src/components/hermes/HermesChatDrawer.tsx)):**
+  - **Extrator de Contexto Multi-Coleção:** Compila em tempo real um resumo de alta densidade cobrindo:
+    - Gastos do mês atual e limite orçamentário.
+    - Contas fixas pendentes e seus vencimentos.
+    - Agenda e compromissos dos próximos 3 dias.
+    - Status de mantimentos críticos e baixos na Despensa.
+    - Veículos, odômetros e revisões previstas.
+    - Cofre de documentos e apólices de seguro.
+    - Últimas anotações do Diário.
+  - **Injeção no System Prompt:** O Hermes responde a perguntas em linguagem natural como *"Quanto gastei este mês?"* ou *"Quais contas vencem essa semana?"* com dados reais e precisos do banco.
+
+---
+
+## ✈️ 28. Painel Modo Viagem Ativo no Dashboard
+
+* **Componente ([src/features/dashboard/ActiveTripCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/ActiveTripCard.tsx) e [src/features/dashboard/DashboardPage.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/DashboardPage.tsx)):**
+  - **Detecção Automática:** Identifica se a data de hoje coincide com o intervalo `[startDate, endDate]` de qualquer viagem cadastrada em `trips`.
+  - **Card Dinâmico no Topo do Dashboard:** Exibe indicador de *Dia X de Y*, roteiro e paradas programadas para hoje, conversor instantâneo de moedas (USD / EUR ➔ BRL) e atalho para o Cofre de Documentos de Viagem.
+
+---
+
+## 🗺️ 29. Importador da Linha do Tempo do Google Maps & Relatório de Despesas da Família
+
+* **Classificação de Viagem ([src/data/types.ts](file:///e:/Apps/AppControleTotal/src/data/types.ts) e [src/features/viagens/TripForm.tsx](file:///e:/Apps/AppControleTotal/src/features/viagens/TripForm.tsx)):**
+  - Campo `kind: 'trabalho' | 'familia' | 'pessoal'`.
+  - **💼 Viagem a Trabalho:** Foco estrito em Km rodados e paradas comerciais (sem poluição com relatórios de compras pessoais).
+  - **👨‍👩‍👧‍👦 Viagem em Família:** Ativa o botão e modal de **Relatório de Gastos da Família**.
+  - **🌴 Viagem Pessoal / Lazer**.
+* **Importador Google Maps ([src/lib/timelineParser.ts](file:///e:/Apps/AppControleTotal/src/lib/timelineParser.ts) e [src/features/viagens/GoogleTimelineImporterModal.tsx](file:///e:/Apps/AppControleTotal/src/features/viagens/GoogleTimelineImporterModal.tsx)):**
+  - Faz o parse de arquivos `.json` ou `.kml` exportados do Google Takeout ou Google Maps Linha do Tempo.
+  - Extrai destino, datas, odômetro percorrido ($\text{km}$) e constrói o itinerário dia a dia com horários e paradas.
+  - Alimenta a lista de **Locais Visitados (`places`)** automaticamente.
+* **Relatório de Despesas da Família ([src/features/viagens/FamilyTripReportModal.tsx](file:///e:/Apps/AppControleTotal/src/features/viagens/FamilyTripReportModal.tsx)):**
+  - Cruza as datas da viagem com os lançamentos de Finanças (`spending_entries`).
+  - Totaliza gastos por categoria e gera mensagem formatada pronta para copiar e compartilhar no WhatsApp da família.
+
+---
+
+## 🔮 30. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
+
+Qualquer IA ou desenvolvedor pode utilizar as ideias abaixo para evoluir o sistema:
+
+1. **📊 Exportação de Prestação de Contas / Reembolso de Viagem a Trabalho (PDF / Excel):**
+   - Gerar relatório formal com tabela de Km rodados, datas, cidades visitadas e valor de reembolso por Km (ex: R$ 1,20/km) para envio à empresa.
+2. **🎙️ Lançamento de Gastos e Agenda por Áudio via WhatsApp (Webhook Hermes):**
+   - Integrar webhook do Hermes na VPS para receber áudios encaminhados do WhatsApp e executar *function calling* direto no Supabase.
+3. **🔔 Notificações Push Web (Web Push API com VAPID):**
+   - Notificações de alerta matinal do Hermes e lembretes de contas a vencer mesmo com o app fechado no celular.
+4. **⛽ Gráfico de Eficiência de Consumo do Veículo (Km/L ao longo do tempo):**
+   - Visualização gráfica da variação de consumo (cidade vs estrada) no módulo de Manutenção.
+5. **🏷️ Leitor de Código de Barras / EAN na Despensa (Scanner de Câmera):**
+   - Utilizar a câmera para bipar o código de barras de alimentos na despensa e buscar o nome do produto automaticamente via API pública (Cosmos/OpenFoodFacts).
+
+---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 
