@@ -554,7 +554,36 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
-## 🔮 30. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
+---
+
+## 📖 30. Manual de Instruções Interativo no App & Documentação de Ajuda
+
+* **Componente e Arquivo ([src/components/help/UserManualModal.tsx](file:///e:/Apps/AppControleTotal/src/components/help/UserManualModal.tsx) e [MANUAL_DO_USUARIO.md](file:///e:/Apps/AppControleTotal/MANUAL_DO_USUARIO.md)):**
+  - **Ícone `?` no Header Global:** Acesso instantâneo de qualquer tela com 1 clique ao guia de instruções do Life OS.
+  - **Busca em Tempo Real:** Campo de busca que filtra dinamicamente seções e tópicos por palavra-chave (ex: *scanner*, *manutenção*, *viagens*, *voz*, *despensa*, *biometria*).
+  - **Sanfonas (Accordion) com Dicas Pro:** Estrutura organizada por módulos contendo explicações passo a passo e dicas de produtividade.
+  - **Documento Markdown de Referência:** `MANUAL_DO_USUARIO.md` na raiz do projeto com o guia completo formatado.
+
+---
+
+## 📬 31. Inbox Hermes: Triagem Executiva de E-mails e Alertas com IA
+
+* **Conceito e Integração ([src/features/agenda/AgendaPage.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/AgendaPage.tsx) e [HERMES_VPS_INTEGRATION.md](file:///e:/Apps/AppControleTotal/HERMES_VPS_INTEGRATION.md)):**
+  - **Evolução do Módulo de E-mails:** A aba de e-mails da Agenda foi refinada para **"Inbox Hermes"**, assumindo o papel de uma central de triagem inteligente e briefings acionáveis.
+  - **Pipeline com Bot do Hermes (VPS via MCP):** O bot do Hermes na VPS lê a caixa postal (via IMAP/Gmail/MCP), descarta newsletters e spam, sintetiza e-mails importantes em resumos executivos de 2 linhas e injeta na tabela `emails` do Supabase.
+  - **Sincronização em Tempo Real:** O Life OS Hub recebe os alertas instantaneamente via Supabase Realtime WebSocket com flags de destaque (`critico`, tags `#financeiro`, `#urgente`, `#hermes`).
+
+---
+
+## 🛠️ 32. Estabilidade de Produção & Bundling do Vite
+
+* **Ajuste Técnico ([vite.config.ts](file:///e:/Apps/AppControleTotal/vite.config.ts)):**
+  - **Causa Raiz Resolvida:** A divisão manual de chunks (`manualChunks`) isolando `lucide-react` em `vendor-icons` enquanto `react` estava em `vendor-react` gerava conflito de ordem de avaliação no Rollup em produção (`TypeError: t is not a function`).
+  - **Solução:** Remoção do particionamento frágil para delegar ao Rollup a resolução segura de dependências com `chunkSizeWarningLimit: 1000`. Testado e validado com zero erros de console no navegador.
+
+---
+
+## 🔮 33. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
 
 Qualquer IA ou desenvolvedor pode utilizar as ideias abaixo para evoluir o sistema:
 
@@ -571,6 +600,7 @@ Qualquer IA ou desenvolvedor pode utilizar as ideias abaixo para evoluir o siste
 
 ---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 
 
 
