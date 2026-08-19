@@ -185,7 +185,7 @@ export function AgendaPage() {
           onClick={() => setActiveTab('inbox')}
         >
           <Mail className="h-4 w-4" />
-          Inbox
+          Inbox Hermes
           {(unreadCount > 0 || criticalCount > 0) && (
             <span className={cn(
               'absolute -top-1 -right-1 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-medium flex items-center justify-center',
@@ -218,7 +218,7 @@ export function AgendaPage() {
               {/* Inbox Toolbar */}
               <div className="flex items-center justify-between gap-4 p-4 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur sticky top-0 z-10">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-medium text-zinc-100">Emails</h3>
+                  <h3 className="font-medium text-zinc-100">Inbox Hermes</h3>
                   {criticalCount > 0 && (
                     <Badge className="text-xs bg-rose-500/15 text-rose-300 border-rose-500/30">
                       {criticalCount} críticos
@@ -250,11 +250,11 @@ export function AgendaPage() {
                   <Button
                     variant={showOnlyHermes ? 'primary' : 'ghost'}
                     size="sm"
-                    className="flex items-center gap-1"
+                    className="flex items-center gap-1 text-[11px]"
                     onClick={() => setShowOnlyHermes(!showOnlyHermes)}
                   >
                     <Bell className="h-3.5 w-3.5" />
-                    Hermes
+                    Só Hermes
                   </Button>
                 </div>
               </div>
@@ -262,15 +262,15 @@ export function AgendaPage() {
               {/* Email List */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {filteredEmails.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-center">
-                    <Mail className="h-12 w-12 text-zinc-600 mb-4" />
-                    <h4 className="font-medium text-zinc-100 mb-1">
-                      {emailFilter !== 'all' || showOnlyHermes ? 'Nenhum email encontrado' : 'Inbox vazio'}
+                  <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                    <Mail className="h-12 w-12 text-zinc-600 mb-3 opacity-60" />
+                    <h4 className="font-medium text-zinc-200 mb-1">
+                      {emailFilter !== 'all' || showOnlyHermes ? 'Nenhuma mensagem encontrada' : 'Inbox Hermes vazio'}
                     </h4>
-                    <p className="text-zinc-500 text-sm">
+                    <p className="text-zinc-500 text-xs max-w-sm">
                       {emailFilter !== 'all' || showOnlyHermes
-                        ? 'Tente alterar os filtros'
-                        : 'Emails aparecerão aqui quando chegarem'}
+                        ? 'Tente alterar os filtros acima.'
+                        : 'Alertas críticos, e-mails triados e briefings do Hermes aparecerão aqui em tempo real.'}
                     </p>
                   </div>
                 ) : (
