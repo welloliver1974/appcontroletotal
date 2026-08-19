@@ -1,0 +1,124 @@
+# 📖 Guia do Usuário & Manual de Instruções — Life OS Hub
+
+Bem-vindo ao **Life OS Hub (AppControleTotal)**! Este manual foi criado para ser o seu guia definitivo de uso diário, mostrando como aproveitar ao máximo cada uma das ferramentas inteligentes do sistema.
+
+---
+
+## 📑 Sumário Rápido
+
+1. [⚡ Ações Rápidas no Dashboard & Biometria](#1-⚡-ações-rápidas-no-dashboard--biometria)
+2. [🧾 Scanner OCR de Despesas com Reposição na Despensa](#2-🧾-scanner-ocr-de-despesas-com-reposição-na-despensa)
+3. [🚗 Carro & Manutenção Preditiva](#3-🚗-carro--manutenção-preditiva)
+4. [🧠 Hermes Copiloto & "Pergunte ao meu Life OS"](#4-🧠-hermes-copiloto--pergunte-ao-meu-life-os)
+5. [✈️ Viagens, Modo Viagem & Importador Google Maps](#5-✈️-viagens-modo-viagem--importador-google-maps)
+6. [🛒 Despensa & Lista Rápida de Compras](#6-🛒-despensa--lista-rápida-de-compras)
+7. [🔒 Cofre de Documentos, Seguros & Notas](#7-🔒-cofre-de-documentos-seguros--notas)
+8. [📲 Instalação no Celular (PWA) & Sincronização](#8-📲-instalação-no-celular-pwa--sincronização)
+
+---
+
+## 1. ⚡ Ações Rápidas no Dashboard & Biometria
+
+O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a necessidade de navegar por menus complexos.
+
+### Barra de Ações do Topo:
+* **`💸 + Gasto`**: Abre o formulário de despesa rápida (valor, categoria, data e descrição).
+* **`🧾 Escanear Cupom`**: Abre a câmera para ler recibos e notas fiscais com IA.
+* **`🎙️ Gravar Voz`**: Permite gravar um áudio narrando o seu dia; a IA transcreve e estrutura tudo no seu Diário (`Life-Log`).
+* **`📅 + Evento`**: Cadastra um novo compromisso na Agenda.
+* **`⛽ Abastecer`**: Registra o odômetro atual (Km), litros e valor para calcular o consumo médio do veículo.
+
+### 🔐 Desbloqueio por Biometria no Celular:
+* No seu smartphone, você pode entrar no app usando a **Digital ou Face ID**.
+* Para ativar: acesse **Configurações (`⚙️`) ➔ Minha Conta ➔ Ativar Biometria**.
+
+---
+
+## 2. 🧾 Scanner OCR de Despesas com Reposição na Despensa
+
+### Como usar:
+1. Clique em **`🧾 Escanear Cupom`** no topo do Dashboard ou em Finanças.
+2. Tire uma foto nítida do cupom de papel (supermercado, farmácia, padaria, restaurante ou posto) ou envie uma imagem da galeria.
+3. A IA processará a foto em ~2 segundos e extrairá:
+   * Estabelecimento, Data, Categoria e Valor Total.
+   * Lista individual de produtos comprados (com quantidades).
+4. **Reposição Automática:**
+   * Marque os mantimentos que deseja estocar.
+   * Clique em **`Lançar Gasto & Repor`**. O app registra o gasto em Finanças e já **soma ou cadastra os produtos na sua Despensa**!
+
+---
+
+## 3. 🚗 Carro & Manutenção Preditiva
+
+### Como funciona:
+* Toda vez que você abastecer, use o botão **`⛽ Abastecer`** informando a quilometragem atual do painel e os litros.
+* O sistema calcula automaticamente:
+  * **Consumo Real** ($\text{km/L}$).
+  * **Ritmo de Rodagem** ($\text{km/dia}$).
+  * **Previsão da Próxima Revisão / Troca de Óleo:** O app calcula quantos dias faltam para a próxima revisão de 10.000 km e avisa no card do carro e no Briefing Matinal.
+
+---
+
+## 4. 🧠 Hermes Copiloto & "Pergunte ao meu Life OS"
+
+O assistente Hermes está conectado a todas as 15 coleções do seu banco de dados em tempo real.
+
+### Como conversar:
+* Clique no botão flutuante do **Hermes (`🤖`)** no canto inferior direito.
+* Você pode digitar ou usar o botão de **Microfone (`🎙️`)** para falar.
+
+### Exemplos de perguntas que você pode fazer:
+* *"Quanto eu já gastei este mês em alimentação?"*
+* *"Quais contas fixas ainda estão pendentes para pagar?"*
+* *"O que está acabando ou vencendo na minha despensa?"*
+* *"Quando é a próxima revisão do meu carro?"*
+* *"Quais são meus compromissos para os próximos 3 dias?"*
+
+---
+
+## 5. ✈️ Viagens, Modo Viagem & Importador Google Maps
+
+### 🏷️ Tipos de Viagem:
+Ao criar ou importar uma viagem, defina o tipo:
+* **💼 Viagem a Trabalho:** Foco no controle de Km rodados e paradas comerciais (sem poluição com relatórios de compras pessoais).
+* **👨‍👩‍👧‍👦 Viagem em Família:** Ativa o botão **`📊 Gastos da Família`** para cruzar as despesas de hotéis, passeios e restaurantes e gerar um relatório formatado para o WhatsApp.
+* **🌴 Viagem Pessoal / Lazer.**
+
+### 📥 Importar do Google Maps (Linha do Tempo):
+1. No menu **Viagens**, clique no botão **`📥 Importar Google Maps`**.
+2. Selecione o arquivo `.json` ou `.kml` exportado da sua Linha do Tempo do Google.
+3. O app extrai o destino, datas, Km percorrido e cria as paradas do itinerário dia a dia automaticamente.
+
+### 🌟 Modo Viagem no Dashboard:
+Durante as datas de uma viagem ativa, o topo do Dashboard exibe o painel da viagem com paradas do dia, conversor de moeda (USD/EUR ➔ BRL) e atalhos rápidos de documentos.
+
+---
+
+## 6. 🛒 Despensa & Lista Rápida de Compras
+
+### Na tela inicial (Dashboard):
+* O card **Lista de Compras & Despensa** monitora automaticamente itens que estão acabando (`quantidade <= limite mínimo`) ou com vencimento nos próximos 7 dias.
+* Quando estiver no mercado, clique no botão **`✓ Comprado`** no item para atualizar o estoque na hora.
+* Use o campo rápido para adicionar novos itens que você lembrou de comprar.
+
+---
+
+## 7. 🔒 Cofre de Documentos, Seguros & Notas
+
+Acesse pelo menu **Life-Log ➔ Cofre de Documentos (`DocVault`)**:
+* Guarde apólices de seguro (carro, residencial, vida), cartões de vacina, cópias de CNH/RG e contratos.
+* Ficam protegidos e acessíveis mesmo sem conexão de internet (offline-first).
+
+---
+
+## 8. 📲 Instalação no Celular (PWA) & Sincronização
+
+### Como instalar no celular:
+* **No Android (Chrome):** Toque no banner no topo do app ou no menu dos 3 pontinhos ➔ **"Instalar Aplicativo"**.
+* **No iPhone (Safari):** Toque no botão de Compartilhar (`⎋`) ➔ **"Adicionar à Tela de Início (➕)"**.
+
+### ☁️ Sincronização em Nuvem:
+* Suas chaves de IA, configurações e dados ficam salvos com segurança no Supabase e sincronizam instantaneamente entre todos os seus celulares, tablets e computadores.
+
+---
+*Life OS Hub — Viva com clareza, controle e tranquilidade.*

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Plus, Search, Settings, Smartphone } from 'lucide-react'
+import { HelpCircle, Plus, Search, Settings, Smartphone } from 'lucide-react'
 import { MODULE_BY_PATH } from '@/lib/modules'
 import { useUiStore } from '@/stores/uiStore'
 import { useOfflineQueueStore } from '@/stores/offlineQueueStore'
@@ -10,12 +10,15 @@ import { toast } from '@/stores/toastStore'
 import { cn } from '@/lib/utils'
 import { Omnibox } from './Omnibox'
 import { SettingsModal } from '@/features/agenda/SettingsModal'
+import { UserManualModal } from '@/components/help/UserManualModal'
 
 /** Global header: current module chip · Neural Omnibox · Hermes sync · quick add (+) · settings. */
 export function Header() {
   const location = useLocation()
   const setCommandOpen = useUiStore((s) => s.setCommandOpen)
   const setQuickAddOpen = useUiStore((s) => s.setQuickAddOpen)
+  const manualOpen = useUiStore((s) => s.manualOpen)
+  const setManualOpen = useUiStore((s) => s.setManualOpen)
   const isOnline = useOfflineQueueStore((s) => s.isOnline)
   const isSyncing = useOfflineQueueStore((s) => s.isSyncing)
   const module = MODULE_BY_PATH[location.pathname]
@@ -87,6 +90,16 @@ export function Header() {
             </button>
           )}
 
+          {/* Manual / Ajuda */}
+          <button
+            onClick={() => setManualOpen(true)}
+            className="btn-ghost text-zinc-400 hover:text-cyan-300"
+            title="Manual & Guia de Uso"
+            aria-label="Manual de Instruções"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </button>
+
           {/* Settings */}
           <button
             onClick={() => setSettingsOpen(true)}
@@ -100,7 +113,7 @@ export function Header() {
           <button
             onClick={() => setQuickAddOpen(true)}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 transition-colors hover:bg-indigo-400 active:scale-95"
-            aria-label="Adição rápida (���N)"
+            aria-label="Adição rápida (Cmd+N)"
           >
             <Plus className="h-5 w-5" />
           </button>
@@ -109,6 +122,9 @@ export function Header() {
 
       {/* Settings Modal */}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* User Manual Modal */}
+      <UserManualModal open={manualOpen} onClose={() => setManualOpen(false)} />
     </>
   )
 }
