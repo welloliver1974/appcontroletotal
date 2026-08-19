@@ -27,6 +27,7 @@ import {
 import {
   getHermesAdvancedConfig,
   saveHermesAdvancedConfig,
+  loadHermesConfigFromCloud,
   sendHermesChat,
   sendHermesWebhook,
   type HermesAdvancedConfig,
@@ -35,6 +36,12 @@ import { toast } from '@/stores/toastStore'
 
 export function SettingsHermes() {
   const [config, setConfigState] = useState<HermesAdvancedConfig>(() => getHermesAdvancedConfig())
+
+  useEffect(() => {
+    void loadHermesConfigFromCloud().then((cloudCfg) => {
+      setConfigState(cloudCfg)
+    })
+  }, [])
   const [models, setModels] = useState<ModelItem[]>([])
   const [loadingModels, setLoadingModels] = useState(false)
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')

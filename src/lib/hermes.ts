@@ -4,7 +4,7 @@
  */
 import { PROVIDERS, type ProviderId } from './llmProviders'
 import { extractAndExecuteHermesActions, type ExecutedAction } from './hermesActions'
-import { db } from './db'
+import { db, supabase } from './db'
 
 const STORAGE_KEY = 'act.hermesAdvancedConfig'
 
@@ -54,6 +54,68 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
 
 export function saveHermesAdvancedConfig(config: HermesAdvancedConfig): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+
+  // Persist to Supabase so config survives redeploys and syncs across devices
+  if (supabase) {
+    void (async () => {
+      try {
+        const { error } = await supabase
+          .from('app_settings')
+          .upsert(
+            {
+              id: 'hermes_config',
+              data: config,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'id' },
+          )
+        if (error) {
+          console.warn('[hermes] Cloud sync warning (Supabase):', error.message)
+        }
+      } catch (err) {
+        console.warn('[hermes] Cloud sync error:', err)
+      }
+    })()
+  }
+}
+
+/**
+ * Load latest config from Supabase cloud and update local storage.
+ */
+export async function loadHermesConfigFromCloud(): Promise<HermesAdvancedConfig> {
+  const local = getHermesAdvancedConfig()
+  if (!supabase) return local
+
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('data')
+      .eq('id', 'hermes_config')
+      .maybeSingle()
+
+    if (error || !data?.data) return local
+
+    const cloudData = data.data as Partial<HermesAdvancedConfig>
+    const merged: HermesAdvancedConfig = {
+      ...local,
+      ...cloudData,
+      vpsUrl: cloudData.vpsUrl || local.vpsUrl,
+      vpsSecret: cloudData.vpsSecret || local.vpsSecret,
+      provider: cloudData.provider || local.provider,
+      llmApiKey: cloudData.llmApiKey || local.llmApiKey,
+      groqApiKey: cloudData.groqApiKey || local.groqApiKey,
+      llmModel: cloudData.llmModel || local.llmModel,
+      customBaseUrl: cloudData.customBaseUrl || local.customBaseUrl,
+      telegramBotUrl: cloudData.telegramBotUrl || local.telegramBotUrl,
+      enabled: cloudData.enabled ?? local.enabled,
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
+    return merged
+  } catch (err) {
+    console.warn('[hermes] Could not sync config from cloud:', err)
+    return local
+  }
 }
 
 // Backwards-compatible getters
@@ -409,3 +471,120 @@ export async function transcribeAudioWithWhisper(audioBlob: Blob): Promise<strin
     return null
   }
 }
+
+export interface AnalyzedReceiptItem {
+  name: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+}
+
+export interface AnalyzedReceipt {
+  establishment: string
+  date: string
+  category: 'alimentacao' | 'transporte' | 'moradia' | 'saude' | 'lazer' | 'educacao' | 'outros'
+  totalAmount: number
+  paymentMethod: string
+  items: AnalyzedReceiptItem[]
+}
+
+/**
+ * Analyze receipt or invoice image using Vision LLM (Groq Llama 3.2 Vision or OpenRouter).
+ */
+export async function analyzeReceiptImage(base64Image: string): Promise<AnalyzedReceipt | null> {
+  const config = getHermesAdvancedConfig()
+  const apiKey =
+    config.groqApiKey ||
+    config.llmApiKey ||
+    import.meta.env.VITE_GROQ_API_KEY ||
+    import.meta.env.VITE_LLM_API_KEY
+
+  if (!apiKey) {
+    console.warn('[ReceiptOCR] No API key available for Vision OCR.')
+    return null
+  }
+
+  const prompt = `Analise a imagem deste cupom fiscal ou recibo.
+Extraia com precisão os dados da compra e retorne EXCLUSIVAMENTE um objeto JSON no formato:
+{
+  "establishment": "Nome do estabelecimento ou loja",
+  "date": "YYYY-MM-DD",
+  "category": "alimentacao" | "transporte" | "moradia" | "saude" | "lazer" | "educacao" | "outros",
+  "totalAmount": 0.00,
+  "paymentMethod": "Cartão de Crédito" | "Cartão de Débito" | "PIX" | "Dinheiro" | "Outro",
+  "items": [
+    {
+      "name": "Nome do item",
+      "quantity": 1,
+      "unitPrice": 0.00,
+      "totalPrice": 0.00
+    }
+  ]
+}
+
+Se a data não estiver legível, use a data atual ${new Date().toISOString().slice(0, 10)}.
+Responda APENAS o JSON puro, sem markdown adicional.`
+
+  try {
+    const isGroq = config.provider === 'groq' || !config.llmApiKey.startsWith('sk-or-')
+    const endpoint = isGroq
+      ? 'https://api.groq.com/openai/v1/chat/completions'
+      : 'https://openrouter.ai/api/v1/chat/completions'
+    const model = isGroq ? 'llama-3.2-11b-vision-preview' : 'google/gemini-2.0-flash-001'
+
+    const imageUri = base64Image.startsWith('data:') ? base64Image : `data:image/jpeg;base64,${base64Image}`
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: imageUri } },
+            ],
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 1500,
+      }),
+    })
+
+    if (!res.ok) {
+      console.warn('[ReceiptOCR] Vision API returned error status:', res.status)
+      return null
+    }
+
+    const data = await res.json()
+    const content = data.choices?.[0]?.message?.content || ''
+    const match = content.match(/\{[\s\S]*\}/)
+    if (!match) return null
+
+    const parsed = JSON.parse(match[0]) as AnalyzedReceipt
+    return {
+      establishment: parsed.establishment || 'Estabelecimento',
+      date: parsed.date || new Date().toISOString().slice(0, 10),
+      category: parsed.category || 'alimentacao',
+      totalAmount: Number(parsed.totalAmount) || 0,
+      paymentMethod: parsed.paymentMethod || 'Cartão de Crédito',
+      items: Array.isArray(parsed.items)
+        ? parsed.items.map((i) => ({
+            name: String(i.name || 'Item'),
+            quantity: Number(i.quantity) || 1,
+            unitPrice: Number(i.unitPrice) || 0,
+            totalPrice: Number(i.totalPrice) || 0,
+          }))
+        : [],
+    }
+  } catch (err) {
+    console.error('[ReceiptOCR] Error analyzing receipt:', err)
+    return null
+  }
+}
+
