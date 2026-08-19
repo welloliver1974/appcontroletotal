@@ -93,7 +93,13 @@ export async function loadHermesConfigFromCloud(): Promise<HermesAdvancedConfig>
       .eq('id', 'hermes_config')
       .maybeSingle()
 
-    if (error || !data?.data) return local
+    if (error || !data?.data) {
+      // If cloud is empty and local device already has configured keys, automatically seed the cloud!
+      if (local.llmApiKey || local.groqApiKey || local.vpsUrl) {
+        saveHermesAdvancedConfig(local)
+      }
+      return local
+    }
 
     const cloudData = data.data as Partial<HermesAdvancedConfig>
     const merged: HermesAdvancedConfig = {
