@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import { Briefcase, Palmtree, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { cn, isoOffset } from '@/lib/utils'
-import type { Trip, TripStatus } from '@/data/types'
+import type { Trip, TripKind, TripStatus } from '@/data/types'
 import { STATUS } from './viagensUtils'
 
 export interface TripDraft {
@@ -10,6 +11,8 @@ export interface TripDraft {
   startDate: string
   endDate: string
   status: TripStatus
+  kind?: TripKind
+  totalKm?: number
 }
 
 /** Active chip classes for each status — kept literal so Tailwind compiles them. */
@@ -18,6 +21,12 @@ const STATUS_ACTIVE: Record<TripStatus, string> = {
   confirmado: 'border-cyan-500/60 bg-cyan-500/20 text-cyan-200',
   realizado: 'border-emerald-500/60 bg-emerald-500/20 text-emerald-200',
 }
+
+const KINDS: Array<{ id: TripKind; label: string; icon: typeof Briefcase; activeClass: string }> = [
+  { id: 'trabalho', label: '💼 Trabalho', icon: Briefcase, activeClass: 'border-indigo-500/60 bg-indigo-500/20 text-indigo-200' },
+  { id: 'familia', label: '👨‍👩‍👧‍👦 Família', icon: Users, activeClass: 'border-rose-500/60 bg-rose-500/20 text-rose-200' },
+  { id: 'pessoal', label: '🌴 Pessoal', icon: Palmtree, activeClass: 'border-cyan-500/60 bg-cyan-500/20 text-cyan-200' },
+]
 
 /** Create/edit modal for a trip (destination, dates, status). Stops live in StopForm. */
 export function TripForm({
@@ -35,13 +44,23 @@ export function TripForm({
   const [startDate, setStartDate] = useState(trip?.startDate ?? isoOffset(7))
   const [endDate, setEndDate] = useState(trip?.endDate ?? isoOffset(9))
   const [status, setStatus] = useState<TripStatus>(trip?.status ?? 'planejado')
+  const [kind, setKind] = useState<TripKind>(trip?.kind ?? 'trabalho')
+  const [totalKm, setTotalKm] = useState<string>(trip?.totalKm ? String(trip.totalKm) : '')
 
   const invalidRange = startDate > endDate
   const invalid = !destination.trim() || !startDate || !endDate || invalidRange
 
   const submit = () => {
     if (invalid) return
-    void onSubmit({ destination: destination.trim(), startDate, endDate, status })
+    const kmNum = totalKm ? parseInt(totalKm, 10) : undefined
+    void onSubmit({
+      destination: destination.trim(),
+      startDate,
+      endDate,
+      status,
+      kind,
+      totalKm: isNaN(kmNum as number) ? undefined : kmNum,
+    })
   }
 
   return (
@@ -59,6 +78,31 @@ export function TripForm({
             placeholder="ex.: Florianópolis — SC"
             autoFocus
           />
+        </div>
+
+        {/* Tipo de Viagem */}
+        <div>
+          <span className="mb-1.5 block text-xs font-medium text-zinc-500">Tipo de Viagem</span>
+          <div className="grid grid-cols-3 gap-2">
+            {KINDS.map((k) => {
+              const active = k.id === kind
+              return (
+                <button
+                  key={k.id}
+                  type="button"
+                  onClick={() => setKind(k.id)}
+                  className={cn(
+                    'flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-xs font-medium transition-colors',
+                    active
+                      ? k.activeClass
+                      : 'border-zinc-800 bg-white/5 text-zinc-500 hover:bg-white/10',
+                  )}
+                >
+                  {k.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         <div>
@@ -84,6 +128,22 @@ export function TripForm({
             })}
           </div>
         </div>
+
+        {kind === 'trabalho' && (
+          <div>
+            <label htmlFor="trip-km" className="mb-1.5 block text-xs font-medium text-zinc-500">
+              Quilometragem Prevista / Rodada (Km)
+            </label>
+            <input
+              id="trip-km"
+              type="number"
+              className="input-base font-mono"
+              value={totalKm}
+              onChange={(e) => setTotalKm(e.target.value)}
+              placeholder="ex.: 480"
+            />
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

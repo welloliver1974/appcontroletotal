@@ -1,4 +1,4 @@
-import { Clock, Pencil, Plane, Plus, Trash2 } from 'lucide-react'
+import { Clock, DollarSign, Pencil, Plane, Plus, Route, Trash2 } from 'lucide-react'
 import type { Trip, TripStop } from '@/data/types'
 import { Button } from '@/components/ui/Button'
 import { IconTile } from '@/components/ui/primitives'
@@ -16,6 +16,7 @@ export function TripCard({
   onNewStop,
   onEditStop,
   onRemoveStop,
+  onOpenReport,
 }: {
   trip: Trip
   onEdit: () => void
@@ -23,6 +24,7 @@ export function TripCard({
   onNewStop: () => void
   onEditStop: (stop: TripStop) => void
   onRemoveStop: (stopId: string) => void
+  onOpenReport?: (trip: Trip) => void
 }) {
   // Two independent guards: one for the trip itself, one shared by stop rows.
   const { pendingDelete: pendingTrip, request: requestTrip } = usePendingDelete()
@@ -36,13 +38,32 @@ export function TripCard({
     <div className="card flex flex-col gap-3 p-4">
       <div className="flex items-center gap-2">
         <IconTile icon={Plane} size="sm" className={CYAN_SOFT} />
-        <p className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-100">{trip.destination}</p>
+        <div className="min-w-0 flex-1 truncate">
+          <p className="truncate text-sm font-medium text-zinc-100">{trip.destination}</p>
+        </div>
+
+        {/* Badge do Tipo de Viagem */}
+        {trip.kind === 'trabalho' ? (
+          <span className="chip shrink-0 px-2 py-0.5 text-[10px] bg-indigo-500/15 text-indigo-300 border-indigo-500/30">
+            💼 Trabalho
+          </span>
+        ) : trip.kind === 'familia' ? (
+          <span className="chip shrink-0 px-2 py-0.5 text-[10px] bg-rose-500/15 text-rose-300 border-rose-500/30">
+            👨‍👩‍👧‍👦 Família
+          </span>
+        ) : null}
+
         <span className={cn('chip shrink-0 px-2 py-0.5 text-[10px]', status.chip)}>{status.label}</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         <span className="font-num text-zinc-400">{rangeLabel(trip)}</span>
         <span className="font-num text-zinc-600">{tripLength(trip.startDate, trip.endDate)} dias</span>
+        {trip.totalKm && trip.totalKm > 0 && (
+          <span className="font-num text-indigo-400 flex items-center gap-1 font-medium">
+            <Route className="h-3 w-3" /> {trip.totalKm} km rodados
+          </span>
+        )}
         <span className="text-zinc-500">{relativeDayLabel(trip.startDate)}</span>
       </div>
 
@@ -125,9 +146,23 @@ export function TripCard({
       )}
 
       <div className="mt-auto flex items-center justify-between gap-2 border-t border-zinc-800/70 pt-2">
-        <Button variant="soft" size="sm" className="h-7 px-2 text-[11px]" onClick={onNewStop}>
-          <Plus className="h-3.5 w-3.5" /> Parada
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button variant="soft" size="sm" className="h-7 px-2 text-[11px]" onClick={onNewStop}>
+            <Plus className="h-3.5 w-3.5" /> Parada
+          </Button>
+
+          {trip.kind === 'familia' && onOpenReport && (
+            <Button
+              variant="soft"
+              size="sm"
+              className="h-7 px-2 text-[11px] bg-rose-500/10 border-rose-500/30 text-rose-300 hover:bg-rose-500/20 gap-1"
+              onClick={() => onOpenReport(trip)}
+            >
+              <DollarSign className="h-3.5 w-3.5" /> Gastos da Família
+            </Button>
+          )}
+        </div>
+
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={onEdit}>
             <Pencil className="h-3.5 w-3.5" /> Editar

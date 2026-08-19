@@ -103,6 +103,7 @@ export interface PantryItem {
 }
 
 export type TripStatus = 'planejado' | 'confirmado' | 'realizado'
+export type TripKind = 'trabalho' | 'familia' | 'pessoal'
 
 export interface TripStop {
   id: string
@@ -120,6 +121,8 @@ export interface Trip {
   startDate: string
   endDate: string
   status: TripStatus
+  kind?: TripKind
+  totalKm?: number
   /** Chronological itinerary, grouped by day. Empty until a stop is added. */
   stops: TripStop[]
 }

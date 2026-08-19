@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plane, Plus } from 'lucide-react'
+import { FileJson, Plane, Plus } from 'lucide-react'
 import { MODULE_BY_ID } from '@/lib/modules'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -14,6 +14,8 @@ import { PlacesSection } from './PlacesSection'
 import { TripForm, type TripDraft } from './TripForm'
 import { StopForm, type StopDraft } from './StopForm'
 import { PlaceForm, type PlaceDraft } from './PlaceForm'
+import { GoogleTimelineImporterModal } from './GoogleTimelineImporterModal'
+import { FamilyTripReportModal } from './FamilyTripReportModal'
 import { STATUS, newStopId, sortTrips } from './viagensUtils'
 
 type TripFormState = null | { mode: 'new' } | { mode: 'edit'; trip: Trip }
@@ -65,6 +67,8 @@ export function ViagensPage() {
   const [stopForm, setStopForm] = useState<StopFormState>(null)
   const [placeForm, setPlaceForm] = useState<PlaceFormState>(null)
   const [filter, setFilter] = useState<TripStatus | null>(null)
+  const [timelineModalOpen, setTimelineModalOpen] = useState(false)
+  const [familyReportTrip, setFamilyReportTrip] = useState<Trip | null>(null)
 
   const trips = data?.trips ?? []
   // If the active status no longer exists (e.g. last trip deleted), fall back to "all".
@@ -146,9 +150,19 @@ export function ViagensPage() {
           <div>
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="eyebrow">Viagens</p>
-              <Button variant="primary" size="sm" onClick={() => setTripForm({ mode: 'new' })}>
-                <Plus className="h-3.5 w-3.5" /> Nova viagem
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="soft"
+                  size="sm"
+                  onClick={() => setTimelineModalOpen(true)}
+                  className="gap-1.5 text-cyan-300 border-cyan-500/30 bg-cyan-500/10 text-xs"
+                >
+                  <FileJson className="h-3.5 w-3.5" /> Importar Google Maps
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => setTripForm({ mode: 'new' })}>
+                  <Plus className="h-3.5 w-3.5" /> Nova viagem
+                </Button>
+              </div>
             </div>
 
             {trips.length >= 2 && (
@@ -189,9 +203,19 @@ export function ViagensPage() {
                 title="Nenhuma viagem cadastrada"
                 description="Planeje sua próxima aventura: destino, datas, status e itinerário dia a dia."
                 action={
-                  <Button variant="primary" size="sm" onClick={() => setTripForm({ mode: 'new' })}>
-                    <Plus className="h-3.5 w-3.5" /> Nova viagem
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="soft"
+                      size="sm"
+                      onClick={() => setTimelineModalOpen(true)}
+                      className="gap-1.5 text-cyan-300 border-cyan-500/30 bg-cyan-500/10"
+                    >
+                      <FileJson className="h-3.5 w-3.5" /> Importar Google Maps
+                    </Button>
+                    <Button variant="primary" size="sm" onClick={() => setTripForm({ mode: 'new' })}>
+                      <Plus className="h-3.5 w-3.5" /> Nova viagem
+                    </Button>
+                  </div>
                 }
               />
             ) : visible.length === 0 ? (
@@ -211,6 +235,7 @@ export function ViagensPage() {
                     onNewStop={() => setStopForm({ tripId: trip.id, mode: 'new' })}
                     onEditStop={(stop) => setStopForm({ tripId: trip.id, mode: 'edit', stop })}
                     onRemoveStop={(stopId) => void deleteStop(trip.id, stopId)}
+                    onOpenReport={(t) => setFamilyReportTrip(t)}
                   />
                 ))}
               </div>
@@ -253,6 +278,24 @@ export function ViagensPage() {
           place={placeForm.mode === 'edit' ? placeForm.place : undefined}
           onClose={() => setPlaceForm(null)}
           onSubmit={savePlace}
+        />
+      )}
+
+      {/* Modal de Importação do Google Maps Timeline */}
+      <GoogleTimelineImporterModal
+        open={timelineModalOpen}
+        onClose={() => setTimelineModalOpen(false)}
+        onSuccess={(newTrip) => {
+          if (data) setTrips([newTrip, ...data.trips])
+        }}
+      />
+
+      {/* Modal de Relatório de Gastos de Viagem em Família */}
+      {familyReportTrip && (
+        <FamilyTripReportModal
+          open={Boolean(familyReportTrip)}
+          trip={familyReportTrip}
+          onClose={() => setFamilyReportTrip(null)}
         />
       )}
     </div>
