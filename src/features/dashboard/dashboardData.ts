@@ -6,8 +6,10 @@ import type {
   Asset,
   InboxEmail,
   LifeLogEntry,
+  MaintenanceRecord,
   MaintMonth,
   PantryItem,
+  Trip,
   WeeklySpending,
 } from '@/data/types'
 
@@ -16,12 +18,24 @@ export interface DashboardData {
   emails: InboxEmail[]
   lifeLog: LifeLogEntry[]
   assets: Asset[]
+  maintenance: MaintenanceRecord[]
   pantry: PantryItem[]
   spending: WeeklySpending[]
   maintMonths: MaintMonth[]
+  trips: Trip[]
 }
 
-const DASHBOARD_COLLECTIONS = ['events', 'emails', 'lifeLog', 'assets', 'pantry', 'spending', 'maintMonths']
+const DASHBOARD_COLLECTIONS = [
+  'events',
+  'emails',
+  'lifeLog',
+  'assets',
+  'maintenance',
+  'pantry',
+  'spending',
+  'maintMonths',
+  'trips',
+]
 
 /** Loads every collection the dashboard reads through the API (async + skeleton + realtime). */
 export function useDashboardData(): DashboardData | null {
@@ -29,18 +43,20 @@ export function useDashboardData(): DashboardData | null {
   const aliveRef = useRef(true)
 
   const reload = useCallback(async () => {
-    const [events, emails, lifeLog, assets, pantry, spending, maintMonths] =
+    const [events, emails, lifeLog, assets, maintenance, pantry, spending, maintMonths, trips] =
       await Promise.all([
         api.list<AgendaEvent>('events'),
         api.list<InboxEmail>('emails'),
         api.list<LifeLogEntry>('lifeLog'),
         api.list<Asset>('assets'),
+        api.list<MaintenanceRecord>('maintenance'),
         api.list<PantryItem>('pantry'),
         api.list<WeeklySpending>('spending'),
         api.list<MaintMonth>('maintMonths'),
+        api.list<Trip>('trips'),
       ])
     if (aliveRef.current) {
-      setData({ events, emails, lifeLog, assets, pantry, spending, maintMonths })
+      setData({ events, emails, lifeLog, assets, maintenance, pantry, spending, maintMonths, trips })
     }
   }, [])
 

@@ -16,6 +16,7 @@ import { DailyHabitsCard } from './DailyHabitsCard'
 import { DashboardQuickActions } from './DashboardQuickActions'
 import { FinanceQuickSummaryCard } from './FinanceQuickSummaryCard'
 import { QuickShoppingListCard } from './QuickShoppingListCard'
+import { ActiveTripCard } from './ActiveTripCard'
 import { PwaInstallBanner } from '@/components/pwa/PwaInstallBanner'
 
 function todayLabel() {
@@ -87,6 +88,9 @@ export function DashboardPage() {
         <>
           {/* Barra de Ações Rápidas em 1 Toque */}
           <DashboardQuickActions onRefresh={() => setRefreshKey((k) => k + 1)} />
+
+          {/* Painel Dinâmico do Modo Viagem (exibido apenas quando houver viagem ativa hoje) */}
+          <ActiveTripCard trips={data.trips} />
 
           {/* Resumo Matinal do Hermes IA */}
           <HermesBriefingCard data={data} />

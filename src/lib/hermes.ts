@@ -226,29 +226,27 @@ export interface HermesChatResult {
   error?: string
 }
 
+import { buildFullLifeOsPromptContext } from './lifeOsContext'
+
 /**
- * Builds dynamic system prompt with current user state (events, pantry, etc.)
+ * Builds dynamic system prompt with real-time user state (financials, events, pantry, vehicle, docs, etc.)
  */
 async function buildSystemPrompt(): Promise<string> {
   try {
-    const [events, pantry] = await Promise.all([
-      db.get<Record<string, unknown>>('events').catch(() => []),
-      db.get<Record<string, unknown>>('pantry').catch(() => []),
-    ])
-
-    const todayStr = new Date().toISOString().slice(0, 10)
-    const todayEvents = events.filter((e) => String(e.date || '').startsWith(todayStr))
-    const lowStock = pantry.filter((p) => Number(p.quantity || 0) <= Number(p.minQuantity || 1))
+    const lifeOsContext = await buildFullLifeOsPromptContext()
 
     return `Você é o HERMES AGENT, o copiloto de Inteligência Artificial do Life OS Hub (AppControleTotal).
-Hoje é: ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}.
-Compromissos de hoje: ${todayEvents.length > 0 ? todayEvents.map((e) => `${e.title} às ${e.timeStart || ''}`).join(', ') : 'Nenhum'}.
-Itens em baixa na despensa: ${lowStock.length > 0 ? lowStock.map((i) => `${i.name} (${i.quantity} ${i.unit || 'un'})`).join(', ') : 'Nenhum'}.
+Você possui acesso em tempo real a todas as informações e dados da vida do usuário.
 
-Você é proativo, inteligente, direto e prestativo.
+${lifeOsContext}
+
+SUA POSTURA:
+- Seja direto, conciso, inteligente e prestativo.
+- Quando o usuário perguntar sobre gastos, datas, documentos ou despensa, use os dados acima com precisão cirúrgica.
+- Se os dados mostrarem alertas críticos, avise com gentileza.
 
 AÇÕES AUTOMÁTICAS:
-Se o usuário pedir para adicionar ou comprar algo (despensa/compras, gasto, compromisso ou nota no diário), além da sua resposta em texto amigável, você DEVE anexar ao final da mensagem a tag de ação exata no formato:
+Se o usuário pedir para cadastrar, adicionar ou comprar algo (despensa/compras, gasto, compromisso ou nota no diário), além da sua resposta em texto amigável, você DEVE anexar ao final da mensagem a tag de ação exata no formato:
 - Para Lista de Compras / Despensa: ACTION: {"action": "pantry_add", "payload": {"name": "Coca-Cola", "quantityToBuy": 3, "unit": "un", "category": "Bebidas"}}
 - Para Gasto / Despesa: ACTION: {"action": "spending_add", "payload": {"amount": 50.0, "category": "Alimentação", "note": "Almoço"}}
 - Para Agenda / Compromisso: ACTION: {"action": "event_add", "payload": {"title": "Título", "date": "YYYY-MM-DD", "timeStart": "HH:MM", "category": "pessoal"}}

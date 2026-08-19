@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import type { DashboardData } from './dashboardData'
 import { sendHermesChat } from '@/lib/hermes'
 import { toast } from '@/stores/toastStore'
+import { calculateVehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
 
 export function HermesBriefingCard({ data }: { data: DashboardData }) {
   const [briefing, setBriefing] = useState<string | null>(() => {
@@ -26,13 +27,25 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
   const lowStock = data.pantry.filter((p) => p.qty <= p.lowThreshold)
   const urgentAssets = data.assets.filter((a) => a.lifePct <= 20)
 
+  // Previsões veiculares ativas
+  const vehicleAlerts = data.assets
+    .filter((a) => a.category === 'carro')
+    .map((a) => ({ asset: a, stats: calculateVehiclePredictiveStats(a.id, data.maintenance) }))
+    .filter((v) => v.stats && (v.stats.urgency === 'critical' || v.stats.urgency === 'warning'))
+
   const generateAIBriefing = async () => {
     setLoading(true)
     try {
+      const carAlertsText =
+        vehicleAlerts.length > 0
+          ? `Alerta veicular preditivo: ${vehicleAlerts.map((v) => `${v.asset.name} (${v.stats?.formattedSummary})`).join('; ')}`
+          : 'Veículos em dia'
+
       const prompt = `Gere um briefing matinal rápido, motivador e executivo (em 2 ou 3 frases curtas e diretas) para o meu dia com base nestes dados:
 - Compromissos hoje: ${todayEvents.length > 0 ? todayEvents.map((e) => `${e.title} às ${e.timeStart}`).join(', ') : 'Nenhum compromisso marcado'}
 - Despensa: ${lowStock.length > 0 ? `${lowStock.length} itens precisando de compra (${lowStock.slice(0, 3).map((i) => i.name).join(', ')})` : 'Estoque 100% em dia'}
 - Manutenção: ${urgentAssets.length > 0 ? `${urgentAssets.length} ativo(s) com vida útil crítica (${urgentAssets.map((a) => a.name).join(', ')})` : 'Tudo revisado'}
+- Veículos: ${carAlertsText}
 - Life-Log: ${data.lifeLog.length} notas recentes registradas.`
 
       const res = await sendHermesChat([], prompt)
@@ -61,7 +74,9 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
       parts.push(`🛒 ${lowStock.length} item(ns) em falta na despensa (${lowStock.slice(0, 2).map((i) => i.name).join(', ')})`)
     }
 
-    if (urgentAssets.length > 0) {
+    if (vehicleAlerts.length > 0 && vehicleAlerts[0].stats) {
+      parts.push(`🚗 Atenção no carro: ${vehicleAlerts[0].stats.formattedSummary}`)
+    } else if (urgentAssets.length > 0) {
       parts.push(`⚠️ Atenção na manutenção: ${urgentAssets[0].name} com vida útil baixa`)
     }
 

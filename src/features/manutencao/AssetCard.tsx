@@ -1,4 +1,4 @@
-import { CalendarDays, Coins, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
+import { CalendarDays, Coins, Gauge, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import type { Asset, MaintenanceRecord } from '@/data/types'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/feedback'
@@ -7,6 +7,7 @@ import { formatBRL, relativeDayLabel, shortDate } from '@/lib/utils'
 import { usePendingDelete } from '@/lib/usePendingDelete'
 import { cn } from '@/lib/utils'
 import { CATEGORY, isOverdue, recordsFor, spentFor } from './maintUtils'
+import { calculateVehiclePredictiveStats } from './predictiveMaint'
 
 const ORANGE_SOFT = 'bg-orange-500/15 text-orange-300 border-orange-500/30'
 
@@ -32,6 +33,7 @@ export function AssetCard({
   const cat = CATEGORY[asset.category]
   const howMany = recordsFor(records, asset.id)
   const overdue = isOverdue(asset)
+  const predStats = asset.category === 'carro' ? calculateVehiclePredictiveStats(asset.id, records) : null
 
   return (
     <div
@@ -63,6 +65,24 @@ export function AssetCard({
         </div>
         <ProgressBar value={asset.lifePct} tone="orange" />
       </div>
+
+      {predStats && (
+        <div
+          className={cn(
+            'rounded-lg px-2.5 py-1.5 text-[11px] border flex items-center justify-between gap-2 transition-colors',
+            predStats.urgency === 'critical'
+              ? 'bg-rose-500/10 border-rose-500/30 text-rose-300 font-medium'
+              : predStats.urgency === 'warning'
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                : 'bg-zinc-900/60 border-zinc-800/80 text-zinc-300',
+          )}
+        >
+          <span className="flex items-center gap-1.5 truncate">
+            <Gauge className="h-3.5 w-3.5 text-orange-400 shrink-0" />
+            <span className="truncate">{predStats.formattedSummary}</span>
+          </span>
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-2 text-xs">
         {overdue ? (

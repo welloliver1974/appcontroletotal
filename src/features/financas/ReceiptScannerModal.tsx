@@ -4,14 +4,18 @@ import {
   Check,
   CheckCircle2,
   Loader2,
+  PackagePlus,
   Receipt,
   RotateCcw,
+  ShoppingCart,
   Zap,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { compressImageForOcr, type CompressionResult } from '@/lib/imageCompressor'
-import { parseReceiptWithVision, type ParsedReceiptData } from '@/lib/receiptScanner'
+import { parseReceiptWithVision, type ParsedReceiptData, type ScannedPantryItem } from '@/lib/receiptScanner'
+import { db } from '@/lib/db'
+import type { PantryItem } from '@/data/types'
 import { toast } from '@/stores/toastStore'
 
 interface ReceiptScannerModalProps {
@@ -26,6 +30,8 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
   const [analyzing, setAnalyzing] = useState(false)
   const [parsedData, setParsedData] = useState<ParsedReceiptData | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [syncWithPantry, setSyncWithPantry] = useState(true)
+  const [selectedItems, setSelectedItems] = useState<Record<number, boolean>>({})
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -43,6 +49,15 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
       // 2. Vision OCR Analysis
       const parsed = await parseReceiptWithVision(compressed.dataUrl)
       setParsedData(parsed)
+
+      // Select all detected items by default
+      const initialSelected: Record<number, boolean> = {}
+      const itemsList = parsed.detailedItems || parsed.items || []
+      itemsList.forEach((_, idx) => {
+        initialSelected[idx] = true
+      })
+      setSelectedItems(initialSelected)
+
       toast.success('Cupom lido com sucesso pela IA! 🧾')
     } catch (err) {
       console.error(err)
@@ -54,8 +69,59 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     }
   }
 
-  const handleApply = () => {
+  const toggleItemSelection = (index: number) => {
+    setSelectedItems((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }))
+  }
+
+  const handleApply = async () => {
     if (!parsedData) return
+
+    // 1. If pantry sync is enabled, replenish or add items to pantry
+    const itemsToSync = (parsedData.detailedItems || []).filter((_, idx) => selectedItems[idx])
+
+    if (syncWithPantry && itemsToSync.length > 0) {
+      try {
+        const currentPantry = await db.get<PantryItem>('pantry')
+        let restockedCount = 0
+
+        for (const item of itemsToSync) {
+          const cleanName = item.name.trim().toLowerCase()
+          const existing = currentPantry.find(
+            (p) => p.name.trim().toLowerCase() === cleanName || p.name.trim().toLowerCase().includes(cleanName),
+          )
+
+          if (existing) {
+            await db.upsert('pantry', {
+              ...existing,
+              qty: (Number(existing.qty) || 0) + (Number(item.qty) || 1),
+            })
+            restockedCount++
+          } else {
+            const newItem: PantryItem = {
+              id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              name: item.name,
+              category: 'alimentos',
+              qty: Number(item.qty) || 1,
+              unit: item.unit || 'un',
+              lowThreshold: 1,
+            }
+            await db.upsert('pantry', newItem)
+            restockedCount++
+          }
+        }
+
+        if (restockedCount > 0) {
+          toast.success(`🛒 ${restockedCount} item(ns) abastecido(s) na Despensa!`)
+        }
+      } catch (err) {
+        console.warn('[ReceiptScanner] Pantry sync failed:', err)
+      }
+    }
+
+    // 2. Apply spending entry
     onApply(parsedData)
     onClose()
   }
@@ -64,8 +130,12 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     setCompressResult(null)
     setParsedData(null)
     setErrorMsg(null)
+    setSelectedItems({})
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
+
+  const itemsList: ScannedPantryItem[] = parsedData?.detailedItems || (parsedData?.items || []).map((it) => ({ name: it, qty: 1, unit: 'un' }))
+  const selectedCount = Object.values(selectedItems).filter(Boolean).length
 
   return (
     <Modal open={open} onClose={onClose} title="Scanner de Cupom Fiscal com IA 📸">
@@ -91,7 +161,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                 Tire uma foto ou envie a imagem do Cupom
               </h4>
               <p className="text-xs text-zinc-400 max-w-sm mx-auto">
-                A IA lerá o nome do supermercado, data, categoria e valor total automaticamente.
+                A IA lerá o nome do supermercado, data, categoria, valor total e itens automaticamente.
               </p>
             </div>
 
@@ -123,10 +193,10 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
 
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-zinc-100">
-                Lendo dados do cupom fiscal...
+                Lendo dados do cupom fiscal com IA...
               </h4>
               <p className="text-xs text-zinc-400">
-                Identificando valor total, estabelecimento e data da compra.
+                Identificando valor total, estabelecimento, data e itens comprados.
               </p>
             </div>
 
@@ -200,19 +270,57 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                     </p>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                {parsedData.items && parsedData.items.length > 0 && (
-                  <div className="pt-1.5 border-t border-zinc-800">
-                    <span className="text-[10px] text-zinc-500 block mb-1">
-                      Itens identificados ({parsedData.items.length}):
+            {/* Reposição na Despensa (Pantry Sync) */}
+            {itemsList.length > 0 && (
+              <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={syncWithPantry}
+                      onChange={(e) => setSyncWithPantry(e.target.checked)}
+                      className="rounded border-zinc-700 bg-zinc-800 text-emerald-500 focus:ring-emerald-500 h-4 w-4"
+                    />
+                    <span className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
+                      <ShoppingCart className="h-3.5 w-3.5 text-purple-400" />
+                      Repor itens na Despensa ({selectedCount}/{itemsList.length})
                     </span>
-                    <p className="text-[11px] text-zinc-400 line-clamp-2">
-                      {parsedData.items.join(', ')}
-                    </p>
+                  </label>
+                </div>
+
+                {syncWithPantry && (
+                  <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 pt-1">
+                    {itemsList.map((item, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => toggleItemSelection(idx)}
+                        className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer border transition-all ${
+                          selectedItems[idx]
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-zinc-100'
+                            : 'bg-zinc-950/40 border-zinc-800/60 text-zinc-400 line-through opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={!!selectedItems[idx]}
+                            onChange={() => {}}
+                            className="rounded border-zinc-700 bg-zinc-800 text-emerald-500 h-3.5 w-3.5"
+                          />
+                          <span className="font-medium">{item.name}</span>
+                        </div>
+                        <span className="text-[11px] font-mono text-zinc-400">
+                          +{item.qty} {item.unit}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
-            </div>
+            )}
 
             {/* Ações */}
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800">
@@ -226,7 +334,15 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                 onClick={handleApply}
                 className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20"
               >
-                <Check className="h-4 w-4" /> Preencher Gasto
+                {syncWithPantry && selectedCount > 0 ? (
+                  <>
+                    <PackagePlus className="h-4 w-4" /> Lançar Gasto & Repor ({selectedCount})
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" /> Preencher Gasto
+                  </>
+                )}
               </Button>
             </div>
           </div>

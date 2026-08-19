@@ -139,10 +139,12 @@ export function HermesChatDrawer() {
   }
 
   const quickPrompts = [
+    'Quanto gastei este mês?',
+    'Quais contas fixas vencem este mês?',
     'O que tenho para fazer hoje?',
-    'Quais alimentos estão vencendo na despensa?',
-    'Cadastrar gasto de R$ 50 no almoço',
-    'Resuma meus insights do diário',
+    'O que falta comprar na despensa?',
+    'Qual a previsão de revisão do carro?',
+    'Quais documentos tenho salvos no cofre?',
   ]
 
   return (

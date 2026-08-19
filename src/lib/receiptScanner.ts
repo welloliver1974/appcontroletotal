@@ -1,5 +1,11 @@
 import { getHermesAdvancedConfig } from './hermes'
 
+export interface ScannedPantryItem {
+  name: string
+  qty: number
+  unit: string
+}
+
 export interface ParsedReceiptData {
   establishment: string
   amount: number
@@ -7,6 +13,7 @@ export interface ParsedReceiptData {
   time?: string // HH:mm
   category: string
   items?: string[]
+  detailedItems?: ScannedPantryItem[]
   rawSummary?: string
 }
 
@@ -20,7 +27,7 @@ function currentHhMm() {
 }
 
 /**
- * Sends compressed receipt image to Vision LLM via proxy to extract structured spending data.
+ * Sends compressed receipt image to Vision LLM via proxy to extract structured spending data and pantry items.
  */
 export async function parseReceiptWithVision(
   compressedDataUrl: string,
@@ -55,7 +62,10 @@ Estrutura JSON obrigatória:
   "date": "YYYY-MM-DD", // data da emissão (ex.: 2026-08-18). Se não encontrar, use "${todayIso()}"
   "time": "HH:MM", // hora da compra se visível (ex.: 14:30)
   "category": "Alimentação" | "Despensa" | "Saúde" | "Transporte" | "Lazer" | "Serviços" | "Outros",
-  "items": ["Item 1", "Item 2"] // lista dos principais produtos identificados
+  "items": ["Item 1", "Item 2"], // lista dos nomes dos produtos identificados
+  "detailedItems": [
+    { "name": "Item 1", "qty": 1, "unit": "un" }
+  ]
 }
 
 Responda APENAS o JSON puro.`
@@ -116,13 +126,26 @@ Responda APENAS o JSON puro.`
 
     const numAmount = typeof parsed.amount === 'number' ? parsed.amount : parseFloat(String(parsed.amount).replace(',', '.'))
 
+    const rawDetailed = Array.isArray(parsed.detailedItems)
+      ? parsed.detailedItems
+      : Array.isArray(parsed.items)
+        ? parsed.items.map((it: string) => ({ name: String(it), qty: 1, unit: 'un' }))
+        : []
+
+    const detailedItems: ScannedPantryItem[] = rawDetailed.map((it: any) => ({
+      name: String(it?.name || 'Item'),
+      qty: Math.max(1, Number(it?.qty) || 1),
+      unit: String(it?.unit || 'un'),
+    }))
+
     return {
       establishment: parsed.establishment || 'Cupom Fiscal',
       amount: isNaN(numAmount) ? 0 : Math.abs(numAmount),
       date: parsed.date && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : todayIso(),
       time: parsed.time || currentHhMm(),
       category: parsed.category || 'Alimentação',
-      items: Array.isArray(parsed.items) ? parsed.items : [],
+      items: Array.isArray(parsed.items) ? parsed.items : detailedItems.map((i) => i.name),
+      detailedItems,
       rawSummary: content,
     }
   } catch {
