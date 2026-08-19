@@ -221,8 +221,85 @@ if __name__ == "__main__":
 
 ---
 
-## 🚀 6. Checklist de Ativação na VPS
+---
+
+## 📬 7. Bot do Hermes: Triagem Executiva de E-mails para o App
+
+Você pode utilizar o seu bot do Hermes (que já lê e-mails via MCP/IMAP/Gmail) para atuar como um **Assessor Executivo Inteligente**. Em vez de você abrir a caixa de entrada para triar mensagens, o bot analisa os e-mails recebidos, descarta ruídos e envia apenas o resumo dos e-mails críticos direto para a tabela `emails` do Supabase.
+
+### 📋 Estrutura da Tabela `emails` no Supabase:
+
+| Campo | Tipo | Descrição |
+| :--- | :--- | :--- |
+| `id` | `TEXT` / `UUID` | Identificador único (ex: `gen_random_uuid()`) |
+| `from` | `TEXT` | Remetente (ex: `banco@notificacoes.com.br` ou `Diretoria`) |
+| `subject` | `TEXT` | Assunto ou Título Sintetizado pela IA |
+| `preview` | `TEXT` | Resumo executivo de 2 a 3 linhas gerado pelo bot |
+| `importance` | `TEXT` | `'critico'` (destaque vermelho) ou `'normal'` |
+| `sent_at` | `TIMESTAMPTZ` | Data e hora de envio (ISO string ou `NOW()`) |
+| `tags` | `TEXT[]` | Tags para filtros (ex: `['hermes', 'financeiro', 'urgente']`) |
+| `read` | `BOOLEAN` | Status de leitura (iniciar com `false`) |
+
+---
+
+### 🐍 Script do Bot Hermes para Inserir E-mails Triados (Python / Supabase):
+
+```python
+import os
+from datetime import datetime, timezone
+from supabase import create_client, Client
+
+# Configurações do Supabase (as mesmas usadas pelo app)
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://seu-projeto.supabase.co")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "sua_chave_service_role_ou_anon")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+def send_email_to_life_os(
+    sender: str,
+    subject: str,
+    ai_summary_preview: str,
+    importance: str = "critico",
+    tags: list = None
+):
+    """
+    Insere o e-mail triado pelo Hermes direto no Supabase.
+    O AppControleTotal receberá em tempo real via WebSocket.
+    """
+    if tags is None:
+        tags = ["hermes", "email-triado"]
+    
+    payload = {
+        "from": sender,
+        "subject": subject,
+        "preview": ai_summary_preview,
+        "importance": importance,  # 'critico' ou 'normal'
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+        "tags": tags,
+        "read": False
+    }
+    
+    response = supabase.table("emails").insert(payload).execute()
+    print(f"✅ E-mail enviado com sucesso ao Life OS Hub! ID: {response.data}")
+    return response.data
+
+# Exemplo de chamada direta pelo Bot do Hermes após ler via MCP:
+if __name__ == "__main__":
+    send_email_to_life_os(
+        sender="Financeiro / Banco",
+        subject="Fatura com vencimento para amanhã",
+        ai_summary_preview="Fatura do cartão no valor de R$ 1.450,00 vence amanhã (20/08). Código de barras disponível no corpo do e-mail.",
+        importance="critico",
+        tags=["hermes", "financeiro", "urgente"]
+    )
+```
+
+---
+
+## 🚀 8. Checklist de Ativação na VPS
 
 1. [ ] **Túnel Cloudflare:** Verificar se o túnel `cloudflared` está ativo apontando para a porta do servidor local (ex: `http://localhost:8000`).
 2. [ ] **Token Secreto:** Definir a mesma chave secreta na VPS (`HERMES_SECRET`) e no AppControleTotal (**Configurações ➔ Hermes & IA ➔ Token Secreto**).
 3. [ ] **Teste no App:** Ir na aba **Configurações ➔ Hermes & IA** e clicar no botão **"Testar Webhook VPS"** para confirmar a resposta `HTTP 200 OK`.
+4. [ ] **Triagem de E-mails:** Executar o script ou função do bot do Hermes que lê os e-mails via MCP e faz o `insert` na tabela `emails`.
+
