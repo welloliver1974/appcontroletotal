@@ -159,17 +159,7 @@ export default defineConfig({
     },
   },
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id: string) {
-          if (id.includes('node_modules')) {
-            if (id.includes('recharts')) return 'vendor-charts'
-            if (id.includes('lucide-react')) return 'vendor-icons'
-            if (id.includes('@supabase')) return 'vendor-supabase'
-            if (id.includes('react') || id.includes('zustand')) return 'vendor-react'
-          }
-        },
-      },
-    },
+    // Let Rollup safely handle chunk splitting without circular runtime dependency glitches
+    chunkSizeWarningLimit: 1000,
   },
 })
