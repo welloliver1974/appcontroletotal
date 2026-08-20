@@ -624,7 +624,25 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
-## 🔮 37. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
+## 🎯 37. Super Reestruturação do Scanner OCR de Cupons Fiscais (NFC-e / SAT / Danfe)
+
+* **Problema Identificado pelo Usuário:** O leitor de cupons apresentava alta taxa de falhas e erros de leitura ("não lê direito, não acerta uma, cada hora erra uma coisa").
+* **Causas Raízes Identificadas:**
+  1. **Subdimensionamento de Imagem:** Compressão agressiva para 900px a 70% de qualidade JPEG tornava o texto de impressoras térmicas (pequeno e de baixa resolução em cupons verticais) em borrões pixelados.
+  2. **Truncamento de Tokens (`max_tokens: 600`):** Respostas com mais de 5 itens excediam 600 tokens e cortavam o JSON ao meio, disparando erro de sintaxe e falha geral.
+  3. **Falta de Diretrizes Fiscais Brasileiras:** A IA confundia subtotal bruto com total líquido a pagar, além de ter dificuldades com datas no formato `DD/MM/AAAA`.
+  4. **Ausência de Edição Pré-Salvamento:** O modal era puramente estático, impossibilitando qualquer correção de centavos ou nomes.
+* **Soluções Implementadas:**
+  - **Filtro de Contraste Térmico + 1800px ([imageCompressor.ts](file:///e:/Apps/AppControleTotal/src/lib/imageCompressor.ts)):** Canvas 2D com estiramento dinâmico de curva de contraste (`contrast = 1.2`), clareando o fundo de papel térmico e realçando letras desbotadas em resolução nítida de 1800px a 88% JPEG.
+  - **Prompt Especialista em Documentos Fiscais Brasileiros ([receiptScanner.ts](file:///e:/Apps/AppControleTotal/src/lib/receiptScanner.ts)):** Regras estritas para extração do valor líquido efetivo pago, conversão de datas `DD/MM/AAAA` para ISO `YYYY-MM-DD`, expansão de abreviações térmicas e limite de resposta ampliado para **2.500 tokens** com sanitizador JSON auto-reparável.
+  - **Formulário de Conferência & Edição Interativa ([ReceiptScannerModal.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/ReceiptScannerModal.tsx)):**
+    - Todos os campos principais (Loja, Valor Total R$, Categoria, Data, Hora) agora são editáveis antes de salvar.
+    - Gestão completa de itens da despensa (editar nomes, ajustar quantidades/unidades, remover itens ou adicionar novos manualmente).
+    - Botão de alternar/visualizar foto original do cupom lado a lado para fácil conferência.
+
+---
+
+## 🔮 38. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
 
 1. **📊 Exportação de Prestação de Contas / Reembolso de Viagem a Trabalho (PDF / Excel):**
    - Gerar relatório formal com tabela de Km rodados, datas, cidades visitadas e valor de reembolso por Km (ex: R$ 1,20/km) para envio à empresa.

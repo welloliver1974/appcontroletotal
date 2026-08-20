@@ -40,17 +40,21 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 
 ---
 
-## 2. 🧾 Scanner OCR de Despesas com Reposição na Despensa
-
+## 2. 🧾 Scanner OCR de Despesas com Reposição na Despensa & Edição Total
+ 
 ### Como usar:
 1. Clique em **`🧾 Escanear Cupom`** no topo do Dashboard ou em Finanças.
-2. Tire uma foto nítida do cupom de papel (supermercado, farmácia, padaria, restaurante ou posto) ou envie uma imagem da galeria.
-3. A IA processará a foto em ~2 segundos e extrairá:
-   * Estabelecimento, Data, Categoria e Valor Total.
-   * Lista individual de produtos comprados (com quantidades).
-4. **Reposição Automática:**
-   * Marque os mantimentos que deseja estocar.
-   * Clique em **`Lançar Gasto & Repor`**. O app registra o gasto em Finanças e já **soma ou cadastra os produtos na sua Despensa**!
+2. Tire uma foto do cupom fiscal ou envie uma imagem da galeria. O sistema aplica **auto-realce de contraste térmico** para máxima legibilidade.
+3. A IA processa a foto com alta precisão e carrega os dados em uma tela de conferência editável:
+   * **Estabelecimento / Loja:** Nome identificado (totalmente editável).
+   * **Valor Total Pago (R$):** Valor líquido final (com ponto ou vírgula).
+   * **Categoria, Data e Hora:** Ajustáveis livremente.
+   * **Visualizador da Foto:** Botão para abrir a imagem original ao lado dos dados para rápida conferência.
+4. **Gestão de Itens da Despensa:**
+   * Lista todos os itens comprados identificados com nome limpo e quantidades.
+   * Você pode renomear produtos, alterar quantidades/unidades, remover itens com a lixeira ou clicar em **`+ Adicionar Item`**.
+5. **Salvar & Abastecer:**
+   * Clique em **`Salvar Gasto & Repor Despensa`** para registrar a despesa financeira e estocar automaticamente os produtos selecionados na Despensa!
 
 ---
 
