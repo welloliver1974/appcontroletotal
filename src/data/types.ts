@@ -71,15 +71,15 @@ export interface ReadingEntry {
   updatedAt: string // ISO
 }
 
-export type AssetCategory = 'carro' | 'casa'
+export type AssetCategory = 'carro' | 'moto' | 'casa' | 'outro'
 
 export interface Asset {
   id: string
   name: string
   category: AssetCategory
   /** 0..100 remaining useful life */
-  lifePct: number
-  nextMaintenance: string // YYYY-MM-DD
+  lifePct?: number
+  nextMaintenance?: string // YYYY-MM-DD (opcional)
   lastMaintenance?: string
 }
 
@@ -157,6 +157,7 @@ export interface SpendingItem {
   note: string
   date: string // YYYY-MM-DD
   time?: string // HH:mm
+  referenceId?: string
   createdAt?: string
 }
 

@@ -6,8 +6,11 @@ import { cn } from '@/lib/utils'
 
 function useKpis(data: DashboardData) {
   const commitments = data.events.filter((e) => upcomingWindowDays(e.date, 7)).length
-  const maintenances = data.assets
-    .filter((a) => upcomingWindowDays(a.nextMaintenance, 7) || a.lifePct <= 25).length
+  const maintenances = data.assets.filter(
+    (a) =>
+      (a.nextMaintenance && upcomingWindowDays(a.nextMaintenance, 7)) ||
+      (typeof a.lifePct === 'number' && a.lifePct > 0 && a.lifePct <= 20),
+  ).length
   const lowStock = data.pantry.filter((i) => i.qty <= i.lowThreshold).length
   const logsCount = data.lifeLog.length
   return [

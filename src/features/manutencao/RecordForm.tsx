@@ -10,6 +10,7 @@ export interface RecordDraft {
   cost: number
   date: string
   odometerKm?: number
+  syncFinance?: boolean
 }
 
 /** Modal for a new maintenance record (tied to the selected asset by default). */
@@ -29,6 +30,10 @@ export function RecordForm({
   const [cost, setCost] = useState('')
   const [date, setDate] = useState(isoOffset(0))
   const [odometer, setOdometer] = useState('')
+  const [syncFinance, setSyncFinance] = useState(true)
+
+  const selectedAsset = assets.find((a) => a.id === assetId)
+  const isVehicle = selectedAsset?.category === 'carro' || selectedAsset?.category === 'moto'
 
   const submit = () => {
     if (!assetId || !title.trim()) return
@@ -40,20 +45,21 @@ export function RecordForm({
       cost: Math.round(costN * 100) / 100,
       date,
       odometerKm: Number.isFinite(km) && km > 0 ? km : undefined,
+      syncFinance,
     })
   }
 
   return (
-    <Modal open onClose={onClose} title="Novo registro de manutenção">
+    <Modal open onClose={onClose} title="Novo registro de serviço / manutenção">
       <div className="space-y-4">
         <div>
           <label htmlFor="record-asset" className="mb-1.5 block text-xs font-medium text-zinc-500">
-            Ativo
+            Ativo / Veículo
           </label>
           <select id="record-asset" className="input-base" value={assetId} onChange={(e) => setAssetId(e.target.value)}>
             {assets.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.name}
+                {a.category === 'carro' ? '🚗' : a.category === 'moto' ? '🏍️' : a.category === 'casa' ? '🏠' : '📦'} {a.name}
               </option>
             ))}
           </select>
@@ -61,14 +67,14 @@ export function RecordForm({
 
         <div>
           <label htmlFor="record-title" className="mb-1.5 block text-xs font-medium text-zinc-500">
-            Descrição
+            Descrição do Serviço / Manutenção
           </label>
           <input
             id="record-title"
             className="input-base"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="ex.: Troca de óleo + filtros"
+            placeholder={isVehicle ? 'ex.: Troca de óleo + filtro, pastilhas...' : 'ex.: Limpeza caixa d água, conserto ar condicionado...'}
             autoFocus
           />
         </div>
@@ -76,7 +82,7 @@ export function RecordForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="record-cost" className="mb-1.5 block text-xs font-medium text-zinc-500">
-              Custo (R$)
+              Custo Total (R$)
             </label>
             <input
               id="record-cost"
@@ -89,7 +95,7 @@ export function RecordForm({
           </div>
           <div>
             <label htmlFor="record-odo" className="mb-1.5 block text-xs font-medium text-zinc-500">
-              Odômetro (km) <span className="text-zinc-600">(opcional)</span>
+              Odômetro (km) <span className="text-zinc-600">{isVehicle ? '(opcional)' : '(apenas veículos)'}</span>
             </label>
             <input
               id="record-odo"
@@ -98,13 +104,14 @@ export function RecordForm({
               value={odometer}
               onChange={(e) => setOdometer(e.target.value)}
               placeholder="ex.: 48.500"
+              disabled={!isVehicle}
             />
           </div>
         </div>
 
         <div>
           <label htmlFor="record-date" className="mb-1.5 block text-xs font-medium text-zinc-500">
-            Data
+            Data do Serviço
           </label>
           <input
             id="record-date"
@@ -114,6 +121,19 @@ export function RecordForm({
             onChange={(e) => setDate(e.target.value)}
           />
         </div>
+
+        {/* Toggle de sincronização com Finanças */}
+        <label className="flex items-center gap-2 cursor-pointer select-none rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-2.5 hover:bg-emerald-500/15 transition-colors">
+          <input
+            type="checkbox"
+            checked={syncFinance}
+            onChange={(e) => setSyncFinance(e.target.checked)}
+            className="h-4 w-4 rounded accent-emerald-500"
+          />
+          <span className="text-xs text-emerald-300 font-medium">
+            💰 Lançar automaticamente no extrato e orçamento de Finanças
+          </span>
+        </label>
 
         <div className="flex items-center justify-end gap-2 pt-1">
           <Button variant="ghost" onClick={onClose}>

@@ -65,11 +65,11 @@ export async function getLifeOsSummaryContext(): Promise<LifeOsSummaryContext> {
 
   // 4. Manutenção & Veículos
   const criticalAssets = assets
-    .filter((a) => a.lifePct <= 25 || a.nextMaintenance < todayIso)
-    .map((a) => `${a.name} (Vida útil: ${a.lifePct}%, próx. revisão: ${a.nextMaintenance})`)
+    .filter((a) => (typeof a.lifePct === 'number' && a.lifePct > 0 && a.lifePct <= 20) || (a.nextMaintenance && a.nextMaintenance < todayIso))
+    .map((a) => `${a.name}${a.nextMaintenance ? ` (próx. revisão: ${a.nextMaintenance})` : ''}`)
 
   const vehicleSummary = assets
-    .filter((a) => a.category === 'carro')
+    .filter((a) => a.category === 'carro' || a.category === 'moto')
     .map((a) => {
       const pred = calculateVehiclePredictiveStats(a.id, maintenance)
       return pred

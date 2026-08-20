@@ -34,22 +34,24 @@ function buildAlerts(data: DashboardData): AlertItem[] {
   const today = new Date()
 
   for (const a of data.assets) {
-    const overdue = a.nextMaintenance < new Date().toISOString().slice(0, 10)
-    if (overdue || upcomingWindowDays(a.nextMaintenance, 7)) {
-      items.push({
-        id: `ast-${a.id}`,
-        kind: 'manutencao',
-        title: overdue ? `Manutenção atrasada — ${a.name}` : `Manutenção iminente — ${a.name}`,
-        meta: `${relativeDayLabel(a.nextMaintenance, today)} · vida útil ${a.lifePct}%`,
-        tone: overdue ? 'critico' : 'atencao',
-        icon: Wrench,
-      })
-    } else if (a.lifePct <= 25) {
+    if (a.nextMaintenance) {
+      const overdue = a.nextMaintenance < new Date().toISOString().slice(0, 10)
+      if (overdue || upcomingWindowDays(a.nextMaintenance, 7)) {
+        items.push({
+          id: `ast-${a.id}`,
+          kind: 'manutencao',
+          title: overdue ? `Manutenção atrasada — ${a.name}` : `Manutenção iminente — ${a.name}`,
+          meta: `${relativeDayLabel(a.nextMaintenance, today)}${a.lifePct ? ` · vida útil ${a.lifePct}%` : ''}`,
+          tone: overdue ? 'critico' : 'atencao',
+          icon: Wrench,
+        })
+      }
+    } else if (typeof a.lifePct === 'number' && a.lifePct > 0 && a.lifePct <= 20) {
       items.push({
         id: `life-${a.id}`,
         kind: 'manutencao',
-        title: `Fim de vida útil — ${a.name}`,
-        meta: `apenas ${a.lifePct}% restante`,
+        title: `Atenção — ${a.name}`,
+        meta: `Saúde do ativo em ${a.lifePct}%`,
         tone: 'atencao',
         icon: Wrench,
       })

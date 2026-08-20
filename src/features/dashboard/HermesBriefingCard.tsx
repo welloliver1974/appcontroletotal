@@ -25,7 +25,9 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
 
   const todayEvents = data.events.filter((e) => e.date === todayStr)
   const lowStock = data.pantry.filter((p) => p.qty <= p.lowThreshold)
-  const urgentAssets = data.assets.filter((a) => a.lifePct <= 20)
+  const urgentAssets = data.assets.filter(
+    (a) => typeof a.lifePct === 'number' && a.lifePct > 0 && a.lifePct <= 20,
+  )
 
   // Previsões veiculares ativas
   const vehicleAlerts = data.assets

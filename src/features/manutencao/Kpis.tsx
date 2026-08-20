@@ -10,7 +10,7 @@ const ORANGE_SOFT = 'bg-orange-500/15 text-orange-300 border-orange-500/30'
 export function Kpis({ assets, records }: { assets: Asset[]; records: MaintenanceRecord[] }) {
   const latestDate = records.reduce((m, r) => (r.date > m ? r.date : m), records[0]?.date ?? '')
   const avgLife = assets.length
-    ? Math.round(assets.reduce((s, a) => s + a.lifePct, 0) / assets.length)
+    ? Math.round(assets.reduce((s, a) => s + (a.lifePct ?? 100), 0) / assets.length)
     : 0
 
   const kpis = [

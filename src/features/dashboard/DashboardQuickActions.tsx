@@ -14,6 +14,7 @@ import { FuelLogModal } from '@/features/manutencao/FuelLogModal'
 import { EventModal } from '@/features/agenda/EventModal'
 import { api } from '@/data/api'
 import { toast } from '@/stores/toastStore'
+import { syncMaintenanceRecordToFinance } from '@/lib/maintFinanceSync'
 import type { AgendaEvent, Asset, LifeLogEntry, MaintenanceRecord, SpendingItem } from '@/data/types'
 import type { ParsedReceiptData } from '@/lib/receiptScanner'
 
@@ -91,15 +92,21 @@ export function DashboardQuickActions({ onRefresh }: { onRefresh?: () => void })
     cost: number
     date: string
     odometerKm?: number
+    syncFinance?: boolean
   }) => {
     try {
-      await api.create<MaintenanceRecord>('maintenance', {
+      const created = await api.create<MaintenanceRecord>('maintenance', {
         assetId: draft.assetId,
         title: draft.title,
         cost: draft.cost,
         date: draft.date,
         odometerKm: draft.odometerKm,
       })
+
+      if (draft.cost > 0 && draft.syncFinance !== false) {
+        await syncMaintenanceRecordToFinance(created, assets)
+      }
+
       toast.success('Abastecimento registrado com sucesso! ⛽')
       setShowFuel(false)
       onRefresh?.()

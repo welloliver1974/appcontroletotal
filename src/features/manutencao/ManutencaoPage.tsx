@@ -14,6 +14,7 @@ import { AssetForm, type AssetDraft } from './AssetForm'
 import { RecordForm, type RecordDraft } from './RecordForm'
 import { FuelLogModal } from './FuelLogModal'
 import { sortAssetsByUrgency } from './maintUtils'
+import { syncMaintenanceRecordToFinance, syncAllUnsyncedMaintenance } from '@/lib/maintFinanceSync'
 
 type AssetFormState = null | { mode: 'new' } | { mode: 'edit'; asset: Asset }
 
@@ -59,6 +60,11 @@ export function ManutencaoPage() {
   const [openFuelLog, setOpenFuelLog] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
+  // Sync initial unsynced records
+  useEffect(() => {
+    void syncAllUnsyncedMaintenance()
+  }, [])
+
   // Keep a selection: default = most urgent asset; fall back after deletes.
   useEffect(() => {
     if (!data) return
@@ -90,8 +96,20 @@ export function ManutencaoPage() {
 
   const saveRecord = async (draft: RecordDraft) => {
     if (!data) return
-    const created = await api.create<MaintenanceRecord>('maintenance', draft)
+    const created = await api.create<MaintenanceRecord>('maintenance', {
+      assetId: draft.assetId,
+      title: draft.title,
+      cost: draft.cost,
+      date: draft.date,
+      odometerKm: draft.odometerKm,
+    })
     setRecords([created, ...data.records])
+
+    // Sincronizar gasto com Finanças se houver custo e syncFinance não for falso
+    if (draft.cost > 0 && draft.syncFinance !== false) {
+      await syncMaintenanceRecordToFinance(created, data.assets)
+    }
+
     // Keep the asset's lastMaintenance in sync with the newest record.
     const target = data.assets.find((a) => a.id === created.assetId)
     if (target && (!target.lastMaintenance || created.date > target.lastMaintenance)) {

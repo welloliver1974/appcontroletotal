@@ -16,6 +16,7 @@ interface FuelLogModalProps {
     cost: number
     date: string
     odometerKm?: number
+    syncFinance?: boolean
   }) => Promise<void>
 }
 
@@ -28,15 +29,19 @@ export function FuelLogModal({
   records,
   onSubmit,
 }: FuelLogModalProps) {
-  const carAssets = useMemo(() => assets.filter((a) => a.category === 'carro'), [assets])
+  const vehicleAssets = useMemo(
+    () => assets.filter((a) => a.category === 'carro' || a.category === 'moto'),
+    [assets],
+  )
 
-  const [assetId, setAssetId] = useState(() => carAssets[0]?.id || assets[0]?.id || '')
+  const [assetId, setAssetId] = useState(() => vehicleAssets[0]?.id || assets[0]?.id || '')
   const [currentKm, setCurrentKm] = useState('')
   const [liters, setLiters] = useState('')
   const [totalCost, setTotalCost] = useState('')
   const [fuelType, setFuelType] = useState('Gasolina Comum')
   const [gasStation, setGasStation] = useState('')
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [syncFinance, setSyncFinance] = useState(true)
   const [saving, setSaving] = useState(false)
 
   // Encontrar o último odômetro registrado para este veículo
@@ -90,12 +95,13 @@ export function FuelLogModal({
         cost: costNum,
         date,
         odometerKm: kmNum,
+        syncFinance,
       })
 
       if (stats.kmPerLiter) {
-        toast.success(`Abastecimento salvo! Consumo médio: ${stats.kmPerLiter.toFixed(1)} km/L ⛽`)
+        toast.success(`Abastecimento salvo e sincronizado com Finanças! (${stats.kmPerLiter.toFixed(1)} km/L) ⛽💰`)
       } else {
-        toast.success('Abastecimento registrado com sucesso! ⛽')
+        toast.success('Abastecimento salvo e sincronizado com Finanças! ⛽💰')
       }
 
       onClose()
@@ -107,12 +113,12 @@ export function FuelLogModal({
     }
   }
 
-  if (carAssets.length === 0 && assets.length === 0) {
+  if (vehicleAssets.length === 0 && assets.length === 0) {
     return (
       <Modal open={open} onClose={onClose} title="Registrar Abastecimento ⛽">
         <div className="p-4 text-center space-y-3">
           <p className="text-xs text-zinc-400">
-            Cadastre primeiro um veículo na seção de Manutenção para registrar abastecimentos.
+            Cadastre primeiro um veículo (Carro ou Moto) na seção de Manutenção para registrar abastecimentos.
           </p>
           <Button variant="ghost" size="sm" onClick={onClose}>
             Fechar
@@ -134,12 +140,12 @@ export function FuelLogModal({
             className="input-base text-xs font-medium"
             required
           >
-            {carAssets.map((c) => (
+            {vehicleAssets.map((c) => (
               <option key={c.id} value={c.id}>
-                🚗 {c.name}
+                {c.category === 'moto' ? '🏍️' : '🚗'} {c.name}
               </option>
             ))}
-            {carAssets.length === 0 &&
+            {vehicleAssets.length === 0 &&
               assets.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -236,17 +242,32 @@ export function FuelLogModal({
           </div>
         </div>
 
-        {/* Data */}
-        <div className="space-y-1">
-          <label className="text-xs text-zinc-400 flex items-center gap-1">
-            <Calendar className="h-3 w-3" /> Data do Abastecimento
+        {/* Data & Sincronização com Finanças */}
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <label className="text-xs text-zinc-400 flex items-center gap-1">
+              <Calendar className="h-3 w-3" /> Data do Abastecimento
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="input-base text-xs font-mono"
+            />
+          </div>
+
+          {/* Toggle de sincronização financeira */}
+          <label className="flex items-center gap-2 cursor-pointer select-none rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-2.5 hover:bg-emerald-500/15 transition-colors">
+            <input
+              type="checkbox"
+              checked={syncFinance}
+              onChange={(e) => setSyncFinance(e.target.checked)}
+              className="h-4 w-4 rounded accent-emerald-500"
+            />
+            <span className="text-xs text-emerald-300 font-medium">
+              💰 Lançar automaticamente no extrato e orçamento de Finanças (Transporte)
+            </span>
           </label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="input-base text-xs font-mono"
-          />
         </div>
 
         {/* Painel de Cálculo em Tempo Real */}

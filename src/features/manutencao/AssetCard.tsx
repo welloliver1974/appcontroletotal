@@ -1,4 +1,4 @@
-import { CalendarDays, Coins, Gauge, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
+import { CalendarDays, CheckCircle2, Coins, Gauge, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import type { Asset, MaintenanceRecord } from '@/data/types'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/feedback'
@@ -30,10 +30,10 @@ export function AssetCard({
   onNewRecord: () => void
 }) {
   const { pendingDelete, request } = usePendingDelete()
-  const cat = CATEGORY[asset.category]
+  const cat = CATEGORY[asset.category] || CATEGORY.carro
   const howMany = recordsFor(records, asset.id)
   const overdue = isOverdue(asset)
-  const predStats = asset.category === 'carro' ? calculateVehiclePredictiveStats(asset.id, records) : null
+  const predStats = asset.category === 'carro' || asset.category === 'moto' ? calculateVehiclePredictiveStats(asset.id, records) : null
 
   return (
     <div
@@ -60,10 +60,10 @@ export function AssetCard({
 
       <div>
         <div className="mb-1.5 flex items-baseline justify-between gap-2">
-          <span className="eyebrow text-orange-400">Vida útil</span>
-          <span className="font-num text-xs text-zinc-400">{asset.lifePct}%</span>
+          <span className="eyebrow text-orange-400">Vida útil / Saúde</span>
+          <span className="font-num text-xs text-zinc-400">{asset.lifePct ?? 100}%</span>
         </div>
-        <ProgressBar value={asset.lifePct} tone="orange" />
+        <ProgressBar value={asset.lifePct ?? 100} tone="orange" />
       </div>
 
       {predStats && (
@@ -85,14 +85,20 @@ export function AssetCard({
       )}
 
       <div className="flex items-center justify-between gap-2 text-xs">
-        {overdue ? (
-          <span className="inline-flex items-center gap-1 font-medium text-rose-300">
-            <TriangleAlert className="h-3.5 w-3.5" /> Manutenção atrasada
-          </span>
+        {asset.nextMaintenance ? (
+          overdue ? (
+            <span className="inline-flex items-center gap-1 font-medium text-rose-300">
+              <TriangleAlert className="h-3.5 w-3.5" /> Manutenção atrasada
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-zinc-400">
+              <CalendarDays className="h-3.5 w-3.5" />
+              {relativeDayLabel(asset.nextMaintenance)} · <span className="font-num">{shortDate(asset.nextMaintenance)}</span>
+            </span>
+          )
         ) : (
-          <span className="inline-flex items-center gap-1 text-zinc-400">
-            <CalendarDays className="h-3.5 w-3.5" />
-            {relativeDayLabel(asset.nextMaintenance)} · <span className="font-num">{shortDate(asset.nextMaintenance)}</span>
+          <span className="inline-flex items-center gap-1 text-emerald-400/90 text-[11px] font-medium">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Sem revisão agendada
           </span>
         )}
         <span className="font-num shrink-0 text-zinc-600">{howMany.length} registros</span>
