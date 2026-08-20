@@ -6,9 +6,11 @@ import {
   Edit2,
   Eye,
   EyeOff,
+  Link as LinkIcon,
   Loader2,
   PackagePlus,
   Plus,
+  QrCode,
   Receipt,
   RotateCcw,
   Scan,
@@ -20,8 +22,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { compressImageForOcr, type CompressionResult } from '@/lib/imageCompressor'
 import { parseReceiptWithVision, type ParsedReceiptData, type ScannedPantryItem } from '@/lib/receiptScanner'
-import type { SefazQrCodeData } from '@/lib/qrReceiptReader'
-import { LiveQrScanner } from '@/components/ui/LiveQrScanner'
+import { detectQrCodeFromFile, parseSefazUrl, type SefazQrCodeData } from '@/lib/qrReceiptReader'
 import { db } from '@/lib/db'
 import type { PantryItem } from '@/data/types'
 import { toast } from '@/stores/toastStore'
@@ -44,11 +45,16 @@ interface ReceiptScannerModalProps {
 }
 
 export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerModalProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const qrFileInputRef = useRef<HTMLInputElement>(null)
+  const fullFileInputRef = useRef<HTMLInputElement>(null)
+
   const [compressResult, setCompressResult] = useState<CompressionResult | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [isScanningLiveQr, setIsScanningLiveQr] = useState(false)
+
+  // Manual URL input state
+  const [showManualUrl, setShowManualUrl] = useState(false)
+  const [manualUrl, setManualUrl] = useState('')
 
   // Editable Form State
   const [establishment, setEstablishment] = useState('')
@@ -63,18 +69,17 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
   const [showPhotoPreview, setShowPhotoPreview] = useState(false)
   const [hasResult, setHasResult] = useState(false)
 
-  const handleLiveQrScanned = (qr: SefazQrCodeData) => {
-    setIsScanningLiveQr(false)
+  // Apply parsed QR result into form
+  const applyQrResult = (qr: SefazQrCodeData) => {
     setQrInfo(qr)
     setErrorMsg(null)
 
-    // Pre-populate with verified fiscal data from QR
     const storeLabel = qr.cnpj ? `Nota Fiscal (CNPJ ${qr.cnpj})` : qr.model || 'Nota Fiscal SEFAZ'
     setEstablishment(storeLabel)
     if (qr.totalAmount && qr.totalAmount > 0) {
       setAmountStr(qr.totalAmount.toFixed(2).replace('.', ','))
     }
-    setDate(new Date().toISOString().slice(0, 10))
+    setDate(qr.date || new Date().toISOString().slice(0, 10))
     setTime('')
     setCategory('Despensa')
     setSyncWithPantry(false) // No products detected from bare QR code
@@ -84,7 +89,8 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     toast.success('QR Code SEFAZ lido com sucesso! 🧾✨')
   }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 1. Fotografar QR Code de perto (Modo Rápido com Câmera Nativa)
+  const handleQrPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -92,17 +98,71 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     setHasResult(false)
     setAnalyzing(true)
     setQrInfo(null)
-    setIsScanningLiveQr(false)
 
     try {
-      // 1. High-clarity compression with thermal contrast boost
+      // Decode QR Code directly from full-resolution native camera file
+      const qr = await detectQrCodeFromFile(file)
+
+      if (qr) {
+        applyQrResult(qr)
+      } else {
+        // Fallback: If QR couldn't be decoded, run AI vision on the image
+        const compressed = await compressImageForOcr(file, 1800, 0.88)
+        setCompressResult(compressed)
+        const parsed = await parseReceiptWithVision(compressed.dataUrl, file)
+
+        setEstablishment(parsed.establishment || 'Cupom Fiscal')
+        setAmountStr(parsed.amount > 0 ? parsed.amount.toFixed(2).replace('.', ',') : '')
+        setDate(parsed.date || new Date().toISOString().slice(0, 10))
+        setTime(parsed.time || '')
+        if (parsed.qrCode) setQrInfo(parsed.qrCode)
+
+        const detectedCat = CATEGORIES.includes(parsed.category) ? parsed.category : 'Despensa'
+        setCategory(detectedCat)
+        setSyncWithPantry(detectedCat === 'Despensa')
+
+        const detectedItems: ScannedPantryItem[] =
+          parsed.detailedItems && parsed.detailedItems.length > 0
+            ? parsed.detailedItems
+            : (parsed.items || []).map((name) => ({ name, qty: 1, unit: 'un' }))
+
+        setItems(detectedItems)
+        const initialSelected: Record<number, boolean> = {}
+        detectedItems.forEach((_, idx) => {
+          initialSelected[idx] = true
+        })
+        setSelectedItems(initialSelected)
+
+        setHasResult(true)
+        toast.success('Cupom analisado pela IA! 🧾✨')
+      }
+    } catch (err) {
+      console.error(err)
+      const msg = err instanceof Error ? err.message : 'Falha ao analisar a foto do QR Code.'
+      setErrorMsg(msg)
+      toast.error('Erro ao ler QR Code.')
+    } finally {
+      setAnalyzing(false)
+      if (qrFileInputRef.current) qrFileInputRef.current.value = ''
+    }
+  }
+
+  // 2. Fotografar Cupom Completo para IA & Despensa
+  const handleFullReceiptChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setErrorMsg(null)
+    setHasResult(false)
+    setAnalyzing(true)
+    setQrInfo(null)
+
+    try {
       const compressed = await compressImageForOcr(file, 1800, 0.88)
       setCompressResult(compressed)
 
-      // 2. Vision OCR Analysis with Full Sensor Raw File QR Detection
       const parsed = await parseReceiptWithVision(compressed.dataUrl, file)
 
-      // 3. Populate editable form state
       setEstablishment(parsed.establishment || 'Cupom Fiscal')
       setAmountStr(parsed.amount > 0 ? parsed.amount.toFixed(2).replace('.', ',') : '')
       setDate(parsed.date || new Date().toISOString().slice(0, 10))
@@ -111,10 +171,6 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
 
       const detectedCat = CATEGORIES.includes(parsed.category) ? parsed.category : 'Despensa'
       setCategory(detectedCat)
-
-      // Smart Pantry Stocking:
-      // If Alimentação (padaria/restaurante/lanchonete/bar), default to FALSE (consumption, not inventory)
-      // If Despensa (supermercado/atacado/hortifruti), default to TRUE (stock replenishment)
       setSyncWithPantry(detectedCat === 'Despensa')
 
       const detectedItems: ScannedPantryItem[] =
@@ -123,8 +179,6 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
           : (parsed.items || []).map((name) => ({ name, qty: 1, unit: 'un' }))
 
       setItems(detectedItems)
-
-      // Select all items by default
       const initialSelected: Record<number, boolean> = {}
       detectedItems.forEach((_, idx) => {
         initialSelected[idx] = true
@@ -144,47 +198,21 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
       toast.error('Erro ao ler cupom fiscal.')
     } finally {
       setAnalyzing(false)
+      if (fullFileInputRef.current) fullFileInputRef.current.value = ''
     }
   }
 
-  const toggleItemSelection = (index: number) => {
-    setSelectedItems((prev) => ({
-      ...prev,
-      [index]: !prev[index],
-    }))
-  }
-
-  const updateItem = (index: number, field: keyof ScannedPantryItem, val: string | number) => {
-    setItems((prev) => {
-      const copy = [...prev]
-      copy[index] = { ...copy[index], [field]: val }
-      return copy
-    })
-  }
-
-  const removeItem = (index: number) => {
-    setItems((prev) => prev.filter((_, idx) => idx !== index))
-    setSelectedItems((prev) => {
-      const next: Record<number, boolean> = {}
-      let newIdx = 0
-      Object.keys(prev)
-        .sort((a, b) => Number(a) - Number(b))
-        .forEach((k) => {
-          if (Number(k) !== index) {
-            next[newIdx] = prev[Number(k)]
-            newIdx++
-          }
-        })
-      return next
-    })
-  }
-
-  const addItem = () => {
-    setItems((prev) => {
-      const next = [...prev, { name: '', qty: 1, unit: 'un' }]
-      setSelectedItems((s) => ({ ...s, [next.length - 1]: true }))
-      return next
-    })
+  // 3. Manual URL Submit
+  const handleManualUrlSubmit = () => {
+    if (!manualUrl.trim()) return
+    const parsed = parseSefazUrl(manualUrl.trim())
+    if (parsed) {
+      applyQrResult(parsed)
+      setManualUrl('')
+      setShowManualUrl(false)
+    } else {
+      toast.error('URL da SEFAZ inválida. Cole o link completo do QR Code.')
+    }
   }
 
   const handleApply = async () => {
@@ -243,8 +271,8 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     setErrorMsg(null)
     setItems([])
     setSelectedItems({})
-    setIsScanningLiveQr(false)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (qrFileInputRef.current) qrFileInputRef.current.value = ''
+    if (fullFileInputRef.current) fullFileInputRef.current.value = ''
   }
 
   const selectedCount = Object.values(selectedItems).filter(Boolean).length
@@ -252,26 +280,26 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
   return (
     <Modal open={open} onClose={onClose} title="Scanner de Cupom & QR Code 📸">
       <div className="space-y-4 pt-1 max-h-[80vh] overflow-y-auto pr-1">
-        {/* Hidden File Input */}
+        {/* Hidden Inputs for Native Camera */}
         <input
           type="file"
-          ref={fileInputRef}
+          ref={qrFileInputRef}
           accept="image/*"
           capture="environment"
-          onChange={handleFileChange}
+          onChange={handleQrPhotoChange}
+          className="hidden"
+        />
+        <input
+          type="file"
+          ref={fullFileInputRef}
+          accept="image/*"
+          capture="environment"
+          onChange={handleFullReceiptChange}
           className="hidden"
         />
 
-        {/* Live Camera Viewfinder if Active */}
-        {isScanningLiveQr && (
-          <LiveQrScanner
-            onScan={handleLiveQrScanned}
-            onClose={() => setIsScanningLiveQr(false)}
-          />
-        )}
-
         {/* Hero Options Selection State */}
-        {!compressResult && !analyzing && !isScanningLiveQr && !hasResult && (
+        {!compressResult && !analyzing && !hasResult && (
           <div className="space-y-4">
             <div className="border-2 border-dashed border-zinc-800 rounded-2xl p-6 text-center bg-zinc-900/40 space-y-4">
               <div className="space-y-1.5">
@@ -279,16 +307,16 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                   Como você deseja escanear o cupom?
                 </h4>
                 <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
-                  Escolha ler o QR Code instantaneamente ao vivo ou tirar uma foto completa para a IA extrair os produtos.
+                  Tire a foto de perto do QR Code para leitura instantânea ou fotografe o cupom inteiro para a IA extrair os produtos.
                 </p>
               </div>
 
               {/* Action Buttons Grid */}
               <div className="grid sm:grid-cols-2 gap-3 pt-2">
-                {/* Opção 1: Bipar QR Code ao Vivo */}
+                {/* Opção 1: Fotografar QR Code */}
                 <button
                   type="button"
-                  onClick={() => setIsScanningLiveQr(true)}
+                  onClick={() => qrFileInputRef.current?.click()}
                   className="p-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-left transition-all group flex flex-col justify-between space-y-3 shadow-lg shadow-emerald-500/5 hover:border-emerald-500"
                 >
                   <div className="flex items-center justify-between w-full">
@@ -302,10 +330,10 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
 
                   <div className="space-y-1">
                     <h5 className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
-                      Bipar QR Code ao Vivo
+                      Fotografar QR Code
                     </h5>
                     <p className="text-[11px] text-zinc-400 leading-tight">
-                      Abre a câmera em tempo real para bipar o QR Code fiscal da SEFAZ em menos de 1 segundo.
+                      Abre a câmera em foco máximo para tirar a foto de perto do QR Code da SEFAZ.
                     </p>
                   </div>
                 </button>
@@ -313,7 +341,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                 {/* Opção 2: Foto Completa com IA */}
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => fullFileInputRef.current?.click()}
                   className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/60 hover:bg-zinc-900/80 hover:border-zinc-700 text-left transition-all group flex flex-col justify-between space-y-3"
                 >
                   <div className="flex items-center justify-between w-full">
@@ -330,13 +358,46 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                       Foto Completa do Cupom (IA)
                     </h5>
                     <p className="text-[11px] text-zinc-400 leading-tight">
-                      Tira foto ou envia da galeria para a IA ler cada produto e abastecer a Despensa.
+                      Fotografa o cupom inteiro para a IA ler todos os itens e abastecer a Despensa.
                     </p>
                   </div>
                 </button>
               </div>
 
-              <div className="flex items-center justify-center gap-2 pt-2 text-[11px] text-zinc-500">
+              {/* Botão de Link Manual */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowManualUrl(!showManualUrl)}
+                  className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center justify-center gap-1.5 mx-auto transition-colors"
+                >
+                  <LinkIcon className="h-3.5 w-3.5" />
+                  <span>{showManualUrl ? 'Cancelar link manual' : 'Inserir link do QR Code manualmente'}</span>
+                </button>
+
+                {showManualUrl && (
+                  <div className="flex gap-2 mt-2 max-w-md mx-auto">
+                    <input
+                      type="url"
+                      value={manualUrl}
+                      onChange={(e) => setManualUrl(e.target.value)}
+                      placeholder="https://www.nfce.fazenda.sp.gov.br/consulta?p=..."
+                      className="input-base text-xs flex-1"
+                    />
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleManualUrlSubmit}
+                      disabled={!manualUrl.trim()}
+                      className="text-xs bg-emerald-600 hover:bg-emerald-500"
+                    >
+                      OK
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-center gap-2 pt-2 text-[11px] text-zinc-500 border-t border-zinc-800/60">
                 <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
                 <span>Suporta cupons SAT, NFC-e, Padarias, Farmácias e Restaurantes</span>
               </div>
@@ -354,29 +415,25 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
 
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-zinc-100">
-                Lendo cupom fiscal com IA de Visão...
+                Processando documento fiscal...
               </h4>
               <p className="text-xs text-zinc-400">
-                Extraindo valor total, loja, data e produtos comprados.
+                Decodificando dados da SEFAZ e extraindo informações.
               </p>
             </div>
-
-            {compressResult && (
-              <span className="inline-block chip px-2.5 py-1 text-[11px] bg-emerald-500/10 text-emerald-300 border-emerald-500/30">
-                ⚡ Resolução otimizada: {compressResult.width}x{compressResult.height}px ({compressResult.compressedSizeKb} KB)
-              </span>
-            )}
           </div>
         )}
 
-        {/* Erro State */}
+        {/* Erro */}
         {errorMsg && !analyzing && (
-          <div className="border border-rose-500/30 bg-rose-500/10 rounded-2xl p-4 space-y-2 text-center">
-            <p className="text-xs font-semibold text-rose-300">{errorMsg}</p>
-            <p className="text-[11px] text-zinc-400">
-              Dica: Aproxime a câmera e certifique-se de que o cabeçalho e o valor total final estão visíveis.
-            </p>
-            <Button variant="ghost" size="sm" onClick={resetScan} className="gap-1.5 text-xs text-zinc-300 mt-1">
+          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex flex-col items-center gap-2 text-center">
+            <span>{errorMsg}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetScan}
+              className="text-xs gap-1.5 text-zinc-300 hover:text-white"
+            >
               <RotateCcw className="h-3.5 w-3.5" /> Tentar outra foto
             </Button>
           </div>
@@ -412,7 +469,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                 />
               </div>
             )}
-            
+
             {/* Badge de QR Code SEFAZ se detectado */}
             {qrInfo && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs">
@@ -468,7 +525,6 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                   onChange={(e) => {
                     const newCat = e.target.value
                     setCategory(newCat)
-                    // Auto-adjust default stocking intent if user manually changes category
                     if (newCat === 'Alimentação') {
                       setSyncWithPantry(false)
                     } else if (newCat === 'Despensa') {
@@ -527,7 +583,13 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                 {syncWithPantry && (
                   <button
                     type="button"
-                    onClick={addItem}
+                    onClick={() => {
+                      setItems((prev) => {
+                        const next = [...prev, { name: '', qty: 1, unit: 'un' }]
+                        setSelectedItems((s) => ({ ...s, [next.length - 1]: true }))
+                        return next
+                      })
+                    }}
                     className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-medium bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/20 transition-all"
                   >
                     <Plus className="h-3 w-3" /> Adicionar Item
@@ -539,7 +601,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
               <div className="text-[11px] text-zinc-400 bg-zinc-950/50 px-2.5 py-1.5 rounded-lg border border-zinc-800/80">
                 {category === 'Alimentação' ? (
                   <span>
-                    ☕ <strong>Alimentação / Padaria:</strong> Itens para consumo imediato (não vão para o estoque da despensa por padrão). Marque a caixa acima se quiser estocá-los.
+                    ☕ <strong>Alimentação / Padaria:</strong> Itens para consumo imediato (não vão para o estoque por padrão). Marque a caixa acima se quiser estocá-los.
                   </span>
                 ) : category === 'Despensa' ? (
                   <span>
@@ -571,50 +633,70 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                         <input
                           type="checkbox"
                           checked={!!selectedItems[idx]}
-                          onChange={() => toggleItemSelection(idx)}
-                          className="rounded border-zinc-700 bg-zinc-800 text-emerald-500 h-3.5 w-3.5 shrink-0"
+                          onChange={(e) =>
+                            setSelectedItems((prev) => ({
+                              ...prev,
+                              [idx]: e.target.checked,
+                            }))
+                          }
+                          className="rounded border-zinc-700 bg-zinc-800 text-emerald-500 focus:ring-emerald-500 h-4 w-4 shrink-0"
                         />
 
-                        {/* Nome do Item */}
+                        {/* Nome do Produto */}
                         <input
                           type="text"
                           value={item.name}
-                          onChange={(e) => updateItem(idx, 'name', e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setItems((prev) =>
+                              prev.map((it, i) => (i === idx ? { ...it, name: val } : it)),
+                            )
+                          }}
                           placeholder="Nome do produto"
-                          className="flex-1 bg-transparent border-0 border-b border-transparent focus:border-emerald-500 p-0 text-xs font-medium text-zinc-100 focus:ring-0"
+                          className="flex-1 min-w-0 bg-transparent border-0 border-b border-transparent focus:border-emerald-500 p-0 text-xs font-medium text-zinc-200 focus:ring-0"
                         />
 
-                        {/* Qtd */}
-                        <input
-                          type="number"
-                          step="any"
-                          min="0.1"
-                          value={item.qty}
-                          onChange={(e) => updateItem(idx, 'qty', parseFloat(e.target.value) || 1)}
-                          className="w-14 bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-center text-xs font-mono text-zinc-200"
-                        />
+                        {/* Quantidade */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <input
+                            type="number"
+                            min="0.1"
+                            step="any"
+                            value={item.qty}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 1
+                              setItems((prev) =>
+                                prev.map((it, i) => (i === idx ? { ...it, qty: val } : it)),
+                              )
+                            }}
+                            className="w-12 bg-zinc-800/80 border border-zinc-700 rounded px-1.5 py-0.5 text-center text-xs font-mono"
+                          />
+                          <span className="text-[10px] text-zinc-400 uppercase font-mono w-6">
+                            {item.unit || 'un'}
+                          </span>
+                        </div>
 
-                        {/* Unidade */}
-                        <select
-                          value={item.unit}
-                          onChange={(e) => updateItem(idx, 'unit', e.target.value)}
-                          className="bg-zinc-800 border border-zinc-700 rounded px-1 py-0.5 text-[11px] text-zinc-300"
-                        >
-                          <option value="un">un</option>
-                          <option value="kg">kg</option>
-                          <option value="g">g</option>
-                          <option value="l">l</option>
-                          <option value="pct">pct</option>
-                          <option value="cx">cx</option>
-                          <option value="lat">lat</option>
-                        </select>
-
-                        {/* Deletar */}
+                        {/* Remover */}
                         <button
                           type="button"
-                          onClick={() => removeItem(idx)}
+                          onClick={() => {
+                            setItems((prev) => prev.filter((_, i) => i !== idx))
+                            setSelectedItems((prev) => {
+                              const next: Record<number, boolean> = {}
+                              let newIdx = 0
+                              Object.keys(prev)
+                                .sort((a, b) => Number(a) - Number(b))
+                                .forEach((k) => {
+                                  if (Number(k) !== idx) {
+                                    next[newIdx] = prev[Number(k)]
+                                    newIdx++
+                                  }
+                                })
+                              return next
+                            })
+                          }}
                           className="text-zinc-500 hover:text-rose-400 p-1 transition-colors"
-                          title="Remover item"
+                          title="Remover Item"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -625,28 +707,35 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
               )}
             </div>
 
-            {/* Ações */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800">
-              <Button variant="ghost" size="sm" onClick={resetScan} className="gap-1.5 text-xs text-zinc-400">
-                <RotateCcw className="h-3.5 w-3.5" /> Outra foto
+            {/* Footer de Ações */}
+            <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetScan}
+                className="gap-1.5 text-zinc-400 hover:text-zinc-200 text-xs"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Escanear outro
               </Button>
 
-              <Button
-                variant="primary"
-                size="md"
-                onClick={handleApply}
-                className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 font-semibold"
-              >
-                {syncWithPantry && selectedCount > 0 ? (
-                  <>
-                    <PackagePlus className="h-4 w-4" /> Salvar Gasto & Repor Despensa ({selectedCount})
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4" /> Confirmar & Preencher Gasto
-                  </>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={onClose} className="text-xs">
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={handleApply}
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 font-semibold px-4 text-xs"
+                >
+                  <Check className="h-4 w-4" />
+                  <span>
+                    {syncWithPantry && selectedCount > 0
+                      ? 'Salvar Gasto & Repor Despensa'
+                      : 'Salvar Gasto'}
+                  </span>
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -654,4 +743,3 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     </Modal>
   )
 }
-
