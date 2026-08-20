@@ -658,6 +658,9 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
      - **Alimentação (Padarias, Restaurantes, Bares, Lanches):** O envio para o estoque da Despensa fica **desmarcado por padrão** com dica explicativa de consumo imediato.
      - **Despensa (Supermercados, Atacadões, Hortifrutis):** O envio para o estoque permanece **marcado por padrão** para reposição automática.
      - O usuário mantém controle total para alternar a qualquer momento com 1 clique.
+  5. **📷 Visor de Câmera com Scanner QR Code ao Vivo ([LiveQrScanner.tsx](file:///e:/Apps/AppControleTotal/src/components/ui/LiveQrScanner.tsx)):**
+     - Leitor contínuo de vídeo em tempo real (30-60 FPS) com mira laser animada, feedback tátil por vibração e botão de lanterna/flash.
+     - Bipa qualquer QR Code de cupom fiscal em < 100ms, preenchendo automaticamente o valor líquido, data e dados da SEFAZ.
 
 ---
 

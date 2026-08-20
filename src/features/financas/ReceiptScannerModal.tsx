@@ -9,8 +9,10 @@ import {
   Loader2,
   PackagePlus,
   Plus,
+  QrCode,
   Receipt,
   RotateCcw,
+  Scan,
   ShoppingCart,
   Sparkles,
   Trash2,
@@ -21,6 +23,7 @@ import { Button } from '@/components/ui/Button'
 import { compressImageForOcr, type CompressionResult } from '@/lib/imageCompressor'
 import { parseReceiptWithVision, type ParsedReceiptData, type ScannedPantryItem } from '@/lib/receiptScanner'
 import type { SefazQrCodeData } from '@/lib/qrReceiptReader'
+import { LiveQrScanner } from '@/components/ui/LiveQrScanner'
 import { db } from '@/lib/db'
 import type { PantryItem } from '@/data/types'
 import { toast } from '@/stores/toastStore'
@@ -47,6 +50,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
   const [compressResult, setCompressResult] = useState<CompressionResult | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [isScanningLiveQr, setIsScanningLiveQr] = useState(false)
 
   // Editable Form State
   const [establishment, setEstablishment] = useState('')
@@ -61,6 +65,27 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
   const [showPhotoPreview, setShowPhotoPreview] = useState(false)
   const [hasResult, setHasResult] = useState(false)
 
+  const handleLiveQrScanned = (qr: SefazQrCodeData) => {
+    setIsScanningLiveQr(false)
+    setQrInfo(qr)
+    setErrorMsg(null)
+
+    // Pre-populate with verified fiscal data from QR
+    const storeLabel = qr.cnpj ? `Nota Fiscal (CNPJ ${qr.cnpj})` : qr.model || 'Nota Fiscal SEFAZ'
+    setEstablishment(storeLabel)
+    if (qr.totalAmount && qr.totalAmount > 0) {
+      setAmountStr(qr.totalAmount.toFixed(2).replace('.', ','))
+    }
+    setDate(new Date().toISOString().slice(0, 10))
+    setTime('')
+    setCategory('Despensa')
+    setSyncWithPantry(false) // No products detected from bare QR code
+    setItems([])
+    setSelectedItems({})
+    setHasResult(true)
+    toast.success('QR Code SEFAZ lido com sucesso! 🧾✨')
+  }
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -69,6 +94,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     setHasResult(false)
     setAnalyzing(true)
     setQrInfo(null)
+    setIsScanningLiveQr(false)
 
     try {
       // 1. High-clarity compression with thermal contrast boost
@@ -164,69 +190,50 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
   }
 
   const handleApply = async () => {
-    const numAmount = parseFloat(amountStr.replace(',', '.')) || 0
+    const parsedAmount = parseFloat(amountStr.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0
 
-    const finalData: ParsedReceiptData = {
-      establishment: establishment.trim() || 'Cupom Fiscal',
-      amount: numAmount,
-      date: date || new Date().toISOString().slice(0, 10),
-      time: time || undefined,
-      category,
-      detailedItems: items.filter((it) => it.name.trim().length > 0),
-      items: items.filter((it) => it.name.trim().length > 0).map((it) => it.name.trim()),
-    }
+    // 1. Stock pantry items if enabled
+    if (syncWithPantry && items.length > 0) {
+      const itemsToStock = items.filter((_, idx) => selectedItems[idx])
+      let stockedCount = 0
 
-    // 1. If pantry sync is enabled, replenish or add items to pantry
-    const itemsToSync = finalData.detailedItems?.filter((_, idx) => selectedItems[idx]) || []
-
-    if (syncWithPantry && itemsToSync.length > 0) {
-      try {
-        const currentPantry = await db.get<PantryItem>('pantry')
-        let restockedCount = 0
-
-        for (const item of itemsToSync) {
-          const cleanName = item.name.trim().toLowerCase()
-          if (!cleanName) continue
-
-          const existing = currentPantry.find(
-            (p) =>
-              p.name.trim().toLowerCase() === cleanName ||
-              p.name.trim().toLowerCase().includes(cleanName) ||
-              cleanName.includes(p.name.trim().toLowerCase()),
-          )
-
-          if (existing) {
-            await db.upsert('pantry', {
-              ...existing,
-              qty: (Number(existing.qty) || 0) + (Number(item.qty) || 1),
-            })
-            restockedCount++
-          } else {
-            const newItem: PantryItem = {
-              id:
-                typeof crypto !== 'undefined' && crypto.randomUUID
-                  ? crypto.randomUUID()
-                  : `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              name: item.name.trim(),
-              category: 'alimentos',
-              qty: Number(item.qty) || 1,
-              unit: item.unit || 'un',
-              lowThreshold: 1,
-            }
-            await db.upsert('pantry', newItem)
-            restockedCount++
+      for (const it of itemsToStock) {
+        if (!it.name.trim()) continue
+        try {
+          const newItem: Omit<PantryItem, 'id' | 'created_at' | 'updated_at'> = {
+            name: it.name.trim(),
+            category: category === 'Despensa' ? 'Alimentos' : category,
+            quantity: Number(it.qty) || 1,
+            unit: it.unit || 'un',
+            min_quantity: 1,
+            unit_price: it.unitPrice || 0,
+            location: 'Despensa',
+            notes: `Adicionado via Cupom Fiscal: ${establishment}`,
           }
+          await db.upsert('pantry', newItem)
+          stockedCount++
+        } catch (err) {
+          console.error('[PantryStock] Failed to stock item:', it.name, err)
         }
+      }
 
-        if (restockedCount > 0) {
-          toast.success(`🛒 ${restockedCount} item(ns) abastecido(s) na Despensa!`)
-        }
-      } catch (err) {
-        console.warn('[ReceiptScanner] Pantry sync failed:', err)
+      if (stockedCount > 0) {
+        toast.success(`${stockedCount} item(ns) adicionados à Despensa! 📦`)
       }
     }
 
-    // 2. Apply spending entry
+    // 2. Return spending data to parent form
+    const finalData: ParsedReceiptData = {
+      establishment: establishment.trim() || 'Cupom Fiscal',
+      amount: parsedAmount,
+      date: date || new Date().toISOString().slice(0, 10),
+      time: time || undefined,
+      category,
+      items: items.map((i) => i.name),
+      detailedItems: items,
+      qrCode: qrInfo || undefined,
+    }
+
     onApply(finalData)
     onClose()
   }
@@ -237,13 +244,14 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     setErrorMsg(null)
     setItems([])
     setSelectedItems({})
+    setIsScanningLiveQr(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const selectedCount = Object.values(selectedItems).filter(Boolean).length
 
   return (
-    <Modal open={open} onClose={onClose} title="Scanner de Cupom Fiscal com IA 📸">
+    <Modal open={open} onClose={onClose} title="Scanner de Cupom & QR Code 📸">
       <div className="space-y-4 pt-1 max-h-[80vh] overflow-y-auto pr-1">
         {/* Hidden File Input */}
         <input
@@ -255,41 +263,83 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
           className="hidden"
         />
 
-        {/* Upload / Camera Hero State */}
-        {!compressResult && !analyzing && (
-          <div className="border-2 border-dashed border-zinc-800 hover:border-emerald-500/50 rounded-2xl p-6 sm:p-8 text-center transition-all bg-zinc-900/40 space-y-4">
-            <div className="h-16 w-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/10">
-              <Camera className="h-8 w-8" />
-            </div>
+        {/* Live Camera Viewfinder if Active */}
+        {isScanningLiveQr && (
+          <LiveQrScanner
+            onScan={handleLiveQrScanned}
+            onClose={() => setIsScanningLiveQr(false)}
+          />
+        )}
 
-            <div className="space-y-1.5">
-              <h4 className="text-base font-semibold text-zinc-100">
-                Tire uma foto ou envie a imagem do Cupom
-              </h4>
-              <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
-                A IA identifica automaticamente o nome do supermercado/loja, data, valor total pago e todos os produtos.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => fileInputRef.current?.click()}
-                className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 font-medium px-5"
-              >
-                <Camera className="h-4 w-4" /> Tirar Foto / Galeria
-              </Button>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-2 pt-3 border-t border-zinc-800/80 text-left text-[11px] text-zinc-400">
-              <div className="flex items-center gap-1.5 bg-zinc-950/40 p-2 rounded-lg border border-zinc-800/60">
-                <Sparkles className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                <span>Suporta NFC-e, SAT, Danfe e Recibos</span>
+        {/* Hero Options Selection State */}
+        {!compressResult && !analyzing && !isScanningLiveQr && !hasResult && (
+          <div className="space-y-4">
+            <div className="border-2 border-dashed border-zinc-800 rounded-2xl p-6 text-center bg-zinc-900/40 space-y-4">
+              <div className="space-y-1.5">
+                <h4 className="text-base font-semibold text-zinc-100">
+                  Como você deseja escanear o cupom?
+                </h4>
+                <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
+                  Escolha ler o QR Code instantaneamente ao vivo ou tirar uma foto completa para a IA extrair os produtos.
+                </p>
               </div>
-              <div className="flex items-center gap-1.5 bg-zinc-950/40 p-2 rounded-lg border border-zinc-800/60">
-                <Zap className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                <span>Contraste otimizado para cupom térmico</span>
+
+              {/* Action Buttons Grid */}
+              <div className="grid sm:grid-cols-2 gap-3 pt-2">
+                {/* Opção 1: Bipar QR Code ao Vivo */}
+                <button
+                  type="button"
+                  onClick={() => setIsScanningLiveQr(true)}
+                  className="p-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-left transition-all group flex flex-col justify-between space-y-3 shadow-lg shadow-emerald-500/5 hover:border-emerald-500"
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Scan className="h-5 w-5" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      Mais Rápido ⚡
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h5 className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+                      Bipar QR Code ao Vivo
+                    </h5>
+                    <p className="text-[11px] text-zinc-400 leading-tight">
+                      Abre a câmera em tempo real para bipar o QR Code fiscal da SEFAZ em menos de 1 segundo.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Opção 2: Foto Completa com IA */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/60 hover:bg-zinc-900/80 hover:border-zinc-700 text-left transition-all group flex flex-col justify-between space-y-3"
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="h-10 w-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Camera className="h-5 w-5" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">
+                      Lê Produtos 🛒
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h5 className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+                      Foto Completa do Cupom (IA)
+                    </h5>
+                    <p className="text-[11px] text-zinc-400 leading-tight">
+                      Tira foto ou envia da galeria para a IA ler cada produto e abastecer a Despensa.
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 pt-2 text-[11px] text-zinc-500">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Suporta cupons SAT, NFC-e, Padarias, Farmácias e Restaurantes</span>
               </div>
             </div>
           </div>
