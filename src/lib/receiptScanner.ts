@@ -50,42 +50,71 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
       let numAmount = 0
       if (typeof parsed.amount === 'number') {
         numAmount = parsed.amount
-      } else if (parsed.amount) {
-        const sanitizedNum = String(parsed.amount).replace(/[^\d.,]/g, '').replace(',', '.')
+      } else if (typeof parsed.valor === 'number') {
+        numAmount = parsed.valor
+      } else if (typeof parsed.total === 'number') {
+        numAmount = parsed.total
+      } else if (parsed.amount || parsed.valor || parsed.total || parsed.valor_total || parsed.total_pago) {
+        const rawVal = parsed.amount || parsed.valor || parsed.total || parsed.valor_total || parsed.total_pago
+        const sanitizedNum = String(rawVal).replace(/[^\d.,]/g, '').replace(',', '.')
         numAmount = parseFloat(sanitizedNum) || 0
       }
 
-      const rawDetailed = Array.isArray(parsed.detailedItems)
-        ? parsed.detailedItems
-        : Array.isArray(parsed.items)
-          ? parsed.items.map((it: any) =>
-              typeof it === 'string'
-                ? { name: it, qty: 1, unit: 'un' }
-                : { name: it?.name || 'Item', qty: Number(it?.qty || it?.quantity) || 1, unit: it?.unit || 'un' },
-            )
-          : []
+      // Check all possible item key variations (English & Portuguese)
+      const rawItemList =
+        parsed.detailedItems ||
+        parsed.items ||
+        parsed.itens ||
+        parsed.produtos ||
+        parsed.products ||
+        parsed.lista ||
+        parsed.itens_comprados ||
+        parsed.compras ||
+        []
 
-      const detailedItems: ScannedPantryItem[] = rawDetailed
-        .map((it: any) => ({
-          name: String(it?.name || it?.description || '').trim(),
-          qty: Math.max(0.1, Number(it?.qty || it?.quantity) || 1),
-          unit: String(it?.unit || 'un').trim().toLowerCase(),
-          unitPrice: typeof it?.unitPrice === 'number' ? it.unitPrice : undefined,
-          totalPrice: typeof it?.totalPrice === 'number' ? it.totalPrice : undefined,
-        }))
-        .filter((it: ScannedPantryItem) => it.name.length > 0 && it.name.toLowerCase() !== 'item')
+      const detailedItems: ScannedPantryItem[] = Array.isArray(rawItemList)
+        ? rawItemList
+            .map((it: any) => {
+              if (typeof it === 'string') {
+                return { name: it.trim(), qty: 1, unit: 'un' }
+              }
+              const name = String(
+                it?.name || it?.nome || it?.descricao || it?.description || it?.produto || it?.item || '',
+              ).trim()
+              const qty = Math.max(
+                0.1,
+                Number(it?.qty || it?.qtd || it?.quantidade || it?.quantity || it?.quant) || 1,
+              )
+              const unit = String(it?.unit || it?.un || it?.unidade || 'un').trim().toLowerCase()
+              const unitPrice = typeof it?.unitPrice === 'number' ? it.unitPrice : typeof it?.preco_unitario === 'number' ? it.preco_unitario : undefined
+              const totalPrice = typeof it?.totalPrice === 'number' ? it.totalPrice : typeof it?.preco_total === 'number' ? it.preco_total : undefined
+
+              return { name, qty, unit, unitPrice, totalPrice }
+            })
+            .filter((it: ScannedPantryItem) => it.name.length > 0 && it.name.toLowerCase() !== 'item')
+        : []
+
+      const storeName = String(
+        parsed.establishment ||
+          parsed.loja ||
+          parsed.mercado ||
+          parsed.supermercado ||
+          parsed.empresa ||
+          parsed.local ||
+          'Cupom Fiscal',
+      ).trim()
 
       const itemsNames = detailedItems.map((i) => i.name)
 
       return {
-        establishment: String(parsed.establishment || 'Cupom Fiscal').trim(),
+        establishment: storeName,
         amount: isNaN(numAmount) ? 0 : Math.abs(numAmount),
-        date: normalizeBrazilianDate(parsed.date),
-        time: parsed.time && /^\d{1,2}:\d{2}$/.test(parsed.time) ? parsed.time : '',
-        category: parsed.category || 'Despensa',
+        date: normalizeBrazilianDate(parsed.date || parsed.data),
+        time: parsed.time || parsed.hora ? String(parsed.time || parsed.hora).slice(0, 5) : '',
+        category: parsed.category || parsed.categoria || 'Despensa',
         items: itemsNames.length > 0 ? itemsNames : undefined,
         detailedItems,
-        paymentMethod: parsed.paymentMethod,
+        paymentMethod: parsed.paymentMethod || parsed.forma_pagamento,
         rawSummary: text,
       }
     } catch {
@@ -94,32 +123,42 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
   }
 
   // 2. Resilient Regex Fallback
-  const estMatch = text.match(/"establishment"\s*:\s*"([^"]+)"/i) || text.match(/estabelecimento|loja\s*[:=]\s*"([^"]+)"/i)
+  const estMatch =
+    text.match(/"(?:establishment|loja|mercado|empresa)"\s*:\s*"([^"]+)"/i) ||
+    text.match(/(?:estabelecimento|loja|mercado)\s*[:=]\s*"([^"]+)"/i)
   const establishment = estMatch ? estMatch[1].trim() : 'Cupom Fiscal'
 
-  const amtMatch = text.match(/"amount"\s*:\s*"?([\d.,]+)"?/i) || text.match(/(?:valor|total|pago|r\$)\s*[:=]?\s*r?\$?\s*([\d.,]+)/i)
+  const amtMatch =
+    text.match(/"(?:amount|valor|total)"\s*:\s*"?([\d.,]+)"?/i) ||
+    text.match(/(?:valor|total|pago|r\$)\s*[:=]?\s*r?\$?\s*([\d.,]+)/i)
   let amount = 0
   if (amtMatch) {
     amount = parseFloat(amtMatch[1].replace(/[^\d.,]/g, '').replace(',', '.')) || 0
   }
 
-  const dateMatch = text.match(/"date"\s*:\s*"([^"]+)"/i) || text.match(/(\d{2}[\/\.-]\d{2}[\/\.-]\d{2,4})/)
+  const dateMatch =
+    text.match(/"(?:date|data)"\s*:\s*"([^"]+)"/i) ||
+    text.match(/(\d{2}[\/\.-]\d{2}[\/\.-]\d{2,4})/)
   const date = dateMatch ? normalizeBrazilianDate(dateMatch[1]) : todayIso()
 
-  const timeMatch = text.match(/"time"\s*:\s*"([^"]+)"/i) || text.match(/(\d{1,2}:\d{2})/)
+  const timeMatch =
+    text.match(/"(?:time|hora)"\s*:\s*"([^"]+)"/i) ||
+    text.match(/(\d{1,2}:\d{2})/)
   const time = timeMatch ? timeMatch[1] : ''
 
-  const catMatch = text.match(/"category"\s*:\s*"([^"]+)"/i)
+  const catMatch = text.match(/"(?:category|categoria)"\s*:\s*"([^"]+)"/i)
   const category = catMatch ? catMatch[1] : 'Despensa'
 
+  // Extract items via regex matching both "name" and "nome" and "descricao"
   const detailedItems: ScannedPantryItem[] = []
-  const itemRegex = /"name"\s*:\s*"([^"]+)"\s*,\s*"qty"\s*:\s*([\d.]+)/g
+  const itemRegex = /"(?:name|nome|descricao|produto)"\s*:\s*"([^"]+)"/gi
   let m
   while ((m = itemRegex.exec(text)) !== null) {
-    if (m[1].trim()) {
+    const itemName = m[1].trim()
+    if (itemName && itemName.toLowerCase() !== 'nome limpo do produto' && itemName.toLowerCase() !== 'item') {
       detailedItems.push({
-        name: m[1].trim(),
-        qty: parseFloat(m[2]) || 1,
+        name: itemName,
+        qty: 1,
         unit: 'un',
       })
     }
