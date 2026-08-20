@@ -60,13 +60,17 @@ export async function syncAllUnsyncedMaintenance(): Promise<number> {
     for (const m of maintenance) {
       if (!m.cost || m.cost <= 0) continue
 
-      // Verifica se já existe um gasto correspondente
+      // Verifica se já existe um gasto correspondente registrado
       const alreadyExists = existingSpending.some((s) => {
         if (s.referenceId && s.referenceId === `maint-${m.id}`) return true
-        const sameAmount = Number(s.amount) === Number(m.cost)
-        const sameDate = s.date === m.date
+        const sameAmount = Math.abs(Number(s.amount) - Number(m.cost)) < 0.01
+        const sameDate = s.date === m.date || (s.createdAt && s.createdAt.slice(0, 10) === m.date)
+        const categoryMatch =
+          s.category?.toLowerCase() === 'transporte' ||
+          s.category?.toLowerCase() === 'moradia' ||
+          s.category?.toLowerCase().includes('manuten')
         const titleMatch = s.note && (s.note.includes(m.title) || m.title.includes(s.note))
-        return sameAmount && sameDate && titleMatch
+        return sameAmount && sameDate && (titleMatch || categoryMatch)
       })
 
       if (!alreadyExists) {
