@@ -9,14 +9,12 @@ import {
   Loader2,
   PackagePlus,
   Plus,
-  QrCode,
   Receipt,
   RotateCcw,
   Scan,
   ShoppingCart,
   Sparkles,
   Trash2,
-  Zap,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -200,15 +198,16 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
       for (const it of itemsToStock) {
         if (!it.name.trim()) continue
         try {
-          const newItem: Omit<PantryItem, 'id' | 'created_at' | 'updated_at'> = {
+          const newItem: PantryItem = {
+            id:
+              typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `pantry-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             name: it.name.trim(),
-            category: category === 'Despensa' ? 'Alimentos' : category,
-            quantity: Number(it.qty) || 1,
+            category: category === 'Despensa' ? 'alimentos' : category.toLowerCase(),
+            qty: Number(it.qty) || 1,
             unit: it.unit || 'un',
-            min_quantity: 1,
-            unit_price: it.unitPrice || 0,
-            location: 'Despensa',
-            notes: `Adicionado via Cupom Fiscal: ${establishment}`,
+            lowThreshold: 1,
           }
           await db.upsert('pantry', newItem)
           stockedCount++
