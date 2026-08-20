@@ -109,9 +109,10 @@ export async function parseReceiptWithVision(
   }
 
   // Vision model selection based on provider
+  // For Groq, llama-3.2-90b-vision-preview is drastically superior for reading dense receipt tables
   let visionModel = config.llmModel || ''
   if (config.provider === 'groq') {
-    visionModel = 'llama-3.2-11b-vision-preview'
+    visionModel = 'llama-3.2-90b-vision-preview'
   } else if (config.provider === 'nvidia') {
     visionModel = config.llmModel.includes('vision')
       ? config.llmModel
@@ -125,42 +126,50 @@ export async function parseReceiptWithVision(
         : 'google/gemini-2.0-flash-001'
   }
 
-  const systemPrompt = `Você é um scanner OCR especialista em cupons fiscais brasileiros (NFC-e, SAT CFe, Danfe Simplificada, Comprovantes de Cartão e Recibos).
-Sua missão é extrair com precisão cirúrgica as informações da compra para registro financeiro e despensa.
+  const systemPrompt = `Você é um scanner OCR de alta precisão especialista em cupons fiscais brasileiros (NFC-e, SAT CFe, Danfe Simplificada, Cupom de Restaurante/Posto/Mercado).
+Sua missão é ler o cupom de cima a baixo e extrair as informações reais contidas na foto.
 
-DIRETRIZES FUNDAMENTAIS PARA CUPOM BRASILEIRO:
-1. VALOR TOTAL (amount): Identifique o VALOR TOTAL A PAGAR / VALOR LÍQUIDO final pago pelo cliente.
-   - NUNCA confunda com SUBTOTAL, TOTAL BRUTO, TROCO, VALOR RECEBIDO ou DESCONTO.
-   - Se houver descontos, o amount deve ser o valor efetivamente pago após os descontos.
-   - Retorne sempre como número float com ponto decimal (ex: 45.90).
-2. ESTABELECIMENTO (establishment): Extraia o Nome Fantasia mais conhecido do comércio (ex: "Carrefour", "Pão de Açúcar", "Droga Raia", "Posto Ipiranga", "Padaria Bella", "Supermercados BH").
-   - Se só houver a Razão Social longa, simplifique para um nome amigável e legível.
-3. DATA (date): Extraia a data da compra (no cupom geralmente vem como DD/MM/AAAA ou DD/MM/AA) e converta OBRIGATORIAMENTE para o formato ISO YYYY-MM-DD. Se ilegível, use "${todayIso()}".
-4. HORA (time): Extraia o horário da compra se visível (ex: "14:35").
-5. CATEGORIA (category): Classifique em UMA das seguintes opções exatas:
-   - "Alimentação" (Restaurantes, lanchonetes, padarias, delivery, fast food)
-   - "Despensa" (Supermercados, hortifruti, açougue, atacados, compras de mantimentos)
-   - "Saúde" (Farmácias, drogarias, consultas, exames)
-   - "Transporte" (Postos de combustível, estacionamento, pedágio, app de transporte)
-   - "Moradia" (Lojas de material, utilidades domésticas)
-   - "Lazer" (Cinema, shows, entretenimento)
-   - "Serviços" (Lavanderia, mecânico, cópias)
-   - "Outros" (Demais despesas)
-6. ITENS DETALHADOS (detailedItems):
-   - Liste os produtos identificados com seus nomes claros (expanda abreviações térmicas feias, ex: "ARROZ T1 TIO J 5KG" -> "Arroz Tio João 5kg", "SAB LIQ OMO 3L" -> "Sabão Líquido Omo 3L").
-   - Quantidade (qty) como número inteiro ou decimal (mínimo 1).
-   - Unidade (unit): "un", "kg", "l", "pct", "g", "cx", "lat".
+COMO LER CADA PARTE DO CUPOM BRASILEIRO:
 
-ESTRUTURA JSON OBRIGATÓRIA (sem markdown, sem explicações):
+1. ESTABELECIMENTO (Nome da Loja / Mercado / Posto):
+   - Olhe no TOPO SUPERIOR (Cabeçalho).
+   - Extraia o Nome Fantasia comercial ou Razão Social da loja (ex: "Assaí Atacadista", "Pão de Açúcar", "Supermercados BH", "Carrefour", "Atacadão", "Dia Supermercado", "Droga Raia", "Drogasil", "Posto Shell", "Posto Ipiranga", "Padaria Central", "Oxxo").
+   - REGRA DE OURO: NUNCA coloque nomes do sistema emissor ou fabricante da impressora (ex: "NFC-e", "SAT", "SEFAZ", "Documento Auxiliar", "Extrato No", "Bematech", "Daruma", "Elgin", "Sweda", "Epson", "Totvs", "Linx", "CFe", "Gerencial"). O estabelecimento é a loja física onde o cliente comprou!
+
+2. VALOR TOTAL PAGO (amount):
+   - Localize o "VALOR A PAGAR R$", "TOTAL R$" ou "VALOR LÍQUIDO R$".
+   - NUNCA confunda com SUBTOTAL, TOTAL BRUTO, TROCO, VALOR RECEBIDO ou DESCONTOS.
+   - Retorne o número float (ex: 78.45).
+
+3. DATA E HORA DE EMISSÃO:
+   - Data (date): Localize no cupom a data da compra (geralmente escrita como "EMISSÃO: DD/MM/AAAA" ou "DATA: DD/MM/AAAA"). Converta para "YYYY-MM-DD".
+   - Hora (time): Localize no cupom o horário exato da compra (geralmente ao lado da data, ex: "14:35:12" ou "18:20"). Retorne "HH:MM". Se NÃO encontrar no cupom, retorne "".
+
+4. CATEGORIA (category):
+   - "Despensa" (Supermercados, atacados, hortifruti, açougue, compras de casa)
+   - "Alimentação" (Restaurantes, padarias, lanchonetes, delivery, bares)
+   - "Saúde" (Farmácias, drogarias)
+   - "Transporte" (Postos de gasolina, combustível, estacionamento, pedágio)
+   - "Moradia", "Lazer", "Serviços", "Outros"
+
+5. ITENS / PRODUTOS COMPRADOS (detailedItems):
+   - Na lista de produtos do cupom fiscal brasileiro, cada linha tem o formato:
+     [#] [Código/EAN] [NOME DO PRODUTO] [QTD] [UN] X [VL_UNIT] [VL_TOTAL]
+     Exemplo real: "001 7891000315507 DETERGENTE YPE 500ML 2 UN X 2,49 4,98"
+   - Extraia o NOME REAL do produto (ignore o código numérico/EAN).
+   - Expanda abreviações para nomes limpos e naturais (ex: "LEITE INT CEMIL 1L" -> "Leite Integral Cemil 1L", "ARROZ T1 TIO J 5KG" -> "Arroz Tio João 5kg", "SAB LIQ OMO" -> "Sabão Líquido Omo", "COCA COLA 2L" -> "Coca-Cola 2L").
+   - Quantidade (qty): o número real comprado (ex: 1, 2, 0.750).
+   - Unidade (unit): "un", "kg", "g", "l", "pct", "cx", "lat".
+
+ESTRUTURA JSON OBRIGATÓRIA (sem markdown adicional):
 {
-  "establishment": "Nome do Estabelecimento",
+  "establishment": "Nome da Loja",
   "amount": 123.45,
   "date": "YYYY-MM-DD",
   "time": "HH:MM",
   "category": "Despensa",
-  "paymentMethod": "Cartão de Crédito" | "Cartão de Débito" | "PIX" | "Dinheiro" | "Outro",
   "detailedItems": [
-    { "name": "Nome do Produto", "qty": 1, "unit": "un" }
+    { "name": "Nome Limpo do Produto", "qty": 1, "unit": "un" }
   ]
 }`
 
@@ -171,7 +180,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, sem explicações):
       content: [
         {
           type: 'text',
-          text: 'Analise este cupom fiscal brasileiro e extraia o JSON com valor total pago, estabelecimento, data, categoria e itens.',
+          text: 'Leia com atenção este cupom fiscal. Extraia o nome da loja no topo, o valor total a pagar, a data e hora de emissão impressas no cupom, e a lista de produtos reais.',
         },
         {
           type: 'image_url',
@@ -183,8 +192,8 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, sem explicações):
     },
   ]
 
-  // Call through LLM serverless proxy with plenty of tokens for complete item lists
-  const res = await fetch('/api/llm/proxy', {
+  // Call through LLM serverless proxy with retry on fallback vision model
+  let res = await fetch('/api/llm/proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -198,6 +207,23 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, sem explicações):
       customUrl: config.customBaseUrl,
     }),
   })
+
+  // If 90b vision model returns rate limit or error on Groq, fallback to 11b
+  if (!res.ok && config.provider === 'groq' && visionModel === 'llama-3.2-90b-vision-preview') {
+    res = await fetch('/api/llm/proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'chat',
+        provider: 'groq',
+        apiKey: config.llmApiKey.trim(),
+        model: 'llama-3.2-11b-vision-preview',
+        messages,
+        temperature: 0.1,
+        max_tokens: 2500,
+      }),
+    })
+  }
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '')
