@@ -231,58 +231,62 @@ export async function parseReceiptWithVision(
         : 'google/gemini-2.0-flash-001'
   }
 
-  const systemPrompt = `Você é um scanner OCR especialista em cupons fiscais brasileiros (SAT CFe, NFC-e, Danfe e Recibos).
-Sua tarefa é analisar a imagem do cupom fiscal e extrair os dados com máxima fidelidade.
+  const systemPrompt = `Você é um scanner OCR especialista em TODOS os tipos de cupons fiscais e recibos brasileiros (Padarias, Restaurantes, Supermercados, Farmácias, Postos, Lanchonetes, Lojas, SAT CFe, NFC-e, Danfe e Comandas).
+Sua tarefa é extrair os dados reais da compra com máxima precisão.
 
-DIRETRIZES DE EXTRAÇÃO:
+DIRETRIZES UNIVERSAIS DE EXTRAÇÃO:
 
-1. ESTABELECIMENTO (establishment):
-   - Extraia o nome da empresa na PRIMEIRA LINHA do cabeçalho no topo da nota.
-   - Exemplos: "SENDAS DISTRIBUIDORA S/A" (Assaí Atacadista), "CARREFOUR COMERCIO E INDUSTRIA", "CIA BRASILEIRA DE DISTRIBUICAO" (Pão de Açúcar), "DROGARIA SAO PAULO S/A", "SUPERMERCADOS BH".
-   - NUNCA retorne nomes genéricos como "Cupom Fiscal", "Documento Auxiliar", "SAT" ou "NFC-e".
+1. ESTABELECIMENTO (Nome da Loja, Padaria, Restaurante ou Mercado):
+   - Localize o Nome Fantasia ou Razão Social no cabeçalho do topo.
+   - Exemplos:
+     * Padarias/Lanchonetes/Cafés: "Padaria Bella Paulista", "Panificadora Estrela", "Café do Ponto", "Lanchonete Central", "Casa do Pão de Queijo".
+     * Restaurantes/Bares: "Churrascaria Boi Preto", "Spoleto", "Madero", "Restaurante Sabor da Vila", "Pizzaria Bella".
+     * Supermercados/Atacados: "Sendas Distribuidora (Assaí)", "Carrefour", "Pão de Açúcar", "Supermercados BH", "Atacadão", "Dia", "Oxxo".
+     * Farmácias/Postos: "Droga Raia", "Drogasil", "Posto Shell", "Posto Ipiranga".
+   - NUNCA retorne "Cupom Fiscal", "Documento Auxiliar", "NFC-e", "SAT", "SEFAZ", "Consumidor" nem endereços.
 
-2. VALOR TOTAL LÍQUIDO PAGO (amount):
-   - Localize no rodapé o "VALOR A PAGAR R$" ou "VALOR PAGO R$" final após todos os descontos.
-   - NUNCA pegue o "VALOR TOTAL R$" bruto se houver linha de "DESCONTO R$". O amount deve ser o valor efetivamente pago (ex: se Total é 65,88 e Desconto é 6,00, o amount é 59.88).
+2. CATEGORIA AUTOMÁTICA (category):
+   - "Alimentação": Se for Padaria, Restaurante, Lanchonete, Bar, Café, Delivery, Pizzaria, Hamburgueria.
+   - "Despensa": Se for Supermercado, Atacado, Hortifruti, Açougue, Mercearia de bairro.
+   - "Saúde": Se for Farmácia ou Drogaria.
+   - "Transporte": Se for Posto de Combustível ou Estacionamento.
+   - "Outros": Demais estabelecimentos.
 
-3. DATA E HORA DE EMISSÃO:
-   - Procure por "DATA: DD/MM/AAAA - HH:MM" ou "EMISSÃO: DD/MM/AAAA HH:MM:SS".
-   - date: formato ISO "YYYY-MM-DD" (ex: "2026-08-20").
-   - time: formato "HH:MM" (ex: "10:54").
+3. VALOR TOTAL LÍQUIDO PAGO (amount):
+   - Localize o "VALOR A PAGAR R$", "TOTAL R$", "VALOR PAGO R$" ou "VALOR LÍQUIDO R$" final.
+   - Se houver linha de DESCONTO, o amount DEVE SER O VALOR FINAL LÍQUIDO PÓS-DESCONTO.
 
-4. CATEGORIA (category):
-   - "Despensa" (Supermercados, atacados, compras de alimentos/bebidas)
-   - "Alimentação" (Restaurantes, lanchonetes)
-   - "Saúde" (Farmácias)
-   - "Transporte" (Postos de gasolina)
+4. DATA E HORA DE EMISSÃO:
+   - Data: formato ISO "YYYY-MM-DD" (ex: "2026-08-20"). Se não visível, use "${todayIso()}".
+   - Hora: formato "HH:MM" (ex: "10:54" ou "16:30"). Se não encontrar no cupom, use "".
 
 5. ITENS / PRODUTOS (detailedItems):
-   - ATENÇÃO AO PADRÃO MULTI-LINHA BRASILEIRO (Assaí, Carrefour, Pão de Açúcar, SAT):
-     Cada produto vem dividido em 2 linhas:
-     Linha 1: [Item#] [Código] [DESCRIÇÃO DO PRODUTO] (ex: "001 11662410001 BE IT WHEY 250ML CH")
-     Linha 2: [Quantidade] [Unidade] x [Valor Unitário] [Valor Total] (ex: "12,000 Un x 5,49 65,88")
-     Linha 3 (opcional): [Desconto no item - 6,00]
-   - Extraia TODOS os itens listados:
-     - name: Nome do produto da linha 1 (ex: "Be It Whey 250ml Ch" ou "Be It Whey 250ml Chocolate")
-     - qty: Quantidade numérica (ex: 12)
-     - unit: "un", "kg", "g", "l", "pct", "cx", "lat"
-     - unitPrice: Preço unitário float (ex: 5.49)
-     - totalPrice: Preço total float (ex: 59.88 ou 65.88)
+   - O cupom pode ter os produtos em qualquer formato:
+     A) FORMATO 1 LINHA (Comum em Padarias, Restaurantes, Bares, Farmácias):
+        * "001 PAO FRANCES KG 0,350 KG X 22,90 8,02" -> name: "Pão Francês", qty: 0.35, unit: "kg"
+        * "002 CAFE EXPRESSO 1 UN X 6,50 6,50" -> name: "Café Expresso", qty: 1, unit: "un"
+        * "1x Pao na Chapa 7,50" -> name: "Pão na Chapa", qty: 1, unit: "un"
+        * "SUCO LARANJA 500ML 1 12,00" -> name: "Suco de Laranja 500ml", qty: 1, unit: "un"
+     B) FORMATO 2 LINHAS (Comum em Supermercados e Atacados):
+        * Linha 1: "001 11662410001 BE IT WHEY 250ML CH"
+        * Linha 2: "12,000 Un x 5,49 65,88"
+        * -> name: "Be It Whey 250ml Ch", qty: 12, unit: "un"
+   - Extraia TODOS os produtos identificados com nome limpo, quantidade numérica e unidade.
 
-ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
+ESTRUTURA JSON OBRIGATÓRIA (sem markdown adicional):
 {
-  "establishment": "Sendas Distribuidora (Assaí)",
-  "amount": 59.88,
-  "date": "2026-08-20",
-  "time": "10:54",
-  "category": "Despensa",
+  "establishment": "Nome da Padaria / Loja",
+  "amount": 45.50,
+  "date": "YYYY-MM-DD",
+  "time": "HH:MM",
+  "category": "Alimentação",
   "detailedItems": [
     {
-      "name": "Be It Whey 250ml Ch",
-      "qty": 12,
+      "name": "Nome do Produto",
+      "qty": 1,
       "unit": "un",
-      "unitPrice": 5.49,
-      "totalPrice": 59.88
+      "unitPrice": 10.00,
+      "totalPrice": 10.00
     }
   ]
 }`
@@ -294,7 +298,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
       content: [
         {
           type: 'text',
-          text: 'Extraia os dados completos deste cupom fiscal brasileiro: nome da empresa no topo da primeira linha, valor total líquido pago no rodapé, data/hora e todos os produtos com quantidade e valor.',
+          text: 'Leia este cupom fiscal / recibo. Extraia o nome do estabelecimento no cabeçalho, o valor total líquido pago, a categoria correta, a data/hora e a lista de produtos.',
         },
         {
           type: 'image_url',
