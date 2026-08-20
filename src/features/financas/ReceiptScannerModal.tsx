@@ -99,8 +99,8 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
       const compressed = await compressImageForOcr(file, 1800, 0.88)
       setCompressResult(compressed)
 
-      // 2. Vision OCR Analysis (2-Step Pipeline with Llama 70B + QR detection)
-      const parsed = await parseReceiptWithVision(compressed.dataUrl)
+      // 2. Vision OCR Analysis with Full Sensor Raw File QR Detection
+      const parsed = await parseReceiptWithVision(compressed.dataUrl, file)
 
       // 3. Populate editable form state
       setEstablishment(parsed.establishment || 'Cupom Fiscal')

@@ -1,5 +1,5 @@
 import { getHermesAdvancedConfig } from './hermes'
-import { detectQrCodeFromDataUrl, type SefazQrCodeData } from './qrReceiptReader'
+import { detectQrCodeFromDataUrl, detectQrCodeFromFile, type SefazQrCodeData } from './qrReceiptReader'
 
 export interface ScannedPantryItem {
   name: string
@@ -211,6 +211,7 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
  */
 export async function parseReceiptWithVision(
   compressedDataUrl: string,
+  rawFile?: File | Blob,
 ): Promise<ParsedReceiptData> {
   const config = getHermesAdvancedConfig()
 
@@ -218,8 +219,10 @@ export async function parseReceiptWithVision(
     throw new Error('Configure sua API Key em Configurações > Inteligência Artificial Hermes.')
   }
 
-  // 1. Fast client-side QR Code detection (executes in ~15ms on downscaled canvas)
-  const qrCode = await detectQrCodeFromDataUrl(compressedDataUrl).catch(() => null)
+  // 1. Fast client-side QR Code detection directly on raw sensor File or DataURL
+  const qrCode = rawFile
+    ? await detectQrCodeFromFile(rawFile).catch(() => null)
+    : await detectQrCodeFromDataUrl(compressedDataUrl).catch(() => null)
 
   // 2. Vision Model selection (Groq Llama 3.2 Vision or OpenRouter Gemini)
   let visionModel = config.llmModel || ''

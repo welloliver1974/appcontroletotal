@@ -73,9 +73,46 @@ export function parseSefazUrl(url: string): SefazQrCodeData | null {
 }
 
 /**
+ * Scans a raw image File/Blob for QR codes directly at original sensor resolution
+ * using createImageBitmap (instant C++ multithreaded processing).
+ */
+export async function detectQrCodeFromFile(file: File | Blob): Promise<SefazQrCodeData | null> {
+  // 1. Try native BarcodeDetector on original full-resolution ImageBitmap (instant <5ms)
+  if (typeof window !== 'undefined' && 'BarcodeDetector' in window && typeof createImageBitmap === 'function') {
+    try {
+      const bitmap = await createImageBitmap(file)
+      const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] })
+      const detected = await detector.detect(bitmap)
+      bitmap.close?.()
+      if (detected && detected.length > 0 && detected[0].rawValue) {
+        const parsed = parseSefazUrl(detected[0].rawValue)
+        if (parsed) return parsed
+      }
+    } catch {
+      // Continue to canvas fallback
+    }
+  }
+
+  // 2. Fallback to DataURL scanning
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onerror = () => resolve(null)
+    reader.onload = async () => {
+      if (typeof reader.result === 'string') {
+        const res = await detectQrCodeFromDataUrl(reader.result)
+        resolve(res)
+      } else {
+        resolve(null)
+      }
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
+/**
  * Scans an image for QR codes using:
  * 1. Native BarcodeDetector on full image (ultra fast C++ browser engine).
- * 2. jsQR on 1000px balanced canvas.
+ * 2. jsQR on balanced canvas.
  * 3. jsQR on Lower-Half Region-of-Interest (ROI) where small Brazilian NFC-e/SAT QR codes reside.
  */
 export async function detectQrCodeFromDataUrl(dataUrl: string): Promise<SefazQrCodeData | null> {
@@ -106,8 +143,8 @@ export async function detectQrCodeFromDataUrl(dataUrl: string): Promise<SefazQrC
           }
         }
 
-        // 2. jsQR on 1000px balanced canvas
-        const maxDim = 1000
+        // 2. jsQR on 1200px balanced canvas
+        const maxDim = 1200
         const scale = Math.min(1, maxDim / Math.max(width, height))
         const canvas = document.createElement('canvas')
         canvas.width = Math.round(width * scale)
@@ -129,10 +166,9 @@ export async function detectQrCodeFromDataUrl(dataUrl: string): Promise<SefazQrC
         }
 
         // 3. Lower-Half Crop (Region of Interest) for small/distant QR codes in tall receipts
-        // In Brazil, SAT/NFC-e QR codes are always in the lower 65% of the receipt
         const cropY = Math.round(height * 0.35)
         const cropHeight = height - cropY
-        const cropScale = Math.min(1, 900 / Math.max(width, cropHeight))
+        const cropScale = Math.min(1, 1000 / Math.max(width, cropHeight))
 
         const cropCanvas = document.createElement('canvas')
         cropCanvas.width = Math.round(width * cropScale)
