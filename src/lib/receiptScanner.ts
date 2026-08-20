@@ -24,11 +24,6 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function currentHhMm() {
-  const now = new Date()
-  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-}
-
 /**
  * Robust JSON cleaner with regex fallback parser.
  * Even if the LLM output is slightly broken or cut off, extracts all available data gracefully.
