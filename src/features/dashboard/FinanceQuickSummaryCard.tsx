@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ArrowUpRight, Clock, DollarSign, Wallet } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { ProgressBar } from '@/components/ui/feedback'
@@ -61,67 +62,67 @@ export function FinanceQuickSummaryCard() {
   if (loading) return null
 
   return (
-    <Card className="flex flex-col p-4 space-y-4 border-zinc-800/80 bg-zinc-900/60 shadow-lg shadow-black/20">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+    <Card className="flex flex-col p-3.5 sm:p-4 space-y-3.5 sm:space-y-4 border-zinc-800/80 bg-zinc-900/60 shadow-lg shadow-black/20 w-full min-w-0 overflow-hidden">
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
             <Wallet className="h-4 w-4" />
           </div>
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
+          <div className="min-w-0">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300 truncate">
               Finanças do Mês
             </h4>
-            <p className="text-[11px] text-zinc-500">
-              Controle direto sem gráficos complexos
+            <p className="text-[11px] text-zinc-500 truncate">
+              Controle de gastos e orçamento
             </p>
           </div>
         </div>
 
-        <a
-          href="#financas"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+        <Link
+          to="/financas"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors shrink-0"
         >
           <span>Ver mais</span>
           <ArrowUpRight className="h-3.5 w-3.5" />
-        </a>
+        </Link>
       </div>
 
       {/* Grid de Métricas Diretas */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-3 space-y-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
-            <DollarSign className="h-3 w-3 text-emerald-400" />
-            Total Gasto no Mês
+      <div className="grid grid-cols-2 gap-2 sm:gap-2.5 w-full min-w-0">
+        <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-2.5 sm:p-3 space-y-0.5 sm:space-y-1 min-w-0 overflow-hidden">
+          <span className="text-[9.5px] sm:text-[10px] font-semibold uppercase tracking-wider text-zinc-500 flex items-center gap-1 truncate">
+            <DollarSign className="h-3 w-3 text-emerald-400 shrink-0" />
+            <span className="truncate">Total Gasto</span>
           </span>
-          <p className="text-base font-bold font-num text-zinc-100">
+          <p className="text-sm sm:text-base font-bold font-num text-zinc-100 truncate">
             {formatBRL(totalSpent)}
           </p>
-          <p className="text-[10px] text-zinc-500">
-            {monthSpending.length} lançamentos realizados
+          <p className="text-[9.5px] sm:text-[10px] text-zinc-500 truncate">
+            {monthSpending.length} lançamentos
           </p>
         </div>
 
-        <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-3 space-y-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
-            <Clock className="h-3 w-3 text-amber-400" />
-            Contas Pendentes
+        <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-2.5 sm:p-3 space-y-0.5 sm:space-y-1 min-w-0 overflow-hidden">
+          <span className="text-[9.5px] sm:text-[10px] font-semibold uppercase tracking-wider text-zinc-500 flex items-center gap-1 truncate">
+            <Clock className="h-3 w-3 text-amber-400 shrink-0" />
+            <span className="truncate">Contas a Pagar</span>
           </span>
-          <p className="text-base font-bold font-num text-amber-300">
+          <p className="text-sm sm:text-base font-bold font-num text-amber-300 truncate">
             {formatBRL(pendingBillsTotal)}
           </p>
-          <p className="text-[10px] text-zinc-500">
-            {pendingBills.length} a pagar · {paidBills.length} quitadas
+          <p className="text-[9.5px] sm:text-[10px] text-zinc-500 truncate">
+            {pendingBills.length} pendentes · {paidBills.length} pagas
           </p>
         </div>
       </div>
 
       {/* Barra de Progresso do Orçamento */}
-      <div className="space-y-1.5 pt-1">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-zinc-400">
-            Orçamento Utilizado: <strong>{budgetUsedPct}%</strong>
+      <div className="space-y-1.5 pt-0.5 sm:pt-1 min-w-0 w-full">
+        <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs">
+          <span className="text-zinc-400 truncate">
+            Utilizado: <strong className="text-zinc-200">{budgetUsedPct}%</strong>
           </span>
-          <span className="font-num text-zinc-400">
+          <span className="font-num text-zinc-400 truncate">
             Restante: <strong className="text-zinc-200">{formatBRL(remainingBudget)}</strong>
           </span>
         </div>

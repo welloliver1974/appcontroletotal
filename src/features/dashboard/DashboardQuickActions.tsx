@@ -128,66 +128,66 @@ export function DashboardQuickActions({ onRefresh }: { onRefresh?: () => void })
 
   return (
     <>
-      <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-3 sm:p-4 backdrop-blur-xl shadow-lg shadow-black/20">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+      <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-3 sm:p-4 backdrop-blur-xl shadow-lg shadow-black/20 w-full min-w-0 overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
               <Sparkles className="h-4 w-4" />
             </span>
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-200">
+            <div className="min-w-0">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-200 truncate">
                 Ações Rápidas em 1 Toque
               </h3>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-500 truncate">
                 Lançamentos instantâneos sem sair do painel
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto min-w-0">
             <button
               type="button"
               onClick={() => setShowSpending(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all shadow-sm w-full md:w-auto"
+              className="inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all shadow-sm w-full md:w-auto truncate"
             >
-              <Wallet className="h-3.5 w-3.5" />
-              <span>+ Gasto</span>
+              <Wallet className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">+ Gasto</span>
             </button>
 
             <button
               type="button"
               onClick={() => setShowScanner(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/25 hover:bg-cyan-500/20 hover:border-cyan-500/40 transition-all shadow-sm w-full md:w-auto"
+              className="inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/25 hover:bg-cyan-500/20 hover:border-cyan-500/40 transition-all shadow-sm w-full md:w-auto truncate"
             >
-              <Receipt className="h-3.5 w-3.5" />
+              <Receipt className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Escanear Cupom</span>
             </button>
 
             <button
               type="button"
               onClick={() => setShowVoice(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/25 hover:bg-purple-500/20 hover:border-purple-500/40 transition-all shadow-sm w-full md:w-auto"
+              className="inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/25 hover:bg-purple-500/20 hover:border-purple-500/40 transition-all shadow-sm w-full md:w-auto truncate"
             >
-              <Mic className="h-3.5 w-3.5" />
-              <span>Gravar Voz</span>
+              <Mic className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Gravar Voz</span>
             </button>
 
             <button
               type="button"
               onClick={() => setShowEvent(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/25 hover:bg-rose-500/20 hover:border-rose-500/40 transition-all shadow-sm w-full md:w-auto"
+              className="inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/25 hover:bg-rose-500/20 hover:border-rose-500/40 transition-all shadow-sm w-full md:w-auto truncate"
             >
-              <Calendar className="h-3.5 w-3.5" />
-              <span>+ Evento</span>
+              <Calendar className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">+ Evento</span>
             </button>
 
             <button
               type="button"
               onClick={() => setShowFuel(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/25 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all shadow-sm col-span-2 sm:col-span-1 md:w-auto"
+              className="inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/25 hover:bg-amber-500/20 hover:border-amber-500/40 transition-all shadow-sm col-span-2 sm:col-span-1 md:w-auto truncate"
             >
-              <Fuel className="h-3.5 w-3.5" />
-              <span>Abastecer</span>
+              <Fuel className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Abastecer</span>
             </button>
           </div>
         </div>

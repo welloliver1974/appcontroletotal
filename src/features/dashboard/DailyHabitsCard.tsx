@@ -83,17 +83,17 @@ export function DailyHabitsCard() {
   if (loading) return null
 
   return (
-    <Card className="p-4 space-y-3.5 border-zinc-800/80 bg-zinc-900/60 shadow-lg shadow-black/20">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+    <Card className="p-3.5 sm:p-4 space-y-3 sm:space-y-3.5 border-zinc-800/80 bg-zinc-900/60 shadow-lg shadow-black/20 w-full min-w-0 overflow-hidden">
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="h-7 w-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
             <ListTodo className="h-4 w-4" />
           </div>
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
+          <div className="min-w-0">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300 truncate">
               Rotina & Hábitos de Hoje
             </h4>
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-zinc-500 truncate">
               {completedCount} de {habits.length} concluídos ({progress}%)
             </p>
           </div>
@@ -102,7 +102,7 @@ export function DailyHabitsCard() {
         <button
           type="button"
           onClick={() => setAdding(!adding)}
-          className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1"
+          className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 shrink-0"
         >
           <Plus className="h-3.5 w-3.5" />
           <span>Novo</span>
@@ -114,22 +114,22 @@ export function DailyHabitsCard() {
 
       {/* Formulário Rápido de Novo Hábito */}
       {adding && (
-        <form onSubmit={handleAddHabit} className="flex items-center gap-1.5 pt-1">
+        <form onSubmit={handleAddHabit} className="flex items-center gap-1.5 pt-1 w-full min-w-0">
           <input
             type="text"
             autoFocus
             placeholder="Ex.: Meditação 10 min, Tomar creatina..."
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            className="input-base h-8 text-xs flex-1"
+            className="input-base h-8 text-xs flex-1 min-w-0"
           />
-          <Button variant="primary" size="sm" type="submit" className="h-8 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-500">
+          <Button variant="primary" size="sm" type="submit" className="h-8 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-500 shrink-0">
             Salvar
           </Button>
           <button
             type="button"
             onClick={() => setAdding(false)}
-            className="h-8 w-8 flex items-center justify-center text-zinc-500 hover:text-zinc-300"
+            className="h-8 w-8 flex items-center justify-center text-zinc-500 hover:text-zinc-300 shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
@@ -138,11 +138,11 @@ export function DailyHabitsCard() {
 
       {/* Lista de Hábitos */}
       {habits.length === 0 ? (
-        <p className="py-4 text-center text-xs text-zinc-500">
-          Nenhum hábito cadastrado. Clique em <span className="text-emerald-400 font-semibold">+ Novo</span> para criar sua rotina diária.
+        <p className="py-3 text-center text-xs text-zinc-500 break-words px-2">
+          Nenhum hábito cadastrado. Toque em <span className="text-emerald-400 font-semibold">+ Novo</span> para criar sua rotina diária.
         </p>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 w-full min-w-0">
           {habits.map((habit) => {
             const isDone = (habit.completedDates || []).includes(today)
 
@@ -150,7 +150,7 @@ export function DailyHabitsCard() {
               <div
                 key={habit.id}
                 className={cn(
-                  'group flex items-center justify-between p-2.5 rounded-xl border transition-all',
+                  'group flex items-center justify-between p-2 sm:p-2.5 rounded-xl border transition-all min-w-0 w-full overflow-hidden',
                   isDone
                     ? 'bg-emerald-500/5 border-emerald-500/20 text-zinc-300'
                     : 'bg-zinc-900/80 border-zinc-800/80 hover:border-zinc-700 text-zinc-100',
@@ -159,7 +159,7 @@ export function DailyHabitsCard() {
                 <button
                   type="button"
                   onClick={() => toggleHabit(habit)}
-                  className="flex items-center gap-2.5 min-w-0 flex-1 text-left"
+                  className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 text-left overflow-hidden"
                 >
                   <span
                     className={cn(
@@ -176,7 +176,7 @@ export function DailyHabitsCard() {
 
                   <span
                     className={cn(
-                      'text-xs font-medium truncate',
+                      'text-xs font-medium truncate min-w-0 flex-1',
                       isDone && 'line-through text-zinc-500',
                     )}
                   >
@@ -187,10 +187,10 @@ export function DailyHabitsCard() {
                 <button
                   type="button"
                   onClick={() => handleRemoveHabit(habit.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-500 hover:text-rose-400 p-1"
+                  className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-zinc-500 hover:text-rose-400 p-1 shrink-0 ml-1"
                   title="Excluir hábito"
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
             )

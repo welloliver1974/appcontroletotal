@@ -606,9 +606,25 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
-## 🔮 36. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
+## 🎯 36. Correção Definitiva de Responsividade dos Cards do Dashboard & Seletor de Abas Mobile
 
-Qualquer IA ou desenvolvedor pode utilizar as ideias abaixo para evoluir o sistema:
+* **Problema Identificado pelo Usuário:** No celular, os cards compridos da Dashboard (Próximos Compromissos, Life-Log, Finanças do Mês, Radar de Alertas) estavam empilhados em uma coluna vertical infinita que empurrava Finanças e Radar para o final da tela fora do campo de visão ("fora da tela e não vai pro lado"), além de sub-cards como o de Finanças estourarem a borda direita da tela (*horizontal clipping*) em resoluções de 360px a 390px.
+* **Soluções Implementadas:**
+  1. **Seletor de Abas Inteligente no Mobile ([src/features/dashboard/DashboardPage.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/DashboardPage.tsx)):**
+     - Em telas móveis (`<lg`), foi adicionado um menu de abas/segmentos intuitivo:
+       - 🎯 **Rotina & Agenda:** Foco nos Hábitos do dia, Próximos Compromissos e Diário Life-Log.
+       - 💰 **Finanças & Radar:** Acesso instantâneo com 1 toque ao resumo de Finanças, Radar de Alertas e Lista de Compras, sem necessidade de rolagem excessiva.
+       - 📋 **Todos:** Visualização contínua clássica para quem deseja rolar por todos os cards.
+     - No desktop (`≥1024px`), a interface mantém automaticamente o layout premium em 2 colunas paralelas (`7 cols` vs `5 cols`).
+  2. **Contenção Estrita de Largura & Truncagem nos Cards:**
+     - **Finanças ([FinanceQuickSummaryCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/FinanceQuickSummaryCard.tsx)):** Inclusão de `min-w-0`, `overflow-hidden` e tipografia fluida nas métricas de Gasto e Contas a Pagar, impedindo qualquer corte na borda direita. Navegação com `<Link to="/financas">`.
+     - **Radar de Alertas ([Alerts.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/Alerts.tsx)):** Rótulos com `truncate`, chips com `shrink-0` e links diretos com `<Link to="...">`.
+     - **Próximos Compromissos & Life-Log ([Widgets.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/Widgets.tsx)):** Títulos longos contidos com `truncate` e padding refinado para telas compactas.
+     - **Hábitos & Compras ([DailyHabitsCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/DailyHabitsCard.tsx), [QuickShoppingListCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/QuickShoppingListCard.tsx)):** Formulários responsivos que quebram de forma limpa no mobile e botões com área de toque protegida.
+
+---
+
+## 🔮 37. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
 
 1. **📊 Exportação de Prestação de Contas / Reembolso de Viagem a Trabalho (PDF / Excel):**
    - Gerar relatório formal com tabela de Km rodados, datas, cidades visitadas e valor de reembolso por Km (ex: R$ 1,20/km) para envio à empresa.

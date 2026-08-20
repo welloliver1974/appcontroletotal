@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   ArrowUpRight,
   Check,
@@ -85,17 +86,17 @@ export function QuickShoppingListCard() {
   if (loading) return null
 
   return (
-    <Card className="flex flex-col p-4 space-y-3.5 border-zinc-800/80 bg-zinc-900/60 shadow-lg shadow-black/20">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400">
+    <Card className="flex flex-col p-3.5 sm:p-4 space-y-3 sm:space-y-3.5 border-zinc-800/80 bg-zinc-900/60 shadow-lg shadow-black/20 w-full min-w-0 overflow-hidden">
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 shrink-0">
             <ShoppingCart className="h-4 w-4" />
           </div>
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
-              Lista de Compras & Despensa
+          <div className="min-w-0">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300 truncate">
+              Lista de Compras
             </h4>
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-zinc-500 truncate">
               {needsAttention.length > 0
                 ? `${needsAttention.length} ${needsAttention.length === 1 ? 'item precisa' : 'itens precisam'} de reposição`
                 : 'Despensa abastecida'}
@@ -103,7 +104,7 @@ export function QuickShoppingListCard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             onClick={() => setAdding(!adding)}
@@ -112,31 +113,31 @@ export function QuickShoppingListCard() {
             <Plus className="h-3.5 w-3.5" />
             <span>Adicionar</span>
           </button>
-          <a
-            href="#despensa"
+          <Link
+            to="/despensa"
             className="text-zinc-500 hover:text-zinc-300 p-1"
             title="Abrir Despensa Completa"
           >
             <ArrowUpRight className="h-3.5 w-3.5" />
-          </a>
+          </Link>
         </div>
       </div>
 
       {/* Formulário Rápido de Novo Item para Comprar */}
       {adding && (
-        <form onSubmit={handleAddQuickItem} className="flex items-center gap-1.5 pt-1">
+        <form onSubmit={handleAddQuickItem} className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 pt-1 w-full min-w-0">
           <input
             type="text"
             autoFocus
-            placeholder="Ex.: Café em pó, Azeite, Detergente..."
+            placeholder="Ex.: Café, Azeite..."
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            className="input-base h-8 text-xs flex-1"
+            className="input-base h-8 text-xs flex-1 min-w-[130px]"
           />
           <select
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
-            className="input-base h-8 text-xs px-2 bg-zinc-900 border-zinc-700 text-zinc-200"
+            className="input-base h-8 text-xs px-2 bg-zinc-900 border-zinc-700 text-zinc-200 w-auto"
           >
             <option value="Alimentos">Alimentos</option>
             <option value="Bebidas">Bebidas</option>
@@ -144,21 +145,23 @@ export function QuickShoppingListCard() {
             <option value="Higiene">Higiene</option>
             <option value="Farmácia">Farmácia</option>
           </select>
-          <Button
-            variant="primary"
-            size="sm"
-            type="submit"
-            className="h-8 px-2.5 text-xs bg-purple-600 hover:bg-purple-500 text-white"
-          >
-            Salvar
-          </Button>
-          <button
-            type="button"
-            onClick={() => setAdding(false)}
-            className="h-8 w-8 flex items-center justify-center text-zinc-500 hover:text-zinc-300"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              className="h-8 px-2.5 text-xs bg-purple-600 hover:bg-purple-500 text-white shrink-0"
+            >
+              Salvar
+            </Button>
+            <button
+              type="button"
+              onClick={() => setAdding(false)}
+              className="h-8 w-8 flex items-center justify-center text-zinc-500 hover:text-zinc-300 shrink-0"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </form>
       )}
 

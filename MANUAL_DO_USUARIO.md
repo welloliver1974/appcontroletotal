@@ -28,6 +28,12 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 * **`📅 + Evento`**: Cadastra um novo compromisso na Agenda.
 * **`⛽ Abastecer`**: Registra o odômetro atual (Km), litros e valor para calcular o consumo médio do veículo.
 
+### 📱 Abas Rápidas de Navegação no Celular:
+* No smartphone, a Dashboard conta com um seletor no topo dos cards para acesso imediato sem rolagem excessiva:
+  * **🎯 `Rotina & Agenda`**: Mostra os Hábitos de hoje, Próximos Compromissos e Diário Life-Log.
+  * **💰 `Finanças & Radar`**: Traz na hora o resumo de Finanças do Mês, Radar de Alertas prioritários e a Lista de Compras.
+  * **📋 `Todos`**: Exibe a lista completa e contínua de todos os cards.
+
 ### 🔐 Desbloqueio por Biometria no Celular:
 * No seu smartphone, você pode entrar no app usando a **Digital ou Face ID**.
 * Para ativar: acesse **Configurações (`⚙️`) ➔ Minha Conta ➔ Ativar Biometria**.

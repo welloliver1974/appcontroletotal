@@ -34,38 +34,38 @@ export function UpcomingCard({ data }: { data: DashboardData }) {
     .slice(0, 5)
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col w-full min-w-0 overflow-hidden shadow-lg shadow-black/20 border-zinc-800/80 bg-zinc-900/60">
       <CardHeader
         title="Próximos compromissos"
         subtitle={`${upcoming.length} pela frente`}
-        action={<CalendarClock className="h-4 w-4 text-rose-400" />}
+        action={<CalendarClock className="h-4 w-4 text-rose-400 shrink-0" />}
       />
       {upcoming.length === 0 ? (
         <div className="p-4">
           <EmptyState title="Nada agendado" description="Compromissos futuros aparecem aqui." />
         </div>
       ) : (
-        <div className="divide-y divide-zinc-800/70">
+        <div className="divide-y divide-zinc-800/70 w-full min-w-0">
           {upcoming.map((e) => {
             const dm = formatDayAndMonth(e.date)
             return (
-              <div key={e.id} className="flex items-center gap-3 px-4 py-3">
+              <div key={e.id} className="flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-2.5 sm:py-3 min-w-0 w-full overflow-hidden">
                 <div
                   className={cn(
-                    'flex h-10 w-11 shrink-0 flex-col items-center justify-center rounded-lg border',
+                    'flex h-9 w-10 sm:h-10 sm:w-11 shrink-0 flex-col items-center justify-center rounded-lg border',
                     CATEGORY[e.category],
                   )}
                 >
-                  <span className="font-num text-[13px] font-semibold leading-none">
+                  <span className="font-num text-xs sm:text-[13px] font-semibold leading-none">
                     {dm.day}
                   </span>
-                  <span className="text-[9px] font-bold uppercase leading-tight mt-0.5">
+                  <span className="text-[8.5px] sm:text-[9px] font-bold uppercase leading-tight mt-0.5">
                     {dm.month}
                   </span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-zinc-100">{e.title}</p>
-                  <p className="truncate text-xs text-zinc-500">
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <p className="truncate text-xs sm:text-sm font-medium text-zinc-100">{e.title}</p>
+                  <p className="truncate text-[11px] sm:text-xs text-zinc-500 mt-0.5">
                     <span className="font-num">{e.timeStart}</span>
                     {e.location ? ` · ${e.location}` : ''} · {relativeDayLabel(e.date)}
                   </p>
@@ -89,27 +89,27 @@ export function EmailsCard({ data }: { data: DashboardData }) {
     .slice(0, 4)
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col w-full min-w-0 overflow-hidden shadow-lg shadow-black/20 border-zinc-800/80 bg-zinc-900/60">
       <CardHeader
         title="Emails críticos"
         subtitle="priorizados pelo Hermes"
-        action={<InboxIcon className="h-4 w-4 text-rose-400" />}
+        action={<InboxIcon className="h-4 w-4 text-rose-400 shrink-0" />}
       />
       {emails.length === 0 ? (
         <div className="p-4">
           <EmptyState title="Inbox limpo" description="Emails importantes filtrados pelo Hermes." />
         </div>
       ) : (
-        <div className="divide-y divide-zinc-800/70">
+        <div className="divide-y divide-zinc-800/70 w-full min-w-0">
           {emails.map((e) => (
-            <div key={e.id} className="px-4 py-3">
-              <div className="flex items-center gap-2">
+            <div key={e.id} className="px-3.5 sm:px-4 py-2.5 sm:py-3 min-w-0 w-full overflow-hidden">
+              <div className="flex items-center gap-2 min-w-0">
                 {e.importance === 'critico' && (
                   <span className="h-2 w-2 shrink-0 rounded-full bg-rose-500" />
                 )}
-                <p className="truncate text-sm font-medium text-zinc-100">{e.subject}</p>
+                <p className="truncate text-xs sm:text-sm font-medium text-zinc-100">{e.subject}</p>
               </div>
-              <p className="mt-0.5 truncate text-xs text-zinc-500">
+              <p className="mt-0.5 truncate text-[11px] sm:text-xs text-zinc-500">
                 {e.from} · <span className="font-num">{relativeDayLabel(e.sentAt)}</span>
               </p>
             </div>
@@ -126,23 +126,23 @@ export function RecentLogCard({ data }: { data: DashboardData }) {
     .slice(0, 4)
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col w-full min-w-0 overflow-hidden shadow-lg shadow-black/20 border-zinc-800/80 bg-zinc-900/60">
       <CardHeader
         title="Life-Log recente"
         subtitle="seu diário com IA"
-        action={<NotebookPen className="h-4 w-4 text-emerald-400" />}
+        action={<NotebookPen className="h-4 w-4 text-emerald-400 shrink-0" />}
       />
       {entries.length === 0 ? (
         <div className="p-4">
           <EmptyState title="Sem anotações" description="Novas entradas aparecem aqui." />
         </div>
       ) : (
-        <div className="divide-y divide-zinc-800/70">
+        <div className="divide-y divide-zinc-800/70 w-full min-w-0">
           {entries.map((l) => (
-            <div key={l.id} className="flex items-center gap-3 px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-zinc-100">{l.title}</p>
-                <p className="truncate text-xs text-zinc-500">
+            <div key={l.id} className="flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-2.5 sm:py-3 min-w-0 w-full overflow-hidden">
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <p className="truncate text-xs sm:text-sm font-medium text-zinc-100">{l.title}</p>
+                <p className="truncate text-[11px] sm:text-xs text-zinc-500 mt-0.5">
                   <span className="font-num">{shortDateTime(l.createdAt)}</span>
                 </p>
               </div>

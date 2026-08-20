@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { ArrowUpRight, BellRing, CalendarClock, CheckCircle2, Mail, ShoppingBasket, Wrench } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { DashboardData } from './dashboardData'
@@ -135,29 +136,29 @@ export function AlertsGrid({ data }: { data: DashboardData }) {
   const alerts = buildAlerts(data)
 
   return (
-    <Card className="flex flex-col p-4 space-y-4 border-zinc-800/80 bg-zinc-900/60 shadow-lg shadow-black/20">
+    <Card className="flex flex-col p-3.5 sm:p-4 space-y-3.5 sm:space-y-4 border-zinc-800/80 bg-zinc-900/60 shadow-lg shadow-black/20 w-full min-w-0 overflow-hidden">
       {/* Header do Card */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400">
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400">
             <BellRing className="h-4 w-4" />
           </div>
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
-              Radar de Alertas & Avisos
+          <div className="min-w-0">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300 truncate">
+              Radar de Alertas
             </h4>
-            <p className="text-[11px] text-zinc-500">
-              Pendências e lembretes prioritários
+            <p className="text-[11px] text-zinc-500 truncate">
+              Pendências prioritárias
             </p>
           </div>
         </div>
 
         {alerts.length > 0 ? (
-          <span className="chip text-[10px] text-amber-400 border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-medium">
-            {alerts.length} {alerts.length === 1 ? 'alerta ativo' : 'alertas ativos'}
+          <span className="chip text-[9.5px] sm:text-[10px] text-amber-400 border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-medium shrink-0">
+            {alerts.length} {alerts.length === 1 ? 'alerta' : 'alertas'}
           </span>
         ) : (
-          <span className="chip text-[10px] text-emerald-400 border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-medium">
+          <span className="chip text-[9.5px] sm:text-[10px] text-emerald-400 border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-medium shrink-0">
             ✅ Em dia
           </span>
         )}
@@ -165,49 +166,52 @@ export function AlertsGrid({ data }: { data: DashboardData }) {
 
       {/* Lista de Alertas ou Estado Vazio */}
       {alerts.length === 0 ? (
-        <div className="flex items-center gap-3 p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-zinc-300">
+        <div className="flex items-center gap-3 p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-zinc-300 min-w-0">
           <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-          <div>
-            <p className="font-semibold text-zinc-200">Tudo em dia por aqui!</p>
-            <p className="text-[11px] text-zinc-500">
-              Sem manutenções atrasadas, itens em falta ou pendências críticas.
+          <div className="min-w-0">
+            <p className="font-semibold text-zinc-200 truncate">Tudo em dia por aqui!</p>
+            <p className="text-[11px] text-zinc-500 truncate">
+              Sem manutenções atrasadas ou itens em falta.
             </p>
           </div>
         </div>
       ) : (
-        <div className="space-y-2 max-h-72 overflow-y-auto pr-0.5">
-          {alerts.map((a) => (
-            <a
-              key={a.id}
-              href={
-                a.kind === 'manutencao'
-                  ? '#manutencao'
-                  : a.kind === 'estoque'
-                  ? '#despensa'
-                  : '#agenda'
-              }
-              className="group flex items-start gap-3 p-2.5 rounded-xl border border-zinc-800/80 bg-zinc-950/60 hover:border-zinc-700 hover:bg-zinc-900/80 transition-all"
-            >
-              <span
-                className={cn(
-                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border',
-                  TONES[a.tone],
-                )}
+        <div className="space-y-2 max-h-72 overflow-y-auto pr-0.5 w-full min-w-0">
+          {alerts.map((a) => {
+            const targetPath =
+              a.kind === 'manutencao'
+                ? '/manutencao'
+                : a.kind === 'estoque'
+                ? '/despensa'
+                : '/agenda'
+
+            return (
+              <Link
+                key={a.id}
+                to={targetPath}
+                className="group flex items-center gap-2.5 sm:gap-3 p-2.5 rounded-xl border border-zinc-800/80 bg-zinc-950/60 hover:border-zinc-700 hover:bg-zinc-900/80 transition-all min-w-0 w-full overflow-hidden"
               >
-                <a.icon className="h-4 w-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1">
-                  <p className="text-xs font-semibold text-zinc-200 truncate group-hover:text-white transition-colors">
-                    {a.title}
-                  </p>
-                  <ArrowUpRight className="h-3.5 w-3.5 text-zinc-600 opacity-0 group-hover:opacity-100 group-hover:text-zinc-400 transition-all shrink-0" />
+                <span
+                  className={cn(
+                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border',
+                    TONES[a.tone],
+                  )}
+                >
+                  <a.icon className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <div className="flex items-center justify-between gap-1 min-w-0">
+                    <p className="text-xs font-semibold text-zinc-200 truncate group-hover:text-white transition-colors">
+                      {a.title}
+                    </p>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-zinc-600 opacity-0 group-hover:opacity-100 group-hover:text-zinc-400 transition-all shrink-0" />
+                  </div>
+                  <p className="text-[11px] text-zinc-400 truncate mt-0.5">{a.meta}</p>
                 </div>
-                <p className="text-[11px] text-zinc-400 line-clamp-1 mt-0.5">{a.meta}</p>
-              </div>
-              <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', DOTS[a.tone])} />
-            </a>
-          ))}
+                <span className={cn('h-2 w-2 shrink-0 rounded-full', DOTS[a.tone])} />
+              </Link>
+            )
+          })}
         </div>
       )}
     </Card>
