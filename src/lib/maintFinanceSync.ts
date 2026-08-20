@@ -27,7 +27,6 @@ export async function syncMaintenanceRecordToFinance(
     note,
     date: record.date || new Date().toISOString().slice(0, 10),
     time: new Date().toTimeString().slice(0, 5),
-    referenceId: record.id ? `maint-${record.id}` : undefined,
     createdAt: new Date().toISOString(),
   }
 
@@ -62,15 +61,13 @@ export async function syncAllUnsyncedMaintenance(): Promise<number> {
 
       // Verifica se já existe um gasto correspondente registrado
       const alreadyExists = existingSpending.some((s) => {
-        if (s.referenceId && s.referenceId === `maint-${m.id}`) return true
         const sameAmount = Math.abs(Number(s.amount) - Number(m.cost)) < 0.01
         const sameDate = s.date === m.date || (s.createdAt && s.createdAt.slice(0, 10) === m.date)
-        const categoryMatch =
+        const titleMatch =
+          (s.note && (s.note.includes(m.title) || m.title.includes(s.note))) ||
           s.category?.toLowerCase() === 'transporte' ||
-          s.category?.toLowerCase() === 'moradia' ||
-          s.category?.toLowerCase().includes('manuten')
-        const titleMatch = s.note && (s.note.includes(m.title) || m.title.includes(s.note))
-        return sameAmount && sameDate && (titleMatch || categoryMatch)
+          s.category?.toLowerCase() === 'moradia'
+        return sameAmount && sameDate && titleMatch
       })
 
       if (!alreadyExists) {

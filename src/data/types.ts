@@ -157,7 +157,6 @@ export interface SpendingItem {
   note: string
   date: string // YYYY-MM-DD
   time?: string // HH:mm
-  referenceId?: string
   createdAt?: string
 }
 
