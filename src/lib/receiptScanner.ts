@@ -195,27 +195,32 @@ export async function parseReceiptWithVision(
   const systemPrompt = `Você é um scanner OCR de alta precisão especialista em cupons fiscais brasileiros (NFC-e, SAT CFe, Danfe Simplificada, Cupom de Restaurante/Posto/Mercado).
 Sua missão é ler o cupom de cima a baixo e extrair as informações reais contidas na foto.
 
-COMO LER CADA PARTE DO CUPOM BRASILEIRO:
+REGRAS DE EXTRAÇÃO:
 
-1. ESTABELECIMENTO (Nome da Loja / Mercado / Posto):
-   - Olhe no TOPO SUPERIOR (Cabeçalho).
-   - Extraia o Nome Fantasia comercial ou Razão Social da loja (ex: "Assaí Atacadista", "Pão de Açúcar", "Supermercados BH", "Carrefour", "Atacadão", "Dia Supermercado", "Droga Raia", "Drogasil", "Posto Shell", "Posto Ipiranga", "Padaria Central", "Oxxo").
-   - REGRA DE OURO: NUNCA coloque nomes do sistema emissor ou fabricante da impressora (ex: "NFC-e", "SAT", "SEFAZ", "Documento Auxiliar", "Extrato No", "Bematech", "Daruma", "Elgin", "Sweda", "Epson", "Totvs", "Linx", "CFe", "Gerencial"). O estabelecimento é a loja física onde o cliente comprou!
+1. ESTABELECIMENTO (Nome da Loja / Mercado / Posto / Farmácia):
+   - Olhe estritamente nas 3 primeiras linhas do TOPO do cupom (Cabeçalho).
+   - Extraia o NOME FANTASIA comercial em destaque (ex: "Carrefour", "Pão de Açúcar", "Assaí", "Atacadão", "Supermercados BH", "Droga Raia", "Drogasil", "Posto Ipiranga", "Posto Shell", "Oxxo", "Swift", "Spoleto", "McDonald's", "Burguer King") ou a Razão Social principal (ex: "Sendas Distribuidora S/A", "RaiaDrogasil S/A", "Companhia Brasileira de Distribuição").
+   - NUNCA coloque:
+     * Nomes fiscais ou de sistemas ("NFC-e", "SAT", "SEFAZ", "Documento Auxiliar", "Extrato No", "Bematech", "Daruma", "Elgin", "Sweda", "Epson", "Totvs", "Linx", "CFe", "Gerencial").
+     * Endereço, Bairro, Cidade ou CEP.
+     * CNPJ ou Inscrição Estadual.
+     * Slogans ou frases promocionais.
 
-2. VALOR TOTAL PAGO (amount):
-   - Localize o "VALOR A PAGAR R$", "TOTAL R$" ou "VALOR LÍQUIDO R$".
-   - NUNCA confunda com SUBTOTAL, TOTAL BRUTO, TROCO, VALOR RECEBIDO ou DESCONTOS.
-   - Retorne o número float (ex: 78.45).
+2. VALOR TOTAL LÍQUIDO PAGO (amount):
+   - REGRA DE OURO DO DESCONTO: Se o cupom tiver descontos ou abatimentos, o amount DEVE SER O VALOR FINAL EFETIVAMENTE PAGO PELO CLIENTE (PÓS-DESCONTO)!
+   - Localize no rodapé: "VALOR A PAGAR R$", "VALOR LÍQUIDO R$", "TOTAL A PAGAR R$" ou o valor final cobrado na Forma de Pagamento (Cartão/PIX/Dinheiro).
+   - NUNCA retorne o "TOTAL BRUTO", "SUBTOTAL" ou "TOTAL DOS ITENS" antes dos descontos.
+   - Retorne sempre o número float com ponto decimal (ex: 89.90).
 
 3. DATA E HORA DE EMISSÃO:
    - Data (date): Localize no cupom a data da compra (geralmente escrita como "EMISSÃO: DD/MM/AAAA" ou "DATA: DD/MM/AAAA"). Converta para "YYYY-MM-DD".
    - Hora (time): Localize no cupom o horário exato da compra (geralmente ao lado da data, ex: "14:35:12" ou "18:20"). Retorne "HH:MM". Se NÃO encontrar no cupom, retorne "".
 
 4. CATEGORIA (category):
-   - "Despensa" (Supermercados, atacados, hortifruti, açougue, compras de casa)
+   - "Despensa" (Supermercados, atacados, hortifruti, açougue, compras de mantimentos)
    - "Alimentação" (Restaurantes, padarias, lanchonetes, delivery, bares)
    - "Saúde" (Farmácias, drogarias)
-   - "Transporte" (Postos de gasolina, combustível, estacionamento, pedágio)
+   - "Transporte" (Postos de combustível, estacionamento, pedágio)
    - "Moradia", "Lazer", "Serviços", "Outros"
 
 5. ITENS / PRODUTOS COMPRADOS (detailedItems):
@@ -246,7 +251,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown adicional):
       content: [
         {
           type: 'text',
-          text: 'Leia com atenção este cupom fiscal brasileiro. Extraia o nome da loja no cabeçalho, o valor total pago, a data/hora e a lista dos produtos comprados.',
+          text: 'Analise este cupom fiscal brasileiro com muita atenção. Identifique o nome comercial da loja no cabeçalho do topo, o VALOR FINAL LÍQUIDO PAGO (já subtraindo qualquer desconto), a data/hora e a lista de produtos comprados.',
         },
         {
           type: 'image_url',
