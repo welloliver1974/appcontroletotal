@@ -594,7 +594,19 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
-## 🔮 35. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
+## 📱 35. Overhaul Completo de Responsividade Mobile (Samsung Galaxy A-Series / Viewports Compactos)
+
+* **Problema Resolvido:** Em smartphones como o Samsung Galaxy A56/A54 (resoluções compactas de 360px a 412px de largura com dimensionamento de texto no One UI), a página sofria estouro de largura horizontal (*horizontal overflow/blowout*), obrigando o usuário a aplicar "zoom out" ou rolar horizontalmente. Elementos como a barra de Ações Rápidas (5 botões assimétricos), Header fixo com múltiplos chips e BottomNav de 7 itens ficavam espremidos ou sobrepostos.
+* **Soluções e Otimizações:**
+  - **CSS Viewport Strict ([src/styles/index.css](file:///e:/Apps/AppControleTotal/src/styles/index.css)):** Inclusão de `-webkit-text-size-adjust: 100%`, `touch-action: manipulation` e contenção estrita de largura `width: 100%; max-width: 100vw; overflow-x: hidden` em `html`, `body` e `#root`.
+  - **AppShell Mobile ([src/components/layout/AppShell.tsx](file:///e:/Apps/AppControleTotal/src/components/layout/AppShell.tsx)):** `px-3 sm:px-5` para ganho de área útil em celulares estreitos e garantia de `overflow-x-hidden`.
+  - **Grid 2 Colunas de Ações Rápidas ([src/features/dashboard/DashboardQuickActions.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/DashboardQuickActions.tsx)):** Em mobile, os 5 botões agora se organizam em uma matriz elegante de 2 colunas com o botão de abastecimento ocupando largura total proporcional, facilitando o toque com o polegar (*one-hand usability*).
+  - **Header & BottomNav Resilientes ([src/components/layout/Header.tsx](file:///e:/Apps/AppControleTotal/src/components/layout/Header.tsx), [BottomNav.tsx](file:///e:/Apps/AppControleTotal/src/components/layout/BottomNav.tsx)):** Espaçamento dinâmico `gap-1 sm:gap-2`, ícones proporcionais (16px em telas ultra compactas) e truncagem inteligente de rótulos prevenindo qualquer quebra de linha.
+  - **Briefing & KPIs Otimizados ([src/features/dashboard/HermesBriefingCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/HermesBriefingCard.tsx), [KpiCard.tsx](file:///e:/Apps/AppControleTotal/src/components/ui/KpiCard.tsx)):** Botões de ação em grid 3-col e KPIs com `p-3 sm:p-4` e tipografia auto-ajustável.
+
+---
+
+## 🔮 36. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
 
 Qualquer IA ou desenvolvedor pode utilizar as ideias abaixo para evoluir o sistema:
 
