@@ -255,10 +255,10 @@ export function LiveQrScanner({ onScan, onClose }: LiveQrScannerProps) {
           </div>
           <p className="text-xs text-zinc-300 max-w-xs leading-relaxed">{cameraError}</p>
           <Button
-            variant="secondary"
+            variant="soft"
             size="sm"
             onClick={onClose}
-            className="text-xs border-zinc-700 text-zinc-300"
+            className="text-xs border border-zinc-700 text-zinc-300"
           >
             Voltar para opções
           </Button>
