@@ -1,4 +1,5 @@
 import { getHermesAdvancedConfig } from './hermes'
+import { detectQrCodeFromDataUrl, type SefazQrCodeData } from './qrReceiptReader'
 
 export interface ScannedPantryItem {
   name: string
@@ -18,6 +19,7 @@ export interface ParsedReceiptData {
   detailedItems?: ScannedPantryItem[]
   paymentMethod?: string
   rawSummary?: string
+  qrCode?: SefazQrCodeData
 }
 
 function todayIso() {
@@ -25,8 +27,34 @@ function todayIso() {
 }
 
 /**
+ * Normalizes dates found in Brazilian format (DD/MM/YYYY, DD/MM/YY, DD-MM-YYYY) to YYYY-MM-DD.
+ */
+function normalizeBrazilianDate(dateStr?: string): string {
+  if (!dateStr || typeof dateStr !== 'string') return todayIso()
+
+  const clean = dateStr.trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+    return clean
+  }
+
+  // DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = clean.match(/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})/)
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, '0')
+    const month = dmyMatch[2].padStart(2, '0')
+    let year = dmyMatch[3]
+    if (year.length === 2) {
+      year = `20${year}`
+    }
+    return `${year}-${month}-${day}`
+  }
+
+  return todayIso()
+}
+
+/**
  * Robust JSON cleaner with regex fallback parser.
- * Even if the LLM output is slightly broken or cut off, extracts all available data gracefully.
+ * Handles polymorphic keys, decimal commas and broken JSONs gracefully.
  */
 function parseReceiptResponse(raw: string): ParsedReceiptData {
   let text = raw.trim()
@@ -99,6 +127,7 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
           parsed.loja ||
           parsed.mercado ||
           parsed.supermercado ||
+          parsed.padaria ||
           parsed.empresa ||
           parsed.local ||
           'Cupom Fiscal',
@@ -124,8 +153,8 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
 
   // 2. Resilient Regex Fallback
   const estMatch =
-    text.match(/"(?:establishment|loja|mercado|empresa)"\s*:\s*"([^"]+)"/i) ||
-    text.match(/(?:estabelecimento|loja|mercado)\s*[:=]\s*"([^"]+)"/i)
+    text.match(/"(?:establishment|loja|mercado|padaria|empresa)"\s*:\s*"([^"]+)"/i) ||
+    text.match(/(?:estabelecimento|loja|mercado|padaria)\s*[:=]\s*"([^"]+)"/i)
   const establishment = estMatch ? estMatch[1].trim() : 'Cupom Fiscal'
 
   const amtMatch =
@@ -177,33 +206,9 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
 }
 
 /**
- * Normalizes dates found in Brazilian format (DD/MM/YYYY, DD/MM/YY, DD-MM-YYYY) to YYYY-MM-DD.
- */
-function normalizeBrazilianDate(dateStr?: string): string {
-  if (!dateStr || typeof dateStr !== 'string') return todayIso()
-
-  const clean = dateStr.trim()
-  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-    return clean
-  }
-
-  // DD/MM/YYYY or DD-MM-YYYY
-  const dmyMatch = clean.match(/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})/)
-  if (dmyMatch) {
-    const day = dmyMatch[1].padStart(2, '0')
-    const month = dmyMatch[2].padStart(2, '0')
-    let year = dmyMatch[3]
-    if (year.length === 2) {
-      year = `20${year}`
-    }
-    return `${year}-${month}-${day}`
-  }
-
-  return todayIso()
-}
-
-/**
- * Sends high-clarity receipt image to Vision LLM to extract structured spending data and pantry items.
+ * 2-STEP HYBRID OCR PIPELINE:
+ * Step 1: Vision model transcribes raw text accurately without guessing JSON.
+ * Step 2: Llama 3.3 70B extracts and structures fiscal data with supreme intelligence.
  */
 export async function parseReceiptWithVision(
   compressedDataUrl: string,
@@ -214,7 +219,10 @@ export async function parseReceiptWithVision(
     throw new Error('Configure sua API Key em Configurações > Inteligência Artificial Hermes.')
   }
 
-  // Vision model selection based on provider
+  // 1. Detect QR Code client-side if present (NFC-e / SAT SEFAZ)
+  const qrCode = await detectQrCodeFromDataUrl(compressedDataUrl).catch(() => null)
+
+  // 2. Vision Model selection (Groq Llama 3.2 Vision or OpenRouter Gemini)
   let visionModel = config.llmModel || ''
   if (config.provider === 'groq') {
     visionModel = 'llama-3.2-11b-vision-preview'
@@ -231,55 +239,98 @@ export async function parseReceiptWithVision(
         : 'google/gemini-2.0-flash-001'
   }
 
-  const systemPrompt = `Você é um scanner OCR especialista em TODOS os tipos de cupons fiscais e recibos brasileiros (Padarias, Restaurantes, Supermercados, Farmácias, Postos, Lanchonetes, Lojas, SAT CFe, NFC-e, Danfe e Comandas).
-Sua tarefa é extrair os dados reais da compra com máxima precisão.
+  // STEP 1: PURE VISION OCR TRANSCRIPTION (No hallucination, just raw reading)
+  const transcriptionPrompt = `Transcreva FIELMENTE todo o texto legível desta imagem de cupom fiscal / recibo brasileiro, linha por linha, exatamente como está impresso.
+Transcreva:
+1. O cabeçalho completo no topo (nome da loja/empresa, CNPJ, endereço, data e hora).
+2. A lista completa de todos os itens e produtos com seus códigos, descrições, quantidades, unidades e valores.
+3. As linhas de subtotais, descontos e o valor total final a pagar.
+NÃO resuma, NÃO invente dados e NÃO monte JSON. Apenas transcreva o texto lido linha a linha.`
 
-DIRETRIZES UNIVERSAIS DE EXTRAÇÃO:
+  const visionRes = await fetch('/api/llm/proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'chat',
+      provider: config.provider,
+      apiKey: config.llmApiKey.trim(),
+      model: visionModel,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: transcriptionPrompt },
+            { type: 'image_url', image_url: { url: compressedDataUrl } },
+          ],
+        },
+      ],
+      temperature: 0.1,
+      max_tokens: 2000,
+      customUrl: config.customBaseUrl,
+    }),
+  })
 
-1. ESTABELECIMENTO (Nome da Loja, Padaria, Restaurante ou Mercado):
-   - Localize o Nome Fantasia ou Razão Social no cabeçalho do topo.
-   - Exemplos:
-     * Padarias/Lanchonetes/Cafés: "Padaria Bella Paulista", "Panificadora Estrela", "Café do Ponto", "Lanchonete Central", "Casa do Pão de Queijo".
-     * Restaurantes/Bares: "Churrascaria Boi Preto", "Spoleto", "Madero", "Restaurante Sabor da Vila", "Pizzaria Bella".
-     * Supermercados/Atacados: "Sendas Distribuidora (Assaí)", "Carrefour", "Pão de Açúcar", "Supermercados BH", "Atacadão", "Dia", "Oxxo".
-     * Farmácias/Postos: "Droga Raia", "Drogasil", "Posto Shell", "Posto Ipiranga".
+  if (!visionRes.ok) {
+    const errText = await visionRes.text().catch(() => '')
+    throw new Error(`Falha no leitor de visão: ${errText.slice(0, 150)}`)
+  }
+
+  const visionData = await visionRes.json()
+  const rawTranscription =
+    visionData.data?.choices?.[0]?.message?.content || visionData.choices?.[0]?.message?.content || ''
+
+  if (!rawTranscription) {
+    throw new Error('Não foi possível transcrever a foto. Verifique a iluminação e a chave de API.')
+  }
+
+  // STEP 2: STRUCTURED REASONING WITH 70B TEXT MODEL (Llama 3.3 70B Versatile)
+  const textModel =
+    config.provider === 'groq'
+      ? 'llama-3.3-70b-versatile'
+      : config.provider === 'nvidia'
+        ? 'meta/llama-3.3-70b-instruct'
+        : config.llmModel || 'meta-llama/llama-3.3-70b-instruct'
+
+  const structuredPrompt = `Você é um analista especialista em documentos fiscais brasileiros (Padarias, Restaurantes, Supermercados, Farmácias, Postos, SAT, NFC-e).
+Você recebeu a transcrição bruta de um cupom fiscal. Sua missão é estruturar os dados com precisão cirúrgica em um JSON.
+
+REGRAS:
+1. ESTABELECIMENTO (establishment):
+   - Extraia o Nome Comercial / Fantasia ou Razão Social no cabeçalho do topo.
+   - Exemplos: "Padaria Bella Paulista", "Panificadora Estrela", "Sendas Distribuidora (Assaí)", "Carrefour", "Droga Raia", "Posto Ipiranga".
    - NUNCA retorne "Cupom Fiscal", "Documento Auxiliar", "NFC-e", "SAT", "SEFAZ", "Consumidor" nem endereços.
 
 2. CATEGORIA AUTOMÁTICA (category):
-   - "Alimentação": Se for Padaria, Restaurante, Lanchonete, Bar, Café, Delivery, Pizzaria, Hamburgueria.
-   - "Despensa": Se for Supermercado, Atacado, Hortifruti, Açougue, Mercearia de bairro.
+   - "Alimentação": Se for Padaria, Restaurante, Lanchonete, Bar, Café, Delivery, Pastelaria, Fast-Food.
+   - "Despensa": Se for Supermercado, Atacadão, Hortifruti, Açougue, Mercearia.
    - "Saúde": Se for Farmácia ou Drogaria.
    - "Transporte": Se for Posto de Combustível ou Estacionamento.
-   - "Outros": Demais estabelecimentos.
+   - "Outros": Demais despesas.
 
-3. VALOR TOTAL LÍQUIDO PAGO (amount):
-   - Localize o "VALOR A PAGAR R$", "TOTAL R$", "VALOR PAGO R$" ou "VALOR LÍQUIDO R$" final.
-   - Se houver linha de DESCONTO, o amount DEVE SER O VALOR FINAL LÍQUIDO PÓS-DESCONTO.
+3. VALOR TOTAL LÍQUIDO (amount):
+   - Localize o "VALOR A PAGAR R$", "TOTAL R$" ou "VALOR LÍQUIDO R$" final pago.
+   - Se houver DESCONTO, o amount DEVE SER O VALOR FINAL LÍQUIDO PÓS-DESCONTO.
 
 4. DATA E HORA DE EMISSÃO:
-   - Data: formato ISO "YYYY-MM-DD" (ex: "2026-08-20"). Se não visível, use "${todayIso()}".
-   - Hora: formato "HH:MM" (ex: "10:54" ou "16:30"). Se não encontrar no cupom, use "".
+   - Data no formato ISO "YYYY-MM-DD" e Hora "HH:MM" se presente.
 
 5. ITENS / PRODUTOS (detailedItems):
-   - O cupom pode ter os produtos em qualquer formato:
-     A) FORMATO 1 LINHA (Comum em Padarias, Restaurantes, Bares, Farmácias):
-        * "001 PAO FRANCES KG 0,350 KG X 22,90 8,02" -> name: "Pão Francês", qty: 0.35, unit: "kg"
-        * "002 CAFE EXPRESSO 1 UN X 6,50 6,50" -> name: "Café Expresso", qty: 1, unit: "un"
-        * "1x Pao na Chapa 7,50" -> name: "Pão na Chapa", qty: 1, unit: "un"
-        * "SUCO LARANJA 500ML 1 12,00" -> name: "Suco de Laranja 500ml", qty: 1, unit: "un"
-     B) FORMATO 2 LINHAS (Comum em Supermercados e Atacados):
-        * Linha 1: "001 11662410001 BE IT WHEY 250ML CH"
-        * Linha 2: "12,000 Un x 5,49 65,88"
-        * -> name: "Be It Whey 250ml Ch", qty: 12, unit: "un"
-   - Extraia TODOS os produtos identificados com nome limpo, quantidade numérica e unidade.
+   - Extraia TODOS os produtos identificados na transcrição (seja em 1 linha ou 2 linhas):
+     * "name": Nome claro e limpo do produto (ex: "Pão Francês", "Café Expresso", "Be It Whey 250ml", "Detergente Ypê").
+     * "qty": Quantidade numérica real (ex: 1, 2, 0.350).
+     * "unit": "un", "kg", "g", "l", "pct", "cx", "lat".
+     * "unitPrice": Valor unitário numérico float se visível.
+     * "totalPrice": Valor total numérico float se visível.
 
-ESTRUTURA JSON OBRIGATÓRIA (sem markdown adicional):
+${qrCode?.cnpj ? `DADOS FISCAIS CONFIRMADOS VIA QR CODE: CNPJ ${qrCode.cnpj}, UF: ${qrCode.uf || 'SP'}` : ''}
+
+ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
 {
-  "establishment": "Nome da Padaria / Loja",
+  "establishment": "Nome da Loja ou Padaria",
   "amount": 45.50,
   "date": "YYYY-MM-DD",
   "time": "HH:MM",
-  "category": "Alimentação",
+  "category": "Alimentação" | "Despensa" | "Saúde" | "Transporte" | "Outros",
   "detailedItems": [
     {
       "name": "Nome do Produto",
@@ -291,54 +342,42 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown adicional):
   ]
 }`
 
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    {
-      role: 'user',
-      content: [
-        {
-          type: 'text',
-          text: 'Leia este cupom fiscal / recibo. Extraia o nome do estabelecimento no cabeçalho, o valor total líquido pago, a categoria correta, a data/hora e a lista de produtos.',
-        },
-        {
-          type: 'image_url',
-          image_url: {
-            url: compressedDataUrl,
-          },
-        },
-      ],
-    },
-  ]
-
-  const res = await fetch('/api/llm/proxy', {
+  const reasoningRes = await fetch('/api/llm/proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: 'chat',
       provider: config.provider,
       apiKey: config.llmApiKey.trim(),
-      model: visionModel,
-      messages,
+      model: textModel,
+      messages: [
+        { role: 'system', content: structuredPrompt },
+        {
+          role: 'user',
+          content: `Aqui está a transcrição bruta do cupom fiscal:\n\n${rawTranscription}`,
+        },
+      ],
       temperature: 0.1,
       max_tokens: 2500,
       customUrl: config.customBaseUrl,
     }),
   })
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '')
-    throw new Error(`Falha no leitor de cupom: ${errText.slice(0, 150)}`)
+  if (!reasoningRes.ok) {
+    // If 70B fails, parse directly from rawTranscription as fallback
+    const result = parseReceiptResponse(rawTranscription)
+    if (qrCode) result.qrCode = qrCode
+    return result
   }
 
-  const data = await res.json()
-  const content =
-    data.data?.choices?.[0]?.message?.content || data.choices?.[0]?.message?.content || ''
+  const reasoningData = await reasoningRes.json()
+  const structuredContent =
+    reasoningData.data?.choices?.[0]?.message?.content ||
+    reasoningData.choices?.[0]?.message?.content ||
+    rawTranscription
 
-  if (!content) {
-    throw new Error('Nenhum texto retornado pelo modelo de visão. Verifique a chave de API.')
-  }
+  const finalResult = parseReceiptResponse(structuredContent)
+  if (qrCode) finalResult.qrCode = qrCode
 
-  return parseReceiptResponse(content)
+  return finalResult
 }
-
-

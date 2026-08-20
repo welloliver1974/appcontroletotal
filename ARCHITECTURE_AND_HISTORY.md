@@ -642,7 +642,26 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
-## 🔮 38. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
+## 🧾 38. Refatoração Definitiva: Pipeline OCR Híbrido em 2 Etapas + Scanner QR Code SEFAZ + Despensa Inteligente (20/08/2026)
+
+* **Desafio Estrutural Superado:**
+  - Cupons de pequenos comércios (padarias, lanchonetes, restaurantes) e grandes atacadões (Assaí, Carrefour) possuem diagramações e densidades térmicas completamente distintas. O modelo multimodal de visão 11B isolado sofria para realizar transcrição e estruturação lógica JSON simultaneamente em uma única chamada.
+* **Arquitetura Híbrida em 2 Etapas Implementada:**
+  1. **🔍 Leitor de QR Code SEFAZ Integrado ([qrReceiptReader.ts](file:///e:/Apps/AppControleTotal/src/lib/qrReceiptReader.ts)):**
+     - Leitor cliente 100% offline via `jsQR` e `BarcodeDetector` nativo.
+     - Extrai automaticamente a Chave de Acesso de 44 dígitos, CNPJ da loja, UF e modelo fiscal (NFC-e / SAT).
+  2. **📸 Etapa 1 — Transcrição de Visão Pura (Llama 3.2 Vision):**
+     - O modelo de visão realiza apenas o que faz de melhor: transcrever linha a linha fielmente todo o texto visível da imagem, sem alucinações de JSON.
+  3. **🧠 Etapa 2 — Raciocínio Estruturado (Llama 3.3 70B Versatile):**
+     - O texto transcrito bruto é processado pelo modelo gigante de 70 bilhões de parâmetros do Groq, que aplica raciocínio analítico para isolar o estabelecimento na 1ª linha, calcular o valor líquido com descontos, auto-classificar a categoria e listar cada produto.
+  4. **🥐 Despensa Inteligente por Categoria ([ReceiptScannerModal.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/ReceiptScannerModal.tsx)):**
+     - **Alimentação (Padarias, Restaurantes, Bares, Lanches):** O envio para o estoque da Despensa fica **desmarcado por padrão** com dica explicativa de consumo imediato.
+     - **Despensa (Supermercados, Atacadões, Hortifrutis):** O envio para o estoque permanece **marcado por padrão** para reposição automática.
+     - O usuário mantém controle total para alternar a qualquer momento com 1 clique.
+
+---
+
+## 🔮 39. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
 
 1. **📊 Exportação de Prestação de Contas / Reembolso de Viagem a Trabalho (PDF / Excel):**
    - Gerar relatório formal com tabela de Km rodados, datas, cidades visitadas e valor de reembolso por Km (ex: R$ 1,20/km) para envio à empresa.

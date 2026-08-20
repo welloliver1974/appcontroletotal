@@ -40,21 +40,23 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 
 ---
 
-## 2. 🧾 Scanner OCR de Despesas com Reposição na Despensa & Edição Total
+## 2. 🧾 Scanner OCR Híbrido em 2 Etapas com Leitor QR Code SEFAZ & Despensa Inteligente
  
 ### Como usar:
 1. Clique em **`🧾 Escanear Cupom`** no topo do Dashboard ou em Finanças.
-2. Tire uma foto do cupom fiscal ou envie uma imagem da galeria. O sistema aplica **auto-realce de contraste térmico** para máxima legibilidade.
+2. Tire uma foto do cupom fiscal ou envie uma imagem da galeria. O sistema aplica **auto-realce de contraste térmico** e processa em 2 etapas (Visão OCR + Cérebro Llama 70B com suporte a QR Code SEFAZ).
 3. A IA processa a foto com alta precisão e carrega os dados em uma tela de conferência editável:
-   * **Estabelecimento / Loja:** Nome identificado (totalmente editável).
-   * **Valor Total Pago (R$):** Valor líquido final (com ponto ou vírgula).
+   * **Badge de QR Code SEFAZ:** Exibe confirmação oficial se o cupom contiver QR Code fiscal (NFC-e / SAT).
+   * **Estabelecimento / Loja:** Nome comercial identificado (totalmente editável).
+   * **Valor Total Pago (R$):** Valor líquido final pós-desconto.
    * **Categoria, Data e Hora:** Ajustáveis livremente.
    * **Visualizador da Foto:** Botão para abrir a imagem original ao lado dos dados para rápida conferência.
-4. **Gestão de Itens da Despensa:**
-   * Lista todos os itens comprados identificados com nome limpo e quantidades.
-   * Você pode renomear produtos, alterar quantidades/unidades, remover itens com a lixeira ou clicar em **`+ Adicionar Item`**.
+4. **Despensa Inteligente por Categoria:**
+   * **Alimentação (Padarias, Restaurantes, Bares, Lanches):** O estoque na Despensa fica **desmarcado por padrão** (consumo imediato). Você pode marcar caso deseje estocar algo.
+   * **Despensa (Supermercados, Atacadões, Hortifrutis):** O estoque fica **marcado por padrão** para abastecer os armários.
+   * Você pode editar produtos, alterar quantidades/unidades, remover itens com a lixeira ou clicar em **`+ Adicionar Item`**.
 5. **Salvar & Abastecer:**
-   * Clique em **`Salvar Gasto & Repor Despensa`** para registrar a despesa financeira e estocar automaticamente os produtos selecionados na Despensa!
+   * Clique em **`Salvar Gasto & Repor Despensa`** para registrar a despesa financeira e atualizar o estoque conforme sua escolha!
 
 ---
 

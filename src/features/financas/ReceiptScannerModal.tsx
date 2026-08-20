@@ -20,6 +20,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { compressImageForOcr, type CompressionResult } from '@/lib/imageCompressor'
 import { parseReceiptWithVision, type ParsedReceiptData, type ScannedPantryItem } from '@/lib/receiptScanner'
+import type { SefazQrCodeData } from '@/lib/qrReceiptReader'
 import { db } from '@/lib/db'
 import type { PantryItem } from '@/data/types'
 import { toast } from '@/stores/toastStore'
@@ -56,6 +57,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
   const [items, setItems] = useState<ScannedPantryItem[]>([])
   const [syncWithPantry, setSyncWithPantry] = useState(true)
   const [selectedItems, setSelectedItems] = useState<Record<number, boolean>>({})
+  const [qrInfo, setQrInfo] = useState<SefazQrCodeData | null>(null)
   const [showPhotoPreview, setShowPhotoPreview] = useState(false)
   const [hasResult, setHasResult] = useState(false)
 
@@ -66,13 +68,14 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     setErrorMsg(null)
     setHasResult(false)
     setAnalyzing(true)
+    setQrInfo(null)
 
     try {
       // 1. High-clarity compression with thermal contrast boost
       const compressed = await compressImageForOcr(file, 1800, 0.88)
       setCompressResult(compressed)
 
-      // 2. Vision OCR Analysis
+      // 2. Vision OCR Analysis (2-Step Pipeline with Llama 70B + QR detection)
       const parsed = await parseReceiptWithVision(compressed.dataUrl)
 
       // 3. Populate editable form state
@@ -80,7 +83,15 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
       setAmountStr(parsed.amount > 0 ? parsed.amount.toFixed(2).replace('.', ',') : '')
       setDate(parsed.date || new Date().toISOString().slice(0, 10))
       setTime(parsed.time || '')
-      setCategory(CATEGORIES.includes(parsed.category) ? parsed.category : 'Despensa')
+      if (parsed.qrCode) setQrInfo(parsed.qrCode)
+
+      const detectedCat = CATEGORIES.includes(parsed.category) ? parsed.category : 'Despensa'
+      setCategory(detectedCat)
+
+      // Smart Pantry Stocking:
+      // If Alimentação (padaria/restaurante/lanchonete/bar), default to FALSE (consumption, not inventory)
+      // If Despensa (supermercado/atacado/hortifruti), default to TRUE (stock replenishment)
+      setSyncWithPantry(detectedCat === 'Despensa')
 
       const detectedItems: ScannedPantryItem[] =
         parsed.detailedItems && parsed.detailedItems.length > 0
@@ -89,7 +100,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
 
       setItems(detectedItems)
 
-      // Select all items by default for pantry sync
+      // Select all items by default
       const initialSelected: Record<number, boolean> = {}
       detectedItems.forEach((_, idx) => {
         initialSelected[idx] = true
@@ -97,12 +108,16 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
       setSelectedItems(initialSelected)
 
       setHasResult(true)
-      toast.success('Cupom lido com sucesso pela IA! 🧾✨')
+      toast.success(
+        parsed.qrCode
+          ? 'Cupom + QR Code SEFAZ lidos com sucesso! 🧾✨'
+          : 'Cupom lido com sucesso pela IA! 🧾✨',
+      )
     } catch (err) {
       console.error(err)
       const msg = err instanceof Error ? err.message : 'Falha ao analisar o cupom fiscal.'
       setErrorMsg(msg)
-      toast.error(msg)
+      toast.error('Erro ao ler cupom fiscal.')
     } finally {
       setAnalyzing(false)
     }
@@ -348,6 +363,19 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                 />
               </div>
             )}
+            
+            {/* Badge de QR Code SEFAZ se detectado */}
+            {qrInfo && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="font-semibold">QR Code SEFAZ Identificado:</span>{' '}
+                  <span className="text-zinc-300 font-mono text-[11px]">
+                    {qrInfo.model || 'NFC-e'} {qrInfo.uf ? `(${qrInfo.uf})` : ''} {qrInfo.cnpj ? `CNPJ ${qrInfo.cnpj}` : ''}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Formulário Principal Editável */}
             <div className="grid sm:grid-cols-2 gap-3 bg-zinc-900/60 p-3.5 rounded-xl border border-zinc-800">
@@ -360,8 +388,8 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                   type="text"
                   value={establishment}
                   onChange={(e) => setEstablishment(e.target.value)}
-                  placeholder="Ex.: Pão de Açúcar, Carrefour, Posto Shell"
-                  className="input-base text-sm font-medium"
+                  placeholder="Nome do estabelecimento"
+                  className="input-base text-sm font-semibold text-zinc-100"
                 />
               </div>
 
@@ -388,7 +416,16 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                 <label className="text-[11px] font-semibold text-zinc-300">Categoria</label>
                 <select
                   value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  onChange={(e) => {
+                    const newCat = e.target.value
+                    setCategory(newCat)
+                    // Auto-adjust default stocking intent if user manually changes category
+                    if (newCat === 'Alimentação') {
+                      setSyncWithPantry(false)
+                    } else if (newCat === 'Despensa') {
+                      setSyncWithPantry(true)
+                    }
+                  }}
                   className="input-base text-xs font-medium"
                 >
                   {CATEGORIES.map((cat) => (
@@ -446,6 +483,23 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                   >
                     <Plus className="h-3 w-3" /> Adicionar Item
                   </button>
+                )}
+              </div>
+
+              {/* Dica contextual de categoria */}
+              <div className="text-[11px] text-zinc-400 bg-zinc-950/50 px-2.5 py-1.5 rounded-lg border border-zinc-800/80">
+                {category === 'Alimentação' ? (
+                  <span>
+                    ☕ <strong>Alimentação / Padaria:</strong> Itens para consumo imediato (não vão para o estoque da despensa por padrão). Marque a caixa acima se quiser estocá-los.
+                  </span>
+                ) : category === 'Despensa' ? (
+                  <span>
+                    🛒 <strong>Despensa / Supermercado:</strong> Abastecimento automático de estoque doméstico ativado.
+                  </span>
+                ) : (
+                  <span>
+                    📦 Marque a caixa acima apenas se desejar cadastrar esses itens na sua despensa de mantimentos.
+                  </span>
                 )}
               </div>
 
