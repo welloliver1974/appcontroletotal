@@ -1,7 +1,7 @@
 /**
- * Client-side Image Compression & OCR Enhancement Utility.
- * Optimizes camera photos of receipts for Vision LLMs by balancing
- * high readability of small thermal print with low bandwidth/token footprint.
+ * Client-side Image Compression Utility for Vision LLM OCR.
+ * Resizes large camera photos to a crisp, natural resolution (~1600px, quality 0.88),
+ * preserving all original details, small text and lighting without destructive pixel filtering.
  */
 
 export interface CompressionResult {
@@ -13,52 +13,9 @@ export interface CompressionResult {
   height: number
 }
 
-/**
- * Auto-level contrast normalization:
- * Automatically stretches thermal receipt contrast so faded gray ink becomes crisp dark black
- * and yellowish/shadowy paper background becomes clean white, vastly improving OCR accuracy.
- */
-function enhanceImageContrast(ctx: CanvasRenderingContext2D, width: number, height: number) {
-  try {
-    const imgData = ctx.getImageData(0, 0, width, height)
-    const data = imgData.data
-
-    // Sample luminance to find min and max levels
-    let minLum = 255
-    let maxLum = 0
-    const step = 4 // sample every 4th pixel for high speed
-    for (let i = 0; i < data.length; i += 4 * step) {
-      const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-      if (lum < minLum) minLum = lum
-      if (lum > maxLum) maxLum = lum
-    }
-
-    // Add safe margin (clip top/bottom 5%)
-    const low = Math.min(minLum + 10, 100)
-    const high = Math.max(maxLum - 10, 160)
-    const range = high - low
-
-    if (range > 20) {
-      for (let i = 0; i < data.length; i += 4) {
-        // Linear contrast stretch with slight gamma boost for text sharpness
-        const r = Math.min(255, Math.max(0, ((data[i] - low) / range) * 255))
-        const g = Math.min(255, Math.max(0, ((data[i + 1] - low) / range) * 255))
-        const b = Math.min(255, Math.max(0, ((data[i + 2] - low) / range) * 255))
-
-        data[i] = r
-        data[i + 1] = g
-        data[i + 2] = b
-      }
-      ctx.putImageData(imgData, 0, 0)
-    }
-  } catch {
-    // If canvas getImageData fails (e.g. security origin), proceed with untouched canvas
-  }
-}
-
 export async function compressImageForOcr(
   file: File | Blob,
-  maxDimension = 1800,
+  maxDimension = 1600,
   quality = 0.88,
 ): Promise<CompressionResult> {
   const originalSizeKb = Math.round(file.size / 1024)
@@ -74,7 +31,7 @@ export async function compressImageForOcr(
       img.onload = () => {
         let { width, height } = img
 
-        // Calculate proportional scale preserving aspect ratio with higher resolution for thermal receipts
+        // Calculate proportional scale preserving natural aspect ratio
         if (width > maxDimension || height > maxDimension) {
           if (width > height) {
             height = Math.round((height * maxDimension) / width)
@@ -94,15 +51,12 @@ export async function compressImageForOcr(
           return reject(new Error('Canvas 2D context não disponível.'))
         }
 
-        // Draw image with smooth rendering
+        // Draw image with high quality bilinear smoothing
         ctx.imageSmoothingEnabled = true
         ctx.imageSmoothingQuality = 'high'
         ctx.drawImage(img, 0, 0, width, height)
 
-        // Enhance contrast for thermal receipt text readability
-        enhanceImageContrast(ctx, width, height)
-
-        // Export as high-clarity compressed JPEG
+        // Export as clean, high-clarity JPEG without destructive filters
         const dataUrl = canvas.toDataURL('image/jpeg', quality)
 
         // Calculate compressed size from Base64 length
@@ -126,3 +80,4 @@ export async function compressImageForOcr(
     reader.readAsDataURL(file)
   })
 }
+

@@ -30,43 +30,115 @@ function currentHhMm() {
 }
 
 /**
- * Robust JSON cleaner to fix common LLM formatting glitches:
- * - Markdown blocks ```json ... ```
- * - Trailing commas in objects/arrays
- * - Brazilian decimal numbers with comma e.g. "amount": 45,90 -> "amount": 45.90
+ * Robust JSON cleaner with regex fallback parser.
+ * Even if the LLM output is slightly broken or cut off, extracts all available data gracefully.
  */
-function cleanAndParseJson(raw: string): any {
+function parseReceiptResponse(raw: string): ParsedReceiptData {
   let text = raw.trim()
 
   // Remove markdown code fences if present
   text = text.replace(/```(?:json)?\s*([\s\S]*?)\s*```/gi, '$1').trim()
 
-  // Find opening and closing brackets
+  // 1. Try Structured JSON Parsing
   const startIdx = text.indexOf('{')
   const endIdx = text.lastIndexOf('}')
 
-  if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
-    throw new Error('Nenhum formato JSON válido retornado.')
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    let jsonStr = text.slice(startIdx, endIdx + 1)
+    // Fix Brazilian comma decimals in numeric values (e.g. "amount": 12,50)
+    jsonStr = jsonStr.replace(/:\s*(\d+),(\d{1,2})\s*([,\n\r}])/g, ': $1.$2$3')
+    jsonStr = jsonStr.replace(/,\s*([}\]])/g, '$1')
+
+    try {
+      const parsed = JSON.parse(jsonStr)
+
+      let numAmount = 0
+      if (typeof parsed.amount === 'number') {
+        numAmount = parsed.amount
+      } else if (parsed.amount) {
+        const sanitizedNum = String(parsed.amount).replace(/[^\d.,]/g, '').replace(',', '.')
+        numAmount = parseFloat(sanitizedNum) || 0
+      }
+
+      const rawDetailed = Array.isArray(parsed.detailedItems)
+        ? parsed.detailedItems
+        : Array.isArray(parsed.items)
+          ? parsed.items.map((it: any) =>
+              typeof it === 'string'
+                ? { name: it, qty: 1, unit: 'un' }
+                : { name: it?.name || 'Item', qty: Number(it?.qty || it?.quantity) || 1, unit: it?.unit || 'un' },
+            )
+          : []
+
+      const detailedItems: ScannedPantryItem[] = rawDetailed
+        .map((it: any) => ({
+          name: String(it?.name || it?.description || '').trim(),
+          qty: Math.max(0.1, Number(it?.qty || it?.quantity) || 1),
+          unit: String(it?.unit || 'un').trim().toLowerCase(),
+          unitPrice: typeof it?.unitPrice === 'number' ? it.unitPrice : undefined,
+          totalPrice: typeof it?.totalPrice === 'number' ? it.totalPrice : undefined,
+        }))
+        .filter((it: ScannedPantryItem) => it.name.length > 0 && it.name.toLowerCase() !== 'item')
+
+      const itemsNames = detailedItems.map((i) => i.name)
+
+      return {
+        establishment: String(parsed.establishment || 'Cupom Fiscal').trim(),
+        amount: isNaN(numAmount) ? 0 : Math.abs(numAmount),
+        date: normalizeBrazilianDate(parsed.date),
+        time: parsed.time && /^\d{1,2}:\d{2}$/.test(parsed.time) ? parsed.time : '',
+        category: parsed.category || 'Despensa',
+        items: itemsNames.length > 0 ? itemsNames : undefined,
+        detailedItems,
+        paymentMethod: parsed.paymentMethod,
+        rawSummary: text,
+      }
+    } catch {
+      // Proceed to Regex Fallback below
+    }
   }
 
-  let jsonStr = text.slice(startIdx, endIdx + 1)
+  // 2. Resilient Regex Fallback
+  const estMatch = text.match(/"establishment"\s*:\s*"([^"]+)"/i) || text.match(/estabelecimento|loja\s*[:=]\s*"([^"]+)"/i)
+  const establishment = estMatch ? estMatch[1].trim() : 'Cupom Fiscal'
 
-  // Fix Brazilian comma decimals in numeric values (e.g. "amount": 12,50 or : 12,50,)
-  jsonStr = jsonStr.replace(/:\s*(\d+),(\d{1,2})\s*([,\n\r}])/g, ': $1.$2$3')
+  const amtMatch = text.match(/"amount"\s*:\s*"?([\d.,]+)"?/i) || text.match(/(?:valor|total|pago|r\$)\s*[:=]?\s*r?\$?\s*([\d.,]+)/i)
+  let amount = 0
+  if (amtMatch) {
+    amount = parseFloat(amtMatch[1].replace(/[^\d.,]/g, '').replace(',', '.')) || 0
+  }
 
-  // Remove trailing commas before } or ]
-  jsonStr = jsonStr.replace(/,\s*([}\]])/g, '$1')
+  const dateMatch = text.match(/"date"\s*:\s*"([^"]+)"/i) || text.match(/(\d{2}[\/\.-]\d{2}[\/\.-]\d{2,4})/)
+  const date = dateMatch ? normalizeBrazilianDate(dateMatch[1]) : todayIso()
 
-  try {
-    return JSON.parse(jsonStr)
-  } catch {
-    // If standard JSON.parse fails, try replacing any remaining unquoted keys or single quotes
-    const sanitized = jsonStr
-      .replace(/'/g, '"')
-      .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
-      .replace(/,\s*([}\]])/g, '$1')
+  const timeMatch = text.match(/"time"\s*:\s*"([^"]+)"/i) || text.match(/(\d{1,2}:\d{2})/)
+  const time = timeMatch ? timeMatch[1] : ''
 
-    return JSON.parse(sanitized)
+  const catMatch = text.match(/"category"\s*:\s*"([^"]+)"/i)
+  const category = catMatch ? catMatch[1] : 'Despensa'
+
+  const detailedItems: ScannedPantryItem[] = []
+  const itemRegex = /"name"\s*:\s*"([^"]+)"\s*,\s*"qty"\s*:\s*([\d.]+)/g
+  let m
+  while ((m = itemRegex.exec(text)) !== null) {
+    if (m[1].trim()) {
+      detailedItems.push({
+        name: m[1].trim(),
+        qty: parseFloat(m[2]) || 1,
+        unit: 'un',
+      })
+    }
+  }
+
+  return {
+    establishment,
+    amount,
+    date,
+    time,
+    category,
+    detailedItems,
+    items: detailedItems.map((i) => i.name),
+    rawSummary: text,
   }
 }
 
@@ -109,10 +181,9 @@ export async function parseReceiptWithVision(
   }
 
   // Vision model selection based on provider
-  // For Groq, llama-3.2-90b-vision-preview is drastically superior for reading dense receipt tables
   let visionModel = config.llmModel || ''
   if (config.provider === 'groq') {
-    visionModel = 'llama-3.2-90b-vision-preview'
+    visionModel = 'llama-3.2-11b-vision-preview'
   } else if (config.provider === 'nvidia') {
     visionModel = config.llmModel.includes('vision')
       ? config.llmModel
@@ -180,7 +251,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown adicional):
       content: [
         {
           type: 'text',
-          text: 'Leia com atenção este cupom fiscal. Extraia o nome da loja no topo, o valor total a pagar, a data e hora de emissão impressas no cupom, e a lista de produtos reais.',
+          text: 'Leia com atenção este cupom fiscal brasileiro. Extraia o nome da loja no cabeçalho, o valor total pago, a data/hora e a lista dos produtos comprados.',
         },
         {
           type: 'image_url',
@@ -192,8 +263,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown adicional):
     },
   ]
 
-  // Call through LLM serverless proxy with retry on fallback vision model
-  let res = await fetch('/api/llm/proxy', {
+  const res = await fetch('/api/llm/proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -208,23 +278,6 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown adicional):
     }),
   })
 
-  // If 90b vision model returns rate limit or error on Groq, fallback to 11b
-  if (!res.ok && config.provider === 'groq' && visionModel === 'llama-3.2-90b-vision-preview') {
-    res = await fetch('/api/llm/proxy', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'chat',
-        provider: 'groq',
-        apiKey: config.llmApiKey.trim(),
-        model: 'llama-3.2-11b-vision-preview',
-        messages,
-        temperature: 0.1,
-        max_tokens: 2500,
-      }),
-    })
-  }
-
   if (!res.ok) {
     const errText = await res.text().catch(() => '')
     throw new Error(`Falha no leitor de cupom: ${errText.slice(0, 150)}`)
@@ -238,56 +291,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown adicional):
     throw new Error('Nenhum texto retornado pelo modelo de visão. Verifique a chave de API.')
   }
 
-  // Parse and sanitize JSON response
-  try {
-    const parsed = cleanAndParseJson(content)
-
-    // Parse amount safely
-    let numAmount = 0
-    if (typeof parsed.amount === 'number') {
-      numAmount = parsed.amount
-    } else if (parsed.amount) {
-      const sanitizedNum = String(parsed.amount).replace(/[^\d.,]/g, '').replace(',', '.')
-      numAmount = parseFloat(sanitizedNum) || 0
-    }
-
-    // Process detailed items
-    const rawDetailed = Array.isArray(parsed.detailedItems)
-      ? parsed.detailedItems
-      : Array.isArray(parsed.items)
-        ? parsed.items.map((it: any) =>
-            typeof it === 'string'
-              ? { name: it, qty: 1, unit: 'un' }
-              : { name: it?.name || 'Item', qty: Number(it?.qty || it?.quantity) || 1, unit: it?.unit || 'un' },
-          )
-        : []
-
-    const detailedItems: ScannedPantryItem[] = rawDetailed
-      .map((it: any) => ({
-        name: String(it?.name || it?.description || 'Item').trim(),
-        qty: Math.max(0.1, Number(it?.qty || it?.quantity) || 1),
-        unit: String(it?.unit || 'un').trim().toLowerCase(),
-        unitPrice: typeof it?.unitPrice === 'number' ? it.unitPrice : undefined,
-        totalPrice: typeof it?.totalPrice === 'number' ? it.totalPrice : undefined,
-      }))
-      .filter((it: ScannedPantryItem) => it.name.length > 0 && it.name.toLowerCase() !== 'item')
-
-    const itemsNames = detailedItems.map((i) => i.name)
-
-    return {
-      establishment: String(parsed.establishment || 'Cupom Fiscal').trim(),
-      amount: isNaN(numAmount) ? 0 : Math.abs(numAmount),
-      date: normalizeBrazilianDate(parsed.date),
-      time: parsed.time && /^\d{1,2}:\d{2}$/.test(parsed.time) ? parsed.time : currentHhMm(),
-      category: parsed.category || 'Despensa',
-      items: itemsNames.length > 0 ? itemsNames : undefined,
-      detailedItems,
-      paymentMethod: parsed.paymentMethod,
-      rawSummary: content,
-    }
-  } catch (err) {
-    console.error('[ReceiptScanner] Error parsing JSON response:', content, err)
-    throw new Error('Não foi possível ler todos os dados automaticamente. Tente tirar a foto mais de perto e com boa iluminação.')
-  }
+  return parseReceiptResponse(content)
 }
+
 
