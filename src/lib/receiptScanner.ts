@@ -1,5 +1,10 @@
 import { getHermesAdvancedConfig } from './hermes'
-import { detectQrCodeFromDataUrl, detectQrCodeFromFile, type SefazQrCodeData } from './qrReceiptReader'
+import {
+  detectQrCodeFromDataUrl,
+  detectQrCodeFromFile,
+  parseSefazUrl,
+  type SefazQrCodeData,
+} from './qrReceiptReader'
 
 export interface ScannedPantryItem {
   name: string
@@ -56,7 +61,7 @@ function normalizeBrazilianDate(dateStr?: string): string {
  * Robust JSON cleaner with regex fallback parser.
  * Handles polymorphic keys, decimal commas and broken JSONs gracefully.
  */
-function parseReceiptResponse(raw: string): ParsedReceiptData {
+function parseReceiptResponse(raw: string, existingQr?: SefazQrCodeData | null): ParsedReceiptData {
   let text = raw.trim()
 
   // Remove markdown code fences if present
@@ -137,7 +142,7 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
       const itemsNames = detailedItems.map((i) => i.name)
 
       // Check if 44-digit access key was returned
-      let qrFromKey = qrCode
+      let qrFromKey = existingQr
       const rawKey =
         parsed.accessKey ||
         parsed.chave ||
@@ -160,7 +165,7 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
         detailedItems,
         paymentMethod: parsed.paymentMethod || parsed.forma_pagamento,
         rawSummary: text,
-        qrCode: qrFromKey,
+        qrCode: qrFromKey || undefined,
       }
     } catch {
       // Proceed to Regex Fallback below
@@ -210,7 +215,7 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
   }
 
   // 44-digit Access Key Regex fallback
-  let qrFromKey = qrCode
+  let qrFromKey = existingQr
   const rawKeyMatch =
     text.match(/"(?:accessKey|chave|chave_acesso)"\s*:\s*"([^"]+)"/i) ||
     text.match(/\b(\d{44})\b/) ||
@@ -232,7 +237,7 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
     detailedItems,
     items: detailedItems.map((i) => i.name),
     rawSummary: text,
-    qrCode: qrFromKey,
+    qrCode: qrFromKey || undefined,
   }
 }
 
@@ -373,9 +378,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
       throw new Error('Não foi possível ler o cupom. Verifique a iluminação e sua chave de API.')
     }
 
-    const result = parseReceiptResponse(content)
-    if (qrCode && !result.qrCode) result.qrCode = qrCode
-
+    const result = parseReceiptResponse(content, qrCode)
     return result
   } catch (err: any) {
     clearTimeout(timeoutId)
