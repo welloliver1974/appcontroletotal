@@ -138,35 +138,35 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
   }
 
   return (
-    <Card className="relative overflow-hidden border-indigo-500/30 bg-gradient-to-r from-indigo-950/30 via-zinc-900/60 to-cyan-950/20 p-5 shadow-lg shadow-indigo-950/20">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5 min-w-0">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shadow-lg shadow-indigo-500/10">
-            <Bot className="h-5 w-5" />
+    <Card className="relative overflow-hidden border-indigo-500/30 bg-gradient-to-r from-indigo-950/30 via-zinc-900/60 to-cyan-950/20 p-3.5 sm:p-5 shadow-lg shadow-indigo-950/20 w-full">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 w-full">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shadow-lg shadow-indigo-500/10">
+            <Bot className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-sm text-zinc-100">Briefing do Hermes · Life OS Hub</h3>
-              <span className="chip py-0 text-[10px] text-cyan-300 border-cyan-500/30 bg-cyan-500/10">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <h3 className="font-semibold text-xs sm:text-sm text-zinc-100 truncate">Briefing do Hermes</h3>
+              <span className="chip py-0 px-2 text-[9px] sm:text-[10px] text-cyan-300 border-cyan-500/30 bg-cyan-500/10">
                 <Sparkles className="h-2.5 w-2.5 mr-1 text-cyan-400" />
-                Inteligência Ativa
+                IA Ativa
               </span>
             </div>
-            <p className="text-xs text-zinc-300 leading-relaxed max-w-2xl">
+            <p className="text-[11px] sm:text-xs text-zinc-300 leading-relaxed max-w-2xl">
               {briefing || smartSummary()}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full lg:w-auto shrink-0 pt-1 lg:pt-0">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleCopy}
-            className="text-xs text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/60 border border-zinc-700/60 gap-1.5"
+            className="text-[11px] sm:text-xs text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/60 border border-zinc-700/60 gap-1 px-2 py-1.5 justify-center"
             title="Copiar texto do resumo"
           >
-            <Copy className="h-3.5 w-3.5" />
+            <Copy className="h-3 w-3" />
             <span>Copiar</span>
           </Button>
 
@@ -174,11 +174,11 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
             variant="ghost"
             size="sm"
             onClick={handleShareTelegram}
-            className="text-xs text-sky-300 hover:text-sky-200 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 gap-1.5"
+            className="text-[11px] sm:text-xs text-sky-300 hover:text-sky-200 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 gap-1 px-2 py-1.5 justify-center"
             title="Enviar resumo formatado para o Telegram"
           >
-            <Send className="h-3.5 w-3.5" />
-            <span>Telegram ✈️</span>
+            <Send className="h-3 w-3" />
+            <span>Telegram</span>
           </Button>
 
           <Button
@@ -186,10 +186,10 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
             size="sm"
             onClick={generateAIBriefing}
             disabled={loading}
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 text-xs"
+            className="flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 text-[11px] sm:text-xs px-2 py-1.5"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>{loading ? 'Analisando...' : 'Gerar com IA'}</span>
+            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+            <span className="truncate">{loading ? 'Gerando...' : 'Atualizar'}</span>
           </Button>
         </div>
       </div>

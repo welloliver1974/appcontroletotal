@@ -72,11 +72,11 @@ export function AppShell() {
   }, [navigate, setCommandOpen, setQuickAddOpen])
 
   return (
-    <div className="flex min-h-dvh flex-col md:pl-16 lg:pl-64">
+    <div className="flex min-h-dvh flex-col md:pl-16 lg:pl-64 w-full max-w-full overflow-x-hidden">
       <Sidebar />
       <NavRail />
       <Header />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-5 md:px-6 md:pb-12 lg:px-8 lg:pt-7">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-3 sm:px-5 pb-24 sm:pb-28 pt-4 sm:pt-5 md:px-6 md:pb-12 lg:px-8 lg:pt-7 overflow-x-hidden">
         <Outlet />
       </main>
       <BottomNav />
