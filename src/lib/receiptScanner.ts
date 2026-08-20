@@ -330,9 +330,9 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
   ]
 }`
 
-  // Timeout safety controller (15 seconds)
+  // Timeout safety controller (45 seconds for mobile networks)
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 15000)
+  const timeoutId = setTimeout(() => controller.abort(), 45000)
 
   try {
     const res = await fetch('/api/llm/proxy', {
@@ -358,7 +358,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
           },
         ],
         temperature: 0.1,
-        max_tokens: 1500,
+        max_tokens: 800,
         customUrl: config.customBaseUrl,
       }),
     })
@@ -383,7 +383,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
   } catch (err: any) {
     clearTimeout(timeoutId)
     if (err?.name === 'AbortError') {
-      throw new Error('Tempo limite excedido (15s). A conexão com a IA demorou para responder.')
+      throw new Error('Tempo limite excedido. A conexão com a IA demorou para responder. Tente novamente.')
     }
     throw err
   }
