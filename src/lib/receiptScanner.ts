@@ -231,55 +231,59 @@ export async function parseReceiptWithVision(
         : 'google/gemini-2.0-flash-001'
   }
 
-  const systemPrompt = `Você é um scanner OCR de alta precisão especialista em cupons fiscais brasileiros (NFC-e, SAT CFe, Danfe Simplificada, Cupom de Restaurante/Posto/Mercado).
-Sua missão é ler o cupom de cima a baixo e extrair as informações reais contidas na foto.
+  const systemPrompt = `Você é um scanner OCR especialista em cupons fiscais brasileiros (SAT CFe, NFC-e, Danfe e Recibos).
+Sua tarefa é analisar a imagem do cupom fiscal e extrair os dados com máxima fidelidade.
 
-REGRAS DE EXTRAÇÃO:
+DIRETRIZES DE EXTRAÇÃO:
 
-1. ESTABELECIMENTO (Nome da Loja / Mercado / Posto / Farmácia):
-   - Olhe estritamente nas 3 primeiras linhas do TOPO do cupom (Cabeçalho).
-   - Extraia o NOME FANTASIA comercial em destaque (ex: "Carrefour", "Pão de Açúcar", "Assaí", "Atacadão", "Supermercados BH", "Droga Raia", "Drogasil", "Posto Ipiranga", "Posto Shell", "Oxxo", "Swift", "Spoleto", "McDonald's", "Burguer King") ou a Razão Social principal (ex: "Sendas Distribuidora S/A", "RaiaDrogasil S/A", "Companhia Brasileira de Distribuição").
-   - NUNCA coloque:
-     * Nomes fiscais ou de sistemas ("NFC-e", "SAT", "SEFAZ", "Documento Auxiliar", "Extrato No", "Bematech", "Daruma", "Elgin", "Sweda", "Epson", "Totvs", "Linx", "CFe", "Gerencial").
-     * Endereço, Bairro, Cidade ou CEP.
-     * CNPJ ou Inscrição Estadual.
-     * Slogans ou frases promocionais.
+1. ESTABELECIMENTO (establishment):
+   - Extraia o nome da empresa na PRIMEIRA LINHA do cabeçalho no topo da nota.
+   - Exemplos: "SENDAS DISTRIBUIDORA S/A" (Assaí Atacadista), "CARREFOUR COMERCIO E INDUSTRIA", "CIA BRASILEIRA DE DISTRIBUICAO" (Pão de Açúcar), "DROGARIA SAO PAULO S/A", "SUPERMERCADOS BH".
+   - NUNCA retorne nomes genéricos como "Cupom Fiscal", "Documento Auxiliar", "SAT" ou "NFC-e".
 
 2. VALOR TOTAL LÍQUIDO PAGO (amount):
-   - REGRA DE OURO DO DESCONTO: Se o cupom tiver descontos ou abatimentos, o amount DEVE SER O VALOR FINAL EFETIVAMENTE PAGO PELO CLIENTE (PÓS-DESCONTO)!
-   - Localize no rodapé: "VALOR A PAGAR R$", "VALOR LÍQUIDO R$", "TOTAL A PAGAR R$" ou o valor final cobrado na Forma de Pagamento (Cartão/PIX/Dinheiro).
-   - NUNCA retorne o "TOTAL BRUTO", "SUBTOTAL" ou "TOTAL DOS ITENS" antes dos descontos.
-   - Retorne sempre o número float com ponto decimal (ex: 89.90).
+   - Localize no rodapé o "VALOR A PAGAR R$" ou "VALOR PAGO R$" final após todos os descontos.
+   - NUNCA pegue o "VALOR TOTAL R$" bruto se houver linha de "DESCONTO R$". O amount deve ser o valor efetivamente pago (ex: se Total é 65,88 e Desconto é 6,00, o amount é 59.88).
 
 3. DATA E HORA DE EMISSÃO:
-   - Data (date): Localize no cupom a data da compra (geralmente escrita como "EMISSÃO: DD/MM/AAAA" ou "DATA: DD/MM/AAAA"). Converta para "YYYY-MM-DD".
-   - Hora (time): Localize no cupom o horário exato da compra (geralmente ao lado da data, ex: "14:35:12" ou "18:20"). Retorne "HH:MM". Se NÃO encontrar no cupom, retorne "".
+   - Procure por "DATA: DD/MM/AAAA - HH:MM" ou "EMISSÃO: DD/MM/AAAA HH:MM:SS".
+   - date: formato ISO "YYYY-MM-DD" (ex: "2026-08-20").
+   - time: formato "HH:MM" (ex: "10:54").
 
 4. CATEGORIA (category):
-   - "Despensa" (Supermercados, atacados, hortifruti, açougue, compras de mantimentos)
-   - "Alimentação" (Restaurantes, padarias, lanchonetes, delivery, bares)
-   - "Saúde" (Farmácias, drogarias)
-   - "Transporte" (Postos de combustível, estacionamento, pedágio)
-   - "Moradia", "Lazer", "Serviços", "Outros"
+   - "Despensa" (Supermercados, atacados, compras de alimentos/bebidas)
+   - "Alimentação" (Restaurantes, lanchonetes)
+   - "Saúde" (Farmácias)
+   - "Transporte" (Postos de gasolina)
 
-5. ITENS / PRODUTOS COMPRADOS (detailedItems):
-   - Na lista de produtos do cupom fiscal brasileiro, cada linha tem o formato:
-     [#] [Código/EAN] [NOME DO PRODUTO] [QTD] [UN] X [VL_UNIT] [VL_TOTAL]
-     Exemplo real: "001 7891000315507 DETERGENTE YPE 500ML 2 UN X 2,49 4,98"
-   - Extraia o NOME REAL do produto (ignore o código numérico/EAN).
-   - Expanda abreviações para nomes limpos e naturais (ex: "LEITE INT CEMIL 1L" -> "Leite Integral Cemil 1L", "ARROZ T1 TIO J 5KG" -> "Arroz Tio João 5kg", "SAB LIQ OMO" -> "Sabão Líquido Omo", "COCA COLA 2L" -> "Coca-Cola 2L").
-   - Quantidade (qty): o número real comprado (ex: 1, 2, 0.750).
-   - Unidade (unit): "un", "kg", "g", "l", "pct", "cx", "lat".
+5. ITENS / PRODUTOS (detailedItems):
+   - ATENÇÃO AO PADRÃO MULTI-LINHA BRASILEIRO (Assaí, Carrefour, Pão de Açúcar, SAT):
+     Cada produto vem dividido em 2 linhas:
+     Linha 1: [Item#] [Código] [DESCRIÇÃO DO PRODUTO] (ex: "001 11662410001 BE IT WHEY 250ML CH")
+     Linha 2: [Quantidade] [Unidade] x [Valor Unitário] [Valor Total] (ex: "12,000 Un x 5,49 65,88")
+     Linha 3 (opcional): [Desconto no item - 6,00]
+   - Extraia TODOS os itens listados:
+     - name: Nome do produto da linha 1 (ex: "Be It Whey 250ml Ch" ou "Be It Whey 250ml Chocolate")
+     - qty: Quantidade numérica (ex: 12)
+     - unit: "un", "kg", "g", "l", "pct", "cx", "lat"
+     - unitPrice: Preço unitário float (ex: 5.49)
+     - totalPrice: Preço total float (ex: 59.88 ou 65.88)
 
-ESTRUTURA JSON OBRIGATÓRIA (sem markdown adicional):
+ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
 {
-  "establishment": "Nome da Loja",
-  "amount": 123.45,
-  "date": "YYYY-MM-DD",
-  "time": "HH:MM",
+  "establishment": "Sendas Distribuidora (Assaí)",
+  "amount": 59.88,
+  "date": "2026-08-20",
+  "time": "10:54",
   "category": "Despensa",
   "detailedItems": [
-    { "name": "Nome Limpo do Produto", "qty": 1, "unit": "un" }
+    {
+      "name": "Be It Whey 250ml Ch",
+      "qty": 12,
+      "unit": "un",
+      "unitPrice": 5.49,
+      "totalPrice": 59.88
+    }
   ]
 }`
 
@@ -290,7 +294,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown adicional):
       content: [
         {
           type: 'text',
-          text: 'Analise este cupom fiscal brasileiro com muita atenção. Identifique o nome comercial da loja no cabeçalho do topo, o VALOR FINAL LÍQUIDO PAGO (já subtraindo qualquer desconto), a data/hora e a lista de produtos comprados.',
+          text: 'Extraia os dados completos deste cupom fiscal brasileiro: nome da empresa no topo da primeira linha, valor total líquido pago no rodapé, data/hora e todos os produtos com quantidade e valor.',
         },
         {
           type: 'image_url',
