@@ -589,7 +589,7 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 * **Solução e Arquitetura ([src/lib/maintFinanceSync.ts](file:///e:/Apps/AppControleTotal/src/lib/maintFinanceSync.ts)):**
   - **Sincronização Automática:** Qualquer abastecimento (`FuelLogModal`) ou registro de serviço (`RecordForm`) com valor > R$ 0 gera simultaneamente uma despesa em `spendingEntries` categorizada como `Transporte` (para Carro e Moto) ou `Moradia` (para Casa/Imóvel) com o prefixo do nome do ativo.
   - **Sincronizador Retroativo (`syncAllUnsyncedMaintenance`):** Na inicialização das telas de Finanças, Dashboard e Manutenção, o sistema varre registros de manutenção existentes e espelha qualquer lançamento financeiro ausente em `spendingEntries`, garantindo que abastecimentos anteriores (ex: R$ 50,00) reflitam imediatamente no orçamento.
-  - **Revisão Futura 100% Opcional:** O campo `nextMaintenance` passou a ser opcional. Quando não houver revisão agendada, o ativo exibe o status limpo `✅ Em dia · Sem revisão agendada` sem disparar alertas de 30 dias.
+  - **Revisão Futura 100% Opcional & Tratamento de Datas:** O campo `nextMaintenance` passou a ser opcional e permite envio de `null` para limpeza definitiva no banco Supabase. Implementado o validador `isValidIsoDate` em `utils.ts` que impede qualquer data vazia ou corrompida de disparar cálculos irreais (como "atrasado há 45887 dias").
   - **Novas Categorias de Ativos:** Suporte oficial aos tipos `carro`, `moto`, `casa` e `outro` (equipamentos/outros).
 
 ---
