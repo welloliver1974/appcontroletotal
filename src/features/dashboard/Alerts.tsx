@@ -1,9 +1,8 @@
-import { CalendarClock, CheckCircle2, Mail, ShoppingBasket, Wrench } from 'lucide-react'
+import { ArrowUpRight, BellRing, CalendarClock, CheckCircle2, Mail, ShoppingBasket, Wrench } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { DashboardData } from './dashboardData'
 import { upcomingWindowDays } from './dashboardData'
-import { EmptyState } from '@/components/ui/feedback'
-import { SectionHeader } from '@/components/ui/primitives'
+import { Card } from '@/components/ui/Card'
 import { cn, relativeDayLabel } from '@/lib/utils'
 
 type Tone = 'critico' | 'atencao' | 'info'
@@ -24,7 +23,7 @@ const TONES: Record<Tone, string> = {
 }
 
 const DOTS: Record<Tone, string> = {
-  critico: 'bg-rose-500',
+  critico: 'bg-rose-500 shadow-sm shadow-rose-500/50',
   atencao: 'bg-orange-500',
   info: 'bg-purple-500',
 }
@@ -131,35 +130,86 @@ function buildAlerts(data: DashboardData): AlertItem[] {
   return items.sort((a, b) => rank[a.tone] - rank[b.tone]).slice(0, 8)
 }
 
-/** Urgent/maintenance grid aggregated from manutenção, despensa and inbox. */
+/** Radar de alertas em formato Card Premium, consistente com Finanças e Compras. */
 export function AlertsGrid({ data }: { data: DashboardData }) {
   const alerts = buildAlerts(data)
 
   return (
-    <section className="space-y-3">
-      <SectionHeader eyebrow="Radar" title="Alertas & avisos" />
+    <Card className="flex flex-col p-4 space-y-4 border-zinc-800/80 bg-zinc-900/60 shadow-lg shadow-black/20">
+      {/* Header do Card */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400">
+            <BellRing className="h-4 w-4" />
+          </div>
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
+              Radar de Alertas & Avisos
+            </h4>
+            <p className="text-[11px] text-zinc-500">
+              Pendências e lembretes prioritários
+            </p>
+          </div>
+        </div>
+
+        {alerts.length > 0 ? (
+          <span className="chip text-[10px] text-amber-400 border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-medium">
+            {alerts.length} {alerts.length === 1 ? 'alerta ativo' : 'alertas ativos'}
+          </span>
+        ) : (
+          <span className="chip text-[10px] text-emerald-400 border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-medium">
+            ✅ Em dia
+          </span>
+        )}
+      </div>
+
+      {/* Lista de Alertas ou Estado Vazio */}
       {alerts.length === 0 ? (
-        <EmptyState
-          icon={<CheckCircle2 className="h-6 w-6" />}
-          title="Tudo em dia por aqui"
-          description="Sem manutenções pendentes, itens em falta ou emails críticos."
-        />
+        <div className="flex items-center gap-3 p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-zinc-300">
+          <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+          <div>
+            <p className="font-semibold text-zinc-200">Tudo em dia por aqui!</p>
+            <p className="text-[11px] text-zinc-500">
+              Sem manutenções atrasadas, itens em falta ou pendências críticas.
+            </p>
+          </div>
+        </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2 max-h-72 overflow-y-auto pr-0.5">
           {alerts.map((a) => (
-            <div key={a.id} className="card card-hover flex items-start gap-3 p-3.5">
-              <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border', TONES[a.tone])}>
+            <a
+              key={a.id}
+              href={
+                a.kind === 'manutencao'
+                  ? '#manutencao'
+                  : a.kind === 'estoque'
+                  ? '#despensa'
+                  : '#agenda'
+              }
+              className="group flex items-start gap-3 p-2.5 rounded-xl border border-zinc-800/80 bg-zinc-950/60 hover:border-zinc-700 hover:bg-zinc-900/80 transition-all"
+            >
+              <span
+                className={cn(
+                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border',
+                  TONES[a.tone],
+                )}
+              >
                 <a.icon className="h-4 w-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-zinc-100">{a.title}</p>
-                <p className="mt-0.5 truncate text-xs text-zinc-500">{a.meta}</p>
+                <div className="flex items-center justify-between gap-1">
+                  <p className="text-xs font-semibold text-zinc-200 truncate group-hover:text-white transition-colors">
+                    {a.title}
+                  </p>
+                  <ArrowUpRight className="h-3.5 w-3.5 text-zinc-600 opacity-0 group-hover:opacity-100 group-hover:text-zinc-400 transition-all shrink-0" />
+                </div>
+                <p className="text-[11px] text-zinc-400 line-clamp-1 mt-0.5">{a.meta}</p>
               </div>
               <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', DOTS[a.tone])} />
-            </div>
+            </a>
           ))}
         </div>
       )}
-    </section>
+    </Card>
   )
 }
