@@ -9,8 +9,8 @@ export interface AssetDraft {
   name: string
   category: AssetCategory
   lifePct?: number
-  nextMaintenance?: string
-  lastMaintenance?: string
+  nextMaintenance?: string | null
+  lastMaintenance?: string | null
 }
 
 /** Create/edit modal for an asset (name, category, life %, next/last maintenance). */
@@ -33,12 +33,15 @@ export function AssetForm({
 
   const submit = () => {
     if (!name.trim()) return
+    const validNext = nextMaintenance && nextMaintenance.trim() !== '' ? nextMaintenance : null
+    const validLast = lastMaintenance && lastMaintenance.trim() !== '' ? lastMaintenance : null
+
     void onSubmit({
       name: name.trim(),
       category,
       lifePct: clampLife(Number(lifePct) || 100),
-      nextMaintenance: nextMaintenance || undefined,
-      lastMaintenance: lastMaintenance || undefined,
+      nextMaintenance: validNext,
+      lastMaintenance: validLast,
     })
   }
 

@@ -1,4 +1,5 @@
 import { db } from './db'
+import { isValidIsoDate } from './utils'
 import type { AgendaEvent, Asset, DocVaultItem, FixedBill, MaintenanceRecord, PantryItem, SpendingItem } from '@/data/types'
 import { calculateVehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
 
@@ -65,7 +66,11 @@ export async function getLifeOsSummaryContext(): Promise<LifeOsSummaryContext> {
 
   // 4. Manutenção & Veículos
   const criticalAssets = assets
-    .filter((a) => (typeof a.lifePct === 'number' && a.lifePct > 0 && a.lifePct <= 20) || (a.nextMaintenance && a.nextMaintenance < todayIso))
+    .filter(
+      (a) =>
+        (typeof a.lifePct === 'number' && a.lifePct > 0 && a.lifePct <= 20) ||
+        (isValidIsoDate(a.nextMaintenance) && (a.nextMaintenance as string) < todayIso),
+    )
     .map((a) => `${a.name}${a.nextMaintenance ? ` (próx. revisão: ${a.nextMaintenance})` : ''}`)
 
   const vehicleSummary = assets

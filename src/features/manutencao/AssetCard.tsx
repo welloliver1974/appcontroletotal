@@ -3,7 +3,7 @@ import type { Asset, MaintenanceRecord } from '@/data/types'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/feedback'
 import { IconTile } from '@/components/ui/primitives'
-import { formatBRL, relativeDayLabel, shortDate } from '@/lib/utils'
+import { formatBRL, isValidIsoDate, relativeDayLabel, shortDate } from '@/lib/utils'
 import { usePendingDelete } from '@/lib/usePendingDelete'
 import { cn } from '@/lib/utils'
 import { CATEGORY, isOverdue, recordsFor, spentFor } from './maintUtils'
@@ -85,15 +85,15 @@ export function AssetCard({
       )}
 
       <div className="flex items-center justify-between gap-2 text-xs">
-        {asset.nextMaintenance ? (
+        {isValidIsoDate(asset.nextMaintenance) ? (
           overdue ? (
             <span className="inline-flex items-center gap-1 font-medium text-rose-300">
-              <TriangleAlert className="h-3.5 w-3.5" /> Manutenção atrasada
+              <TriangleAlert className="h-3.5 w-3.5" /> Atrasada ({relativeDayLabel(asset.nextMaintenance)})
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-zinc-400">
               <CalendarDays className="h-3.5 w-3.5" />
-              {relativeDayLabel(asset.nextMaintenance)} · <span className="font-num">{shortDate(asset.nextMaintenance)}</span>
+              {relativeDayLabel(asset.nextMaintenance)} · <span className="font-num">{shortDate(asset.nextMaintenance!)}</span>
             </span>
           )
         ) : (

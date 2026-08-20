@@ -1,6 +1,6 @@
 import { Bike, Car, Home, Package, type LucideIcon } from 'lucide-react'
 import type { Asset, AssetCategory, MaintenanceRecord } from '@/data/types'
-import { daysUntil, todayStr } from '@/lib/utils'
+import { daysUntil, isValidIsoDate, todayStr } from '@/lib/utils'
 
 export const CATEGORY: Record<AssetCategory, { label: string; icon: LucideIcon }> = {
   carro: { label: 'Carro', icon: Car },
@@ -15,8 +15,8 @@ export function clampLife(n: number): number {
 }
 
 export function isOverdue(asset: Asset): boolean {
-  if (!asset.nextMaintenance) return false
-  return asset.nextMaintenance < todayStr()
+  if (!isValidIsoDate(asset.nextMaintenance)) return false
+  return (asset.nextMaintenance as string) < todayStr()
 }
 
 export function sortAssetsByUrgency(assets: Asset[]): Asset[] {
@@ -24,11 +24,13 @@ export function sortAssetsByUrgency(assets: Asset[]): Asset[] {
     const overdueA = isOverdue(a) ? 0 : 1
     const overdueB = isOverdue(b) ? 0 : 1
     if (overdueA !== overdueB) return overdueA - overdueB
-    if (a.nextMaintenance && b.nextMaintenance) {
-      return a.nextMaintenance.localeCompare(b.nextMaintenance)
+    const hasA = isValidIsoDate(a.nextMaintenance)
+    const hasB = isValidIsoDate(b.nextMaintenance)
+    if (hasA && hasB) {
+      return (a.nextMaintenance as string).localeCompare(b.nextMaintenance as string)
     }
-    if (a.nextMaintenance) return -1
-    if (b.nextMaintenance) return 1
+    if (hasA) return -1
+    if (hasB) return 1
     return a.name.localeCompare(b.name)
   })
 }
@@ -54,5 +56,5 @@ export function latestMaintenance(records: MaintenanceRecord[], assetId: string)
 
 /** Assets needing attention: overdue or next maintenance within `days`. */
 export function countUpcoming(assets: Asset[], days = 30): number {
-  return assets.filter((a) => a.nextMaintenance && (isOverdue(a) || daysUntil(a.nextMaintenance) <= days)).length
+  return assets.filter((a) => isValidIsoDate(a.nextMaintenance) && (isOverdue(a) || daysUntil(a.nextMaintenance) <= days)).length
 }

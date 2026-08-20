@@ -79,8 +79,8 @@ export interface Asset {
   category: AssetCategory
   /** 0..100 remaining useful life */
   lifePct?: number
-  nextMaintenance?: string // YYYY-MM-DD (opcional)
-  lastMaintenance?: string
+  nextMaintenance?: string | null // YYYY-MM-DD (opcional)
+  lastMaintenance?: string | null
 }
 
 export interface MaintenanceRecord {

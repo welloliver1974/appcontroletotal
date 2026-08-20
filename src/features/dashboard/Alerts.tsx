@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react'
 import type { DashboardData } from './dashboardData'
 import { upcomingWindowDays } from './dashboardData'
 import { Card } from '@/components/ui/Card'
-import { cn, relativeDayLabel } from '@/lib/utils'
+import { cn, isValidIsoDate, relativeDayLabel } from '@/lib/utils'
 
 type Tone = 'critico' | 'atencao' | 'info'
 
@@ -33,9 +33,9 @@ function buildAlerts(data: DashboardData): AlertItem[] {
   const today = new Date()
 
   for (const a of data.assets) {
-    if (a.nextMaintenance) {
-      const overdue = a.nextMaintenance < new Date().toISOString().slice(0, 10)
-      if (overdue || upcomingWindowDays(a.nextMaintenance, 7)) {
+    if (isValidIsoDate(a.nextMaintenance)) {
+      const overdue = (a.nextMaintenance as string) < new Date().toISOString().slice(0, 10)
+      if (overdue || upcomingWindowDays(a.nextMaintenance as string, 7)) {
         items.push({
           id: `ast-${a.id}`,
           kind: 'manutencao',

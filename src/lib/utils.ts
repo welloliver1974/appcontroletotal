@@ -22,10 +22,23 @@ const DAY = 86_400_000
 
 const MONTHS_PT = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
 
+/** Checks if a string is a valid ISO date (YYYY-MM-DD) in a sensible modern range. */
+export function isValidIsoDate(input?: string | null): boolean {
+  if (!input || typeof input !== 'string') return false
+  const trimmed = input.trim()
+  if (!/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return false
+  const year = Number(trimmed.slice(0, 4))
+  return year >= 2000 && year <= 2100
+}
+
 /** Friendly relative label for a date: "hoje", "amanhã", "em 5 dias", "há 3 dias". */
-export function relativeDayLabel(input: string | Date, now = new Date()): string {
-  if (typeof input === 'string' && /^\d{4}-\d{2}-\d{2}/.test(input)) {
-    const [y, m, d] = input.slice(0, 10).split('-').map(Number)
+export function relativeDayLabel(input?: string | Date | null, now = new Date()): string {
+  if (!input) return 'sem data'
+
+  if (typeof input === 'string') {
+    const trimmed = input.trim()
+    if (!isValidIsoDate(trimmed)) return 'sem data'
+    const [y, m, d] = trimmed.slice(0, 10).split('-').map(Number)
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
     const target = new Date(y, m - 1, d).getTime()
     const diff = Math.round((target - today) / DAY)
@@ -35,7 +48,9 @@ export function relativeDayLabel(input: string | Date, now = new Date()): string
     if (diff > 0) return `em ${diff} dias`
     return `há ${Math.abs(diff)} dias`
   }
-  const d = typeof input === 'string' ? new Date(input) : input
+
+  const d = input
+  if (isNaN(d.getTime()) || d.getFullYear() < 2000) return 'sem data'
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
   const diff = Math.round((startOfDay - startOfToday) / DAY)
@@ -97,8 +112,9 @@ export function todayStr(): string {
 }
 
 /** Whole days from today until `dateStr` (negative = in the past). */
-export function daysUntil(dateStr: string): number {
-  const [y, m, d] = dateStr.split('-').map((p) => Number(p))
+export function daysUntil(dateStr?: string | null): number {
+  if (!isValidIsoDate(dateStr)) return 999
+  const [y, m, d] = (dateStr as string).split('-').map((p) => Number(p))
   const [nY, nM, nD] = todayStr().split('-').map((p) => Number(p))
   return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(nY, nM - 1, nD)) / DAY)
 }
