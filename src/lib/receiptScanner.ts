@@ -128,12 +128,27 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
           parsed.mercado ||
           parsed.supermercado ||
           parsed.padaria ||
+          parsed.hortifruti ||
           parsed.empresa ||
           parsed.local ||
           'Cupom Fiscal',
       ).trim()
 
       const itemsNames = detailedItems.map((i) => i.name)
+
+      // Check if 44-digit access key was returned
+      let qrFromKey = qrCode
+      const rawKey =
+        parsed.accessKey ||
+        parsed.chave ||
+        parsed.chave_acesso ||
+        parsed.chaveNFe ||
+        text.match(/\b(\d{44})\b/)?.[1] ||
+        text.match(/\b(\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4})\b/)?.[1]?.replace(/\s+/g, '')
+
+      if (!qrFromKey && rawKey && rawKey.length === 44) {
+        qrFromKey = parseSefazUrl(`https://www.nfce.fazenda.sp.gov.br/consulta?p=${rawKey}`)
+      }
 
       return {
         establishment: storeName,
@@ -145,6 +160,7 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
         detailedItems,
         paymentMethod: parsed.paymentMethod || parsed.forma_pagamento,
         rawSummary: text,
+        qrCode: qrFromKey,
       }
     } catch {
       // Proceed to Regex Fallback below
@@ -153,8 +169,8 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
 
   // 2. Resilient Regex Fallback
   const estMatch =
-    text.match(/"(?:establishment|loja|mercado|padaria|empresa)"\s*:\s*"([^"]+)"/i) ||
-    text.match(/(?:estabelecimento|loja|mercado|padaria)\s*[:=]\s*"([^"]+)"/i)
+    text.match(/"(?:establishment|loja|mercado|padaria|hortifruti|empresa)"\s*:\s*"([^"]+)"/i) ||
+    text.match(/(?:estabelecimento|loja|mercado|padaria|hortifruti)\s*[:=]\s*"([^"]+)"/i)
   const establishment = estMatch ? estMatch[1].trim() : 'Cupom Fiscal'
 
   const amtMatch =
@@ -178,7 +194,7 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
   const catMatch = text.match(/"(?:category|categoria)"\s*:\s*"([^"]+)"/i)
   const category = catMatch ? catMatch[1] : 'Despensa'
 
-  // Extract items via regex matching both "name" and "nome" and "descricao"
+  // Extract items via regex
   const detailedItems: ScannedPantryItem[] = []
   const itemRegex = /"(?:name|nome|descricao|produto)"\s*:\s*"([^"]+)"/gi
   let m
@@ -193,6 +209,20 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
     }
   }
 
+  // 44-digit Access Key Regex fallback
+  let qrFromKey = qrCode
+  const rawKeyMatch =
+    text.match(/"(?:accessKey|chave|chave_acesso)"\s*:\s*"([^"]+)"/i) ||
+    text.match(/\b(\d{44})\b/) ||
+    text.match(/\b(\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4}\s+\d{4})\b/)
+
+  if (!qrFromKey && rawKeyMatch) {
+    const cleanedKey = rawKeyMatch[1].replace(/\D/g, '')
+    if (cleanedKey.length === 44) {
+      qrFromKey = parseSefazUrl(`https://www.nfce.fazenda.sp.gov.br/consulta?p=${cleanedKey}`)
+    }
+  }
+
   return {
     establishment,
     amount,
@@ -202,6 +232,7 @@ function parseReceiptResponse(raw: string): ParsedReceiptData {
     detailedItems,
     items: detailedItems.map((i) => i.name),
     rawSummary: text,
+    qrCode: qrFromKey,
   }
 }
 
@@ -241,53 +272,55 @@ export async function parseReceiptWithVision(
         : 'google/gemini-2.0-flash-001'
   }
 
-  const systemPrompt = `Você é um scanner OCR de alta precisão especialista em cupons fiscais brasileiros (Padarias, Lanchonetes, Supermercados, Farmácias, Postos, SAT CFe, NFC-e).
+  const systemPrompt = `Você é um scanner OCR especialista em cupons fiscais brasileiros (Hortifrutis, Mercados, Padarias, Lanchonetes, SAT CFe, NFC-e).
 
-DIRETRIZES DE EXTRAÇÃO:
+REGRAS DE EXTRAÇÃO:
 
 1. ESTABELECIMENTO (establishment):
    - Extraia o Nome Comercial / Fantasia ou Razão Social no topo da nota (Linha 1 do cabeçalho).
-   - Exemplos: "Padaria Bella Paulista", "Panificadora Estrela", "Sendas Distribuidora (Assaí)", "Carrefour", "Droga Raia", "Posto Ipiranga", "Café do Ponto".
+   - Exemplos: "Hortifruti Queiroz Filho Ltda", "Sacolão Vila Pompeia", "Padaria Bella Paulista", "Sendas Distribuidora (Assaí)", "Carrefour".
    - NUNCA use "Cupom Fiscal", "Documento Auxiliar", "NFC-e", "SAT", "SEFAZ", "Consumidor" nem endereços.
 
 2. VALOR TOTAL LÍQUIDO (amount):
-   - Localize o "VALOR A PAGAR R$", "TOTAL R$" ou "VALOR LÍQUIDO R$" final pós-descontos.
-   - Retorne o número float (ex: 59.88).
+   - Localize o "TOTAL R$", "VALOR A PAGAR R$" ou "VALOR LÍQUIDO R$".
+   - Retorne o número float (ex: 39.97).
 
 3. CATEGORIA (category):
-   - "Alimentação": Padarias, restaurantes, lanchonetes, bares, cafés, delivery.
-   - "Despensa": Supermercados, atacadões, hortifrutis, açougues.
+   - "Despensa": Hortifrutis, sacolões, supermercados, atacadões, açougues.
+   - "Alimentação": Padarias, lanchonetes, restaurantes, bares, cafés.
    - "Saúde": Farmácias, drogarias.
-   - "Transporte": Postos de combustível, estacionamento.
+   - "Transporte": Postos de combustível.
    - "Outros": Demais despesas.
 
 4. DATA E HORA:
-   - Data no formato ISO "YYYY-MM-DD" e Hora "HH:MM". Se não visível, use "${todayIso()}".
+   - Data no formato ISO "YYYY-MM-DD" e Hora "HH:MM" (ex: "2026-08-15" e "19:15").
 
 5. ITENS / PRODUTOS (detailedItems):
-   - Extraia todos os produtos da compra (tanto no formato de 1 linha quanto em 2 linhas):
-     * "name": Nome claro e natural do produto (ex: "Pão Francês", "Café Expresso", "Be It Whey 250ml", "Detergente Ypê").
-     * "qty": Quantidade numérica (ex: 1, 2, 0.350).
-     * "unit": "un", "kg", "g", "l", "pct", "cx", "lat".
-     * "unitPrice": Preço unitário numérico float se visível.
-     * "totalPrice": Preço total numérico float se visível.
+   - Extraia todos os produtos comprados listados no cupom:
+     * "name": Nome claro do produto (ex: "Batata Cong Bemb", "Pão Panizan 2006", "Ovos Bastos Ext").
+     * "qty": Quantidade numérica (ex: 1, 2, 0.500).
+     * "unit": "un", "kg", "g", "l", "pct", "cx".
+     * "unitPrice": Preço unitário float (ex: 18.99).
+     * "totalPrice": Preço total do item float (ex: 18.99).
 
-${qrCode?.cnpj ? `[DADOS CONFIRMADOS VIA QR CODE SEFAZ: CNPJ ${qrCode.cnpj}, UF: ${qrCode.uf || 'SP'}]` : ''}
+6. CHAVE DE ACESSO FISCAL SEFAZ (accessKey):
+   - Extraia a sequência de 44 dígitos da 'Chave de Acesso' ou 'Consulte pela Chave de Acesso' se presente no cupom (ex: "35260817879943000139650130000291821778634186" sem espaços).
 
 ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
 {
-  "establishment": "Nome da Loja ou Padaria",
-  "amount": 45.50,
+  "establishment": "Nome do Estabelecimento",
+  "amount": 39.97,
   "date": "YYYY-MM-DD",
   "time": "HH:MM",
-  "category": "Alimentação" | "Despensa" | "Saúde" | "Transporte" | "Outros",
+  "category": "Despensa" | "Alimentação" | "Saúde" | "Transporte" | "Outros",
+  "accessKey": "35260817879943000139650130000291821778634186",
   "detailedItems": [
     {
       "name": "Nome do Produto",
       "qty": 1,
       "unit": "un",
-      "unitPrice": 10.00,
-      "totalPrice": 10.00
+      "unitPrice": 18.99,
+      "totalPrice": 18.99
     }
   ]
 }`
@@ -313,7 +346,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
             content: [
               {
                 type: 'text',
-                text: 'Leia este cupom fiscal / recibo. Extraia o estabelecimento no topo, valor líquido pós-desconto, categoria correta, data/hora e produtos comprados.',
+                text: 'Leia este cupom fiscal / recibo. Extraia o estabelecimento no topo, valor líquido pago, data/hora, produtos e a chave de acesso fiscal.',
               },
               { type: 'image_url', image_url: { url: compressedDataUrl } },
             ],
@@ -341,7 +374,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
     }
 
     const result = parseReceiptResponse(content)
-    if (qrCode) result.qrCode = qrCode
+    if (qrCode && !result.qrCode) result.qrCode = qrCode
 
     return result
   } catch (err: any) {
