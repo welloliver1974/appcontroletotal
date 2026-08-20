@@ -48,14 +48,17 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 
 ---
 
-## 3. 🚗 Carro & Manutenção Preditiva
+## 3. 🚗 Manutenção, Ativos & Abastecimento Integrado
 
 ### Como funciona:
-* Toda vez que você abastecer, use o botão **`⛽ Abastecer`** informando a quilometragem atual do painel e os litros.
-* O sistema calcula automaticamente:
-  * **Consumo Real** ($\text{km/L}$).
-  * **Ritmo de Rodagem** ($\text{km/dia}$).
-  * **Previsão da Próxima Revisão / Troca de Óleo:** O app calcula quantos dias faltam para a próxima revisão de 10.000 km e avisa no card do carro e no Briefing Matinal.
+* **⛽ Abastecimento Inteligente com Sincronização em Finanças:**
+  * Toda vez que você abastecer, use o botão **`⛽ Abastecer`** informando a quilometragem atual do painel, litros e valor pago.
+  * O sistema calcula na hora o **Consumo Médio ($\text{km/L}$)**, **Preço por Litro** e **Custo por Km**.
+  * **Sincronização Financeira:** O valor abastecido é automaticamente lançado no seu extrato de **Finanças** (categoria `Transporte`) e deduzido do seu **Orçamento Mensal** na Dashboard.
+* **🏠 Ativos e Gestão de Patrimônio (Carro, Moto, Casa, Equipamentos):**
+  * Cadastre seus veículos ou imóveis para manter o histórico de revisões, troca de óleo, seguro ou reformas.
+  * **Revisões Opcionais:** A data de próxima manutenção é 100% opcional; se não houver revisão prevista, o ativo fica como *"Em dia / Sem revisão agendada"*, sem alarmes desnecessários.
+  * **Manutenção Preditiva do Carro:** O app calcula o ritmo de rodagem ($\text{km/dia}$) e sugere a estimativa da próxima troca de óleo a cada 10.000 km.
 
 ---
 

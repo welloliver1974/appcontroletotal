@@ -79,6 +79,9 @@ api/            # Vercel Serverless Functions
    - Lista curada com os melhores modelos da NVIDIA (`meta/llama-3.3-70b-instruct`, `deepseek-r1`, etc.) e fallback inteligente.
 8. **Briefing Inteligente com IA no Dashboard ([src/features/dashboard/HermesBriefingCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/HermesBriefingCard.tsx)):**
    - Síntese diária cruzando compromissos de hoje, compras pendentes e manutenções críticas.
+9. **Sincronização de Combustível/Manutenção com Finanças & Orçamento ([src/lib/maintFinanceSync.ts](file:///e:/Apps/AppControleTotal/src/lib/maintFinanceSync.ts)):**
+   - Lançamento automático de abastecimentos e manutenções na tabela de despesas (`spendingEntries`) e desconto imediato no orçamento da Dashboard.
+   - Sincronizador retroativo de registros anteriores e flexibilização de ativos (`nextMaintenance` opcional, categorias: carro, moto, casa, outro).
 
 ## Validação
 
