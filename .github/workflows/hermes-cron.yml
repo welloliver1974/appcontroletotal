@@ -1,0 +1,57 @@
+name: Hermes 24/7 Autonomous Briefing Dispatcher
+
+on:
+  schedule:
+    # 07:00 BRT = 10:00 UTC (Briefing Matinal)
+    - cron: '0 10 * * *'
+    # 21:30 BRT = 00:30 UTC (Debriefing Noturno)
+    - cron: '30 0 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Modo do disparo (morning ou night)'
+        required: true
+        default: 'morning'
+        type: choice
+        options:
+          - morning
+          - night
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install @supabase/supabase-js
+
+      - name: Determine Mode
+        id: get_mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "MODE=${{ github.event.inputs.mode }}" >> $GITHUB_ENV
+          else
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" -ge "20" ] || [ "$HOUR" -le "03" ]; then
+              echo "MODE=night" >> $GITHUB_ENV
+            else
+              echo "MODE=morning" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: Run Hermes Dispatcher
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+          VITE_TELEGRAM_BOT_TOKEN: ${{ secrets.VITE_TELEGRAM_BOT_TOKEN }}
+          VITE_TELEGRAM_CHAT_ID: ${{ secrets.VITE_TELEGRAM_CHAT_ID }}
+        run: |
+          node scripts/dispatchBriefing.mjs $MODE
