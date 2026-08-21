@@ -5,6 +5,7 @@ import App from './app/App'
 import { db } from '@/lib/db'
 import { initBackupScheduler } from '@/lib/backupScheduler'
 import { initBackgroundSync } from '@/lib/backgroundSync'
+import { initHermesBackgroundScheduler } from '@/lib/hermesScheduler'
 import { loadHermesConfigFromCloud } from '@/lib/hermes'
 import { useThemeStore } from '@/stores/themeStore'
 
@@ -17,9 +18,10 @@ if (typeof document !== 'undefined' && savedTheme) {
 // Database adapter seeds local data only when Supabase is not configured.
 db.init()
 
-// Init background services (backup scheduler + offline queue sync + hermes cloud config).
+// Init background services (backup scheduler + offline queue sync + hermes cloud config + hermes auto dispatcher).
 initBackupScheduler()
 initBackgroundSync()
+initHermesBackgroundScheduler()
 void loadHermesConfigFromCloud()
 
 createRoot(document.getElementById('root')!).render(
