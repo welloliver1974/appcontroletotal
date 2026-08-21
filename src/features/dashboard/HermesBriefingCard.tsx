@@ -4,7 +4,6 @@ import {
   Clock,
   Copy,
   RefreshCw,
-  Send,
   Sparkles,
   Square,
   Volume2,
@@ -21,7 +20,6 @@ import {
   stopSpeaking,
   type VoiceGender,
 } from '@/lib/speechSynthesis'
-import { sendDirectTelegramMessage } from '@/lib/hermes'
 import { HermesScheduleModal } from './HermesScheduleModal'
 import { toast } from '@/stores/toastStore'
 import { calculateVehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
@@ -182,18 +180,6 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
     return lines.join('\n')
   }
 
-  const handleShareTelegram = async () => {
-    const text = formatTelegramBriefing()
-    const res = await sendDirectTelegramMessage(text)
-    if (res.ok) {
-      toast.success('Resumo matinal enviado para seu Telegram! 📱✈️')
-    } else {
-      const url = `https://t.me/share/url?url=${encodeURIComponent(window.location.origin)}&text=${encodeURIComponent(text)}`
-      window.open(url, '_blank')
-      toast.info('Abrindo Telegram...')
-    }
-  }
-
   const handleCopy = async () => {
     const text = formatTelegramBriefing()
     try {
@@ -259,9 +245,9 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full lg:w-auto shrink-0 pt-1 lg:pt-0">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto shrink-0 pt-1 lg:pt-0">
             {/* 1. Botão Ouvir Voz + Seletor de Voz */}
-            <div className="flex items-center gap-1 col-span-2 sm:col-span-1">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
@@ -311,25 +297,13 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
               <span>Copiar</span>
             </Button>
 
-            {/* 4. Botão Telegram */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleShareTelegram}
-              className="text-[11px] sm:text-xs text-sky-300 hover:text-sky-200 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 gap-1 px-2.5 py-1.5 justify-center"
-              title="Enviar resumo formatado direto para o Telegram Bot"
-            >
-              <Send className="h-3 w-3" />
-              <span>Telegram</span>
-            </Button>
-
-            {/* 5. Botão Atualizar */}
+            {/* 4. Botão Atualizar */}
             <Button
               variant="ghost"
               size="sm"
               onClick={generateAIBriefing}
               disabled={loading}
-              className="text-[11px] sm:text-xs text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 gap-1 px-2.5 py-1.5 justify-center col-span-2 sm:col-span-1"
+              className="text-[11px] sm:text-xs text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 gap-1 px-2.5 py-1.5 justify-center"
               title="Gerar nova síntese executiva com IA"
             >
               <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
