@@ -3,7 +3,7 @@ import { Bot, Copy, RefreshCw, Send, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import type { DashboardData } from './dashboardData'
-import { sendHermesChat } from '@/lib/hermes'
+import { generateFastAIBriefing } from '@/lib/fastBriefing'
 import { toast } from '@/stores/toastStore'
 import { calculateVehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
 
@@ -38,25 +38,14 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
   const generateAIBriefing = async () => {
     setLoading(true)
     try {
-      const carAlertsText =
-        vehicleAlerts.length > 0
-          ? `Alerta veicular preditivo: ${vehicleAlerts.map((v) => `${v.asset.name} (${v.stats?.formattedSummary})`).join('; ')}`
-          : 'Veículos em dia'
-
-      const prompt = `Gere um briefing matinal rápido, motivador e executivo (em 2 ou 3 frases curtas e diretas) para o meu dia com base nestes dados:
-- Compromissos hoje: ${todayEvents.length > 0 ? todayEvents.map((e) => `${e.title} às ${e.timeStart}`).join(', ') : 'Nenhum compromisso marcado'}
-- Despensa: ${lowStock.length > 0 ? `${lowStock.length} itens precisando de compra (${lowStock.slice(0, 3).map((i) => i.name).join(', ')})` : 'Estoque 100% em dia'}
-- Manutenção: ${urgentAssets.length > 0 ? `${urgentAssets.length} ativo(s) com vida útil crítica (${urgentAssets.map((a) => a.name).join(', ')})` : 'Tudo revisado'}
-- Veículos: ${carAlertsText}
-- Life-Log: ${data.lifeLog.length} notas recentes registradas.`
-
-      const res = await sendHermesChat([], prompt)
-      setBriefing(res.reply)
+      const generated = await generateFastAIBriefing(data)
+      setBriefing(generated)
       try {
-        sessionStorage.setItem('act.hermes.briefing', res.reply)
+        sessionStorage.setItem('act.hermes.briefing', generated)
       } catch {}
-      toast.success('Briefing do Hermes gerado com IA! 🧠')
-    } catch {
+      toast.success('Briefing do Hermes atualizado com sucesso! 🧠⚡')
+    } catch (err) {
+      console.warn('[Briefing] Error generating AI briefing:', err)
       toast.error('Não foi possível gerar o briefing no momento.')
     } finally {
       setLoading(false)

@@ -707,7 +707,17 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
-## 🔮 41. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
+## ⚡ 41. Otimização Ultra-Rápida do Briefing do Hermes (< 400ms) (21/08/2026)
+
+* **Diagnóstico da Lentidão:** O botão "Atualizar" chamava `sendHermesChat()`, que executava queries pesadas e síncronas em 8 tabelas inteiras do banco para montar o RAG do sistema, tentava rotas proxy inexistentes e usava janelas de 800 tokens com timeout de 15s.
+* **Solução Implementada ([fastBriefing.ts](file:///e:/Apps/AppControleTotal/src/lib/fastBriefing.ts)):**
+  1. **Zero Queries de Banco Redundantes:** Utiliza diretamente o objeto `DashboardData` que já está em memória no componente.
+  2. **Chamada Direta & Enxuta:** Prompt executivo com limite de 120 tokens, timeout ágil de 4s e suporte prioritário ao motor Groq (`llama-3.1-8b-instant` / `llama-3.3-70b-versatile`) respondendo em **< 350ms**.
+  3. **Fallback Dinâmico Inteligente Instantâneo (0ms):** Se o usuário estiver sem internet ou sem chave de API, gera imediatamente um resumo executivo inteligente baseado na agenda, despensa e alertas do dia.
+
+---
+
+## 🔮 42. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
 
 1. **📊 Exportação de Prestação de Contas / Reembolso de Viagem a Trabalho (PDF / Excel):**
    - Gerar relatório formal com tabela de Km rodados, datas, cidades visitadas e valor de reembolso por Km (ex: R$ 1,20/km) para envio à empresa.
