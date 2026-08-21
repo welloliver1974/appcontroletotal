@@ -383,29 +383,35 @@ Crie 3 receitas deliciosas e fáceis:`
 
                 {/* Botões de Ação na Receita */}
                 <div className="flex items-center gap-1.5 shrink-0 pt-1 sm:pt-0">
-                  <div className="flex items-center gap-0.5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                  {/* Botão Ouvir Voz Unificado com Toggle Integrado */}
+                  <div
+                    className={`inline-flex items-center rounded-lg border border-purple-500/30 bg-purple-500/10 transition-all overflow-hidden ${
+                      isPlayingVoice ? 'bg-purple-500/20 border-purple-500/50 shadow-sm shadow-purple-500/20' : ''
+                    }`}
+                  >
+                    <button
+                      type="button"
                       onClick={handleToggleVoice}
-                      className={`text-xs gap-1 px-2.5 py-1 ${
-                        isPlayingVoice
-                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 animate-pulse'
-                          : 'text-purple-300 hover:bg-purple-500/10 border border-purple-500/30'
-                      }`}
-                      title={isPlayingVoice ? 'Parar leitura por voz' : `Ouvir passo a passo da receita (${voiceGender === 'female' ? 'Feminina' : 'Masculina'})`}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-purple-300 hover:text-purple-100 hover:bg-purple-500/20 transition-colors"
+                      title={isPlayingVoice ? 'Parar leitura por voz' : `Ouvir passo a passo da receita (${voiceGender === 'female' ? 'Voz Feminina' : 'Voz Masculina'})`}
                     >
-                      {isPlayingVoice ? <Square className="h-3 w-3 fill-current" /> : <Volume2 className="h-3 w-3" />}
+                      {isPlayingVoice ? (
+                        <Square className="h-3 w-3 fill-current animate-pulse text-purple-300" />
+                      ) : (
+                        <Volume2 className="h-3 w-3 text-purple-300" />
+                      )}
                       <span>{isPlayingVoice ? 'Parar' : 'Ouvir'}</span>
-                    </Button>
+                    </button>
+
+                    <div className="h-3 w-[1px] bg-purple-500/30" />
 
                     <button
                       type="button"
                       onClick={toggleVoiceGender}
-                      className="px-1.5 py-1 rounded-md border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-[10px] font-medium transition-all"
+                      className="flex items-center px-1.5 py-1 text-xs font-medium text-purple-300 hover:text-purple-100 hover:bg-purple-500/20 transition-colors"
                       title={`Alternar voz (Atual: ${voiceGender === 'female' ? 'Feminina 👩' : 'Masculina 👨'})`}
                     >
-                      {voiceGender === 'female' ? '👩' : '👨'}
+                      <span>{voiceGender === 'female' ? '👩' : '👨'}</span>
                     </button>
                   </div>
 

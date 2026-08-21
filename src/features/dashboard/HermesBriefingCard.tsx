@@ -235,30 +235,35 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto shrink-0 pt-1 lg:pt-0">
-            {/* 1. Botão Ouvir Voz + Seletor de Voz */}
-            <div className="flex items-center gap-1 flex-1 sm:flex-initial">
-              <Button
-                variant="ghost"
-                size="sm"
+            {/* 1. Botão Ouvir Voz Unificado com Seletor Integrado */}
+            <div
+              className={`inline-flex items-center rounded-lg border border-purple-500/30 bg-purple-500/10 transition-all overflow-hidden flex-1 sm:flex-initial ${
+                isPlayingVoice ? 'bg-purple-500/20 border-purple-500/50 shadow-sm shadow-purple-500/20' : ''
+              }`}
+            >
+              <button
+                type="button"
                 onClick={handleToggleVoice}
-                className={`text-[11px] sm:text-xs gap-1 px-3 py-1.5 justify-center flex-1 sm:flex-initial transition-all ${
-                  isPlayingVoice
-                    ? 'bg-purple-500/20 border-purple-500/40 text-purple-300 animate-pulse'
-                    : 'text-purple-300 hover:text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30'
-                }`}
-                title={isPlayingVoice ? 'Parar leitura por voz' : `Ouvir briefing (Voz ${voiceGender === 'female' ? 'Feminina' : 'Masculina'})`}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-purple-300 hover:text-purple-100 hover:bg-purple-500/20 transition-colors flex-1 sm:flex-initial justify-center"
+                title={isPlayingVoice ? 'Parar leitura por voz' : `Ouvir briefing narrado (${voiceGender === 'female' ? 'Voz Feminina' : 'Voz Masculina'})`}
               >
-                {isPlayingVoice ? <Square className="h-3 w-3 fill-current" /> : <Volume2 className="h-3.5 w-3.5" />}
+                {isPlayingVoice ? (
+                  <Square className="h-3 w-3 fill-current animate-pulse text-purple-300" />
+                ) : (
+                  <Volume2 className="h-3.5 w-3.5 text-purple-300" />
+                )}
                 <span>{isPlayingVoice ? 'Parar' : 'Ouvir'}</span>
-              </Button>
+              </button>
+
+              <div className="h-3.5 w-[1px] bg-purple-500/30" />
 
               <button
                 type="button"
                 onClick={toggleVoiceGender}
-                className="px-2 py-1.5 rounded-lg border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-[11px] font-medium transition-all"
-                title={`Clique para alternar a voz (Atual: ${voiceGender === 'female' ? 'Feminina 👩' : 'Masculina 👨'})`}
+                className="flex items-center gap-0.5 px-2 py-1.5 text-xs font-medium text-purple-300 hover:text-purple-100 hover:bg-purple-500/20 transition-colors"
+                title={`Alternar voz (Atual: ${voiceGender === 'female' ? 'Feminina 👩' : 'Masculina 👨'})`}
               >
-                {voiceGender === 'female' ? '👩 Fem' : '👨 Masc'}
+                <span>{voiceGender === 'female' ? '👩' : '👨'}</span>
               </button>
             </div>
 
