@@ -14,7 +14,13 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import type { PantryItem } from '@/data/types'
 import { getHermesAdvancedConfig, sendDirectTelegramMessage } from '@/lib/hermes'
-import { speakText, stopSpeaking } from '@/lib/speechSynthesis'
+import {
+  getVoiceGender,
+  setVoiceGender,
+  speakText,
+  stopSpeaking,
+  type VoiceGender,
+} from '@/lib/speechSynthesis'
 import { toast } from '@/stores/toastStore'
 
 interface HermesChefModalProps {
@@ -48,6 +54,25 @@ export function HermesChefModal({ open, onClose, items }: HermesChefModalProps) 
   const [activeRecipeIndex, setActiveRecipeIndex] = useState(0)
   const [loading, setLoading] = useState(false)
   const [isPlayingVoice, setIsPlayingVoice] = useState(false)
+  const [voiceGender, setGenderState] = useState<VoiceGender>(() => getVoiceGender())
+
+  const toggleVoiceGender = () => {
+    const next: VoiceGender = voiceGender === 'female' ? 'male' : 'female'
+    setGenderState(next)
+    setVoiceGender(next)
+    toast.success(`Voz alterada para: ${next === 'female' ? 'Feminina 👩' : 'Masculina 👨'}`)
+
+    if (isPlayingVoice && activeRecipe) {
+      stopSpeaking()
+      const narrationText = `Receita de ${activeRecipe.title}. Tempo de preparo: ${activeRecipe.time}. Nível ${activeRecipe.difficulty}. Ingredientes: ${activeRecipe.ingredientsUsed.join(', ')}. Modo de preparo: ${activeRecipe.instructions.join('. ')}`
+      speakText(narrationText, {
+        gender: next,
+        onStart: () => setIsPlayingVoice(true),
+        onEnd: () => setIsPlayingVoice(false),
+        onError: () => setIsPlayingVoice(false),
+      })
+    }
+  }
 
   const generateRecipes = async () => {
     if (availableItems.length === 0) {
@@ -358,20 +383,31 @@ Crie 3 receitas deliciosas e fáceis:`
 
                 {/* Botões de Ação na Receita */}
                 <div className="flex items-center gap-1.5 shrink-0 pt-1 sm:pt-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleToggleVoice}
-                    className={`text-xs gap-1 px-2.5 py-1 ${
-                      isPlayingVoice
-                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 animate-pulse'
-                        : 'text-purple-300 hover:bg-purple-500/10 border border-purple-500/30'
-                    }`}
-                    title="Ouvir passo a passo da receita"
-                  >
-                    {isPlayingVoice ? <Square className="h-3 w-3 fill-current" /> : <Volume2 className="h-3 w-3" />}
-                    <span>{isPlayingVoice ? 'Parar' : 'Ouvir'}</span>
-                  </Button>
+                  <div className="flex items-center gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleToggleVoice}
+                      className={`text-xs gap-1 px-2.5 py-1 ${
+                        isPlayingVoice
+                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 animate-pulse'
+                          : 'text-purple-300 hover:bg-purple-500/10 border border-purple-500/30'
+                      }`}
+                      title={isPlayingVoice ? 'Parar leitura por voz' : `Ouvir passo a passo da receita (${voiceGender === 'female' ? 'Feminina' : 'Masculina'})`}
+                    >
+                      {isPlayingVoice ? <Square className="h-3 w-3 fill-current" /> : <Volume2 className="h-3 w-3" />}
+                      <span>{isPlayingVoice ? 'Parar' : 'Ouvir'}</span>
+                    </Button>
+
+                    <button
+                      type="button"
+                      onClick={toggleVoiceGender}
+                      className="px-1.5 py-1 rounded-md border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-[10px] font-medium transition-all"
+                      title={`Alternar voz (Atual: ${voiceGender === 'female' ? 'Feminina 👩' : 'Masculina 👨'})`}
+                    >
+                      {voiceGender === 'female' ? '👩' : '👨'}
+                    </button>
+                  </div>
 
                   <Button
                     variant="ghost"

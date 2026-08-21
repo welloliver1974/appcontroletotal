@@ -479,6 +479,70 @@ export function SettingsHermes() {
           </div>
         </div>
 
+        {/* Voz do Hermes (TTS) */}
+        <div className="space-y-3 border-t border-zinc-800 pt-4">
+          <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide flex items-center gap-1.5">
+            <Mic className="h-3.5 w-3.5 text-purple-400" />
+            Voz do Hermes (Locução & Leitura por Voz)
+          </h4>
+
+          <div className="space-y-2">
+            <label className="text-xs text-zinc-300">Escolha o gênero da voz para narrações e briefings:</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  import('@/lib/speechSynthesis').then((m) => {
+                    m.setVoiceGender('female')
+                    m.speakText('Olá! Esta é a voz feminina do Hermes para o seu dia.')
+                  })
+                  toast.success('Voz definida como Feminina 👩')
+                }}
+                className="p-2.5 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:bg-purple-900/30 text-left transition-all flex flex-col gap-0.5"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
+                  <span>👩 Feminina</span>
+                </div>
+                <span className="text-[10px] text-zinc-400">Tom claro e dinâmico</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  import('@/lib/speechSynthesis').then((m) => {
+                    m.setVoiceGender('male')
+                    m.speakText('Olá! Esta é a voz masculina do Hermes para o seu dia.')
+                  })
+                  toast.success('Voz definida como Masculina 👨')
+                }}
+                className="p-2.5 rounded-xl border border-indigo-500/30 bg-indigo-950/20 hover:bg-indigo-900/30 text-left transition-all flex flex-col gap-0.5"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-300">
+                  <span>👨 Masculina</span>
+                </div>
+                <span className="text-[10px] text-zinc-400">Tom encorpado e executivo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  import('@/lib/speechSynthesis').then((m) => {
+                    m.setVoiceGender('auto')
+                    m.speakText('Olá! Esta é a voz padrão do sistema operacional.')
+                  })
+                  toast.success('Voz definida como Padrão do Sistema 🤖')
+                }}
+                className="p-2.5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/40 text-left transition-all flex flex-col gap-0.5 col-span-2 sm:col-span-1"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
+                  <span>🤖 Padrão do Sistema</span>
+                </div>
+                <span className="text-[10px] text-zinc-400">Voz nativa do aparelho</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Action & Test buttons */}
         <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-zinc-800">
           <Button
