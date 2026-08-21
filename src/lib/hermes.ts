@@ -17,6 +17,8 @@ export interface HermesAdvancedConfig {
   llmModel: string
   customBaseUrl: string
   telegramBotUrl: string
+  telegramBotToken?: string
+  telegramChatId?: string
   enabled: boolean
 }
 
@@ -34,6 +36,8 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
         llmModel: parsed.llmModel || 'llama-3.3-70b-versatile',
         customBaseUrl: parsed.customBaseUrl || '',
         telegramBotUrl: parsed.telegramBotUrl || '',
+        telegramBotToken: parsed.telegramBotToken || import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '',
+        telegramChatId: parsed.telegramChatId || import.meta.env.VITE_TELEGRAM_CHAT_ID || '',
         enabled: parsed.enabled ?? true,
       }
     }
@@ -48,6 +52,8 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
     llmModel: 'llama-3.3-70b-versatile',
     customBaseUrl: '',
     telegramBotUrl: '',
+    telegramBotToken: import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '',
+    telegramChatId: import.meta.env.VITE_TELEGRAM_CHAT_ID || '',
     enabled: true,
   }
 }
@@ -113,6 +119,8 @@ export async function loadHermesConfigFromCloud(): Promise<HermesAdvancedConfig>
       llmModel: cloudData.llmModel || local.llmModel,
       customBaseUrl: cloudData.customBaseUrl || local.customBaseUrl,
       telegramBotUrl: cloudData.telegramBotUrl || local.telegramBotUrl,
+      telegramBotToken: cloudData.telegramBotToken || local.telegramBotToken,
+      telegramChatId: cloudData.telegramChatId || local.telegramChatId,
       enabled: cloudData.enabled ?? local.enabled,
     }
 
@@ -210,6 +218,73 @@ export async function sendHermesWebhook(
       ok: false,
       status: 0,
       response: err instanceof Error ? err.message : 'Erro de conexão com o servidor',
+    }
+  }
+}
+
+/**
+ * Send direct message to user via Telegram Bot API (No browser opening needed).
+ * Hits https://api.telegram.org/bot<TOKEN>/sendMessage
+ */
+export async function sendDirectTelegramMessage(
+  text: string,
+  overrideToken?: string,
+  overrideChatId?: string,
+): Promise<{ ok: boolean; status: number; response: string }> {
+  const config = getHermesAdvancedConfig()
+  const botToken = (overrideToken || config.telegramBotToken || '').trim()
+  const chatId = (overrideChatId || config.telegramChatId || '').trim()
+
+  if (!botToken || !chatId) {
+    return {
+      ok: false,
+      status: 0,
+      response:
+        'Token do Bot ou Chat ID não configurados. Preencha seus dados do Telegram para envio direto.',
+    }
+  }
+
+  const cleanToken = botToken.startsWith('bot') ? botToken.slice(3) : botToken
+  const url = `https://api.telegram.org/bot${cleanToken}/sendMessage`
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: 'Markdown',
+      }),
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeout)
+    const json = await res.json()
+
+    if (res.ok && json.ok) {
+      return {
+        ok: true,
+        status: 200,
+        response: 'Mensagem entregue no seu Telegram com sucesso! 📱✨',
+      }
+    }
+
+    return {
+      ok: false,
+      status: res.status,
+      response: json.description || 'Erro retornado pela API do Telegram.',
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      status: 0,
+      response: err instanceof Error ? err.message : 'Erro ao conectar à API do Telegram.',
     }
   }
 }

@@ -454,6 +454,29 @@ export function SettingsHermes() {
               className="input-base text-xs font-mono"
             />
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-xs text-zinc-400">Token do Bot Telegram (@BotFather)</label>
+              <input
+                type="password"
+                placeholder="123456789:ABCdef..."
+                value={config.telegramBotToken || ''}
+                onChange={(e) => updateConfig({ telegramBotToken: e.target.value })}
+                className="input-base text-xs font-mono"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-zinc-400">Seu Chat ID Telegram (via @userinfobot)</label>
+              <input
+                type="text"
+                placeholder="Ex: 123456789"
+                value={config.telegramChatId || ''}
+                onChange={(e) => updateConfig({ telegramChatId: e.target.value })}
+                className="input-base text-xs font-mono"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Action & Test buttons */}

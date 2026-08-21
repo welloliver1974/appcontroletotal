@@ -3,15 +3,24 @@ import {
   AlertCircle,
   Bell,
   Check,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Globe,
+  HelpCircle,
+  Key,
   Loader2,
   Send,
   Sparkles,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { getHermesAdvancedConfig, sendHermesWebhook } from '@/lib/hermes'
+import {
+  getHermesAdvancedConfig,
+  saveHermesAdvancedConfig,
+  sendDirectTelegramMessage,
+  sendHermesWebhook,
+} from '@/lib/hermes'
 import { toast } from '@/stores/toastStore'
 
 interface HermesScheduleModalProps {
@@ -52,14 +61,31 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
     }
   })
 
+  const [botToken, setBotToken] = useState(config.telegramBotToken || '')
+  const [chatId, setChatId] = useState(config.telegramChatId || '')
+  const [showTelegramSetup, setShowTelegramSetup] = useState(
+    !config.telegramBotToken || !config.telegramChatId,
+  )
+
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
 
   const handleSave = () => {
+    // 1. Salva credenciais do Telegram no Hermes config
+    const updatedHermes = {
+      ...config,
+      telegramBotToken: botToken.trim(),
+      telegramChatId: chatId.trim(),
+    }
+    saveHermesAdvancedConfig(updatedHermes)
+
+    // 2. Salva preferências do agendador
     const payload = {
       enabled,
       time: scheduleTime,
       channel,
+      telegramBotToken: botToken.trim(),
+      telegramChatId: chatId.trim(),
       updatedAt: new Date().toISOString(),
     }
 
@@ -82,24 +108,42 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
 
     try {
       if (channel === 'telegram') {
-        // 1. Se tiver URL do Bot do Telegram configurada no Hermes
-        if (config.telegramBotUrl && config.telegramBotUrl.trim()) {
-          const botUrl = config.telegramBotUrl.trim()
-          window.open(botUrl, '_blank', 'noopener,noreferrer')
+        const token = botToken.trim() || config.telegramBotToken || ''
+        const chat = chatId.trim() || config.telegramChatId || ''
+
+        if (!token || !chat) {
+          setShowTelegramSetup(true)
+          setTestResult({
+            ok: false,
+            message:
+              'Preencha o Token do Bot e o seu Chat ID abaixo para o Telegram receber a mensagem diretamente!',
+          })
+          toast.error('Informe o Token do Bot e o Chat ID do Telegram.')
+          return
+        }
+
+        // Salva as credenciais para reutilização futura
+        saveHermesAdvancedConfig({
+          ...config,
+          telegramBotToken: token,
+          telegramChatId: chat,
+        })
+
+        // Envio Direto via API Oficial do Telegram (sem abrir navegador)
+        const res = await sendDirectTelegramMessage(briefingText, token, chat)
+
+        if (res.ok) {
           setTestResult({
             ok: true,
-            message: 'Abrindo seu Bot do Telegram para envio! ✈️',
+            message: 'Mensagem enviada com sucesso! Olhe seu Telegram agora 📱✨',
           })
-          toast.success('Abrindo conversa com seu bot do Telegram! ✈️')
+          toast.success('Mensagem recebida no seu Telegram! 🚀')
         } else {
-          // 2. Link direto de compartilhamento limpo do Telegram
-          const cleanShareUrl = `https://t.me/share/url?text=${encodeURIComponent(briefingText)}`
-          window.open(cleanShareUrl, '_blank', 'noopener,noreferrer')
           setTestResult({
-            ok: true,
-            message: 'Telegram aberto com o resumo pronto para envio.',
+            ok: false,
+            message: `Erro na API do Telegram: ${res.response}`,
           })
-          toast.success('Abrindo Telegram com o resumo matinal! ✈️')
+          toast.error(res.response)
         }
       } else {
         // Canal Webhook / VPS
@@ -107,9 +151,9 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
           setTestResult({
             ok: false,
             message:
-              'URL da VPS não configurada. Vá em Configurações ➔ Hermes para preencher o endereço da sua VPS.',
+              'URL da VPS não configurada. Configure em Configurações ➔ Hermes.',
           })
-          toast.error('URL da VPS Hermes não está configurada!')
+          toast.error('URL da VPS Hermes não configurada!')
           return
         }
 
@@ -122,13 +166,13 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
         if (res.ok) {
           setTestResult({
             ok: true,
-            message: `VPS respondeu com sucesso: ${res.response || 'Recebido com sucesso!'}`,
+            message: `VPS respondeu com sucesso: ${res.response || 'OK'}`,
           })
-          toast.success('Briefing enviado com sucesso para a VPS Hermes! 🚀')
+          toast.success('Briefing enviado com sucesso para a VPS! 🚀')
         } else {
           setTestResult({
             ok: false,
-            message: `Falha na resposta da VPS (Status ${res.status}): ${res.response}`,
+            message: `Falha na VPS (Status ${res.status}): ${res.response}`,
           })
           toast.error('Erro na resposta da VPS.')
         }
@@ -136,9 +180,9 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
     } catch (err) {
       setTestResult({
         ok: false,
-        message: `Erro ao testar envio: ${err instanceof Error ? err.message : String(err)}`,
+        message: `Erro no envio: ${err instanceof Error ? err.message : String(err)}`,
       })
-      toast.error('Erro ao testar envio do briefing.')
+      toast.error('Erro ao testar disparo.')
     } finally {
       setTesting(false)
     }
@@ -148,7 +192,7 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
     <Modal open={open} onClose={onClose} title="⏰ Agendamento Matinal do Hermes">
       <div className="space-y-4 pt-1 text-zinc-200">
         <p className="text-xs text-zinc-400 leading-relaxed">
-          O Hermes compila sua agenda de 2 dias, finanças, compras e previsão do tempo toda manhã para você.
+          Receba seu **Briefing com IA** (agenda de 2 dias, clima, finanças e compras) diretamente no seu Telegram todas as manhãs.
         </p>
 
         {/* Toggle Ativar/Desativar */}
@@ -159,7 +203,7 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
               Envio Diário Automático
             </h4>
             <p className="text-[11px] text-zinc-400">
-              Dispara o resumo matinal no horário desejado.
+              Dispara o resumo matinal no horário agendado.
             </p>
           </div>
 
@@ -174,7 +218,7 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
           </label>
         </div>
 
-        {/* Seletor Visual de Horário sem Quebra */}
+        {/* Seletor Visual de Horário */}
         <div className="space-y-2">
           <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
             <Clock className="h-3.5 w-3.5 text-indigo-400" />
@@ -182,7 +226,6 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
           </label>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Input com largura fixa controlada */}
             <div className="relative inline-flex items-center">
               <input
                 type="time"
@@ -192,7 +235,6 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
               />
             </div>
 
-            {/* Presets rápidos em pills */}
             <div className="flex flex-wrap gap-1">
               {PRESET_TIMES.map((time) => (
                 <button
@@ -216,7 +258,7 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
         <div className="space-y-2">
           <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
             <Send className="h-3.5 w-3.5 text-indigo-400" />
-            Canal de Entrega
+            Canal de Entrega Direta
           </label>
 
           <div className="grid grid-cols-2 gap-2">
@@ -234,10 +276,10 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
             >
               <div className="flex items-center gap-1.5 font-semibold text-sky-400">
                 <Send className="h-3.5 w-3.5" />
-                <span>Telegram</span>
+                <span>Telegram Bot (Direto)</span>
               </div>
               <span className="text-[10px] text-zinc-400">
-                {config.telegramBotUrl ? 'Bot Vinculado' : 'Link / Chat Direto'}
+                {botToken && chatId ? '✓ Pronto para envio direto' : '⚠️ Requer Token + Chat ID'}
               </span>
             </button>
 
@@ -255,14 +297,69 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
             >
               <div className="flex items-center gap-1.5 font-semibold text-emerald-400">
                 <Globe className="h-3.5 w-3.5" />
-                <span>Hermes VPS</span>
+                <span>Hermes VPS / Zap</span>
               </div>
               <span className="text-[10px] text-zinc-400">
-                {config.vpsUrl ? 'Túnel Conectado' : 'Não configurado'}
+                {config.vpsUrl ? '✓ VPS Conectada' : 'Não configurado'}
               </span>
             </button>
           </div>
         </div>
+
+        {/* Configuração Rápida do Telegram Bot para Envio Silencioso */}
+        {channel === 'telegram' && (
+          <div className="p-3.5 rounded-xl border border-sky-500/20 bg-sky-950/10 space-y-3">
+            <div
+              className="flex items-center justify-between cursor-pointer"
+              onClick={() => setShowTelegramSetup(!showTelegramSetup)}
+            >
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-300">
+                <Key className="h-3.5 w-3.5 text-sky-400" />
+                <span>Credenciais do Bot do Telegram (Envio Automático)</span>
+              </div>
+              <button type="button" className="text-sky-400 p-0.5">
+                {showTelegramSetup ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+            </div>
+
+            {showTelegramSetup && (
+              <div className="space-y-2.5 pt-1 text-xs">
+                <div className="space-y-1">
+                  <label className="text-[11px] text-zinc-400">Token do Bot (criado no @BotFather)</label>
+                  <input
+                    type="password"
+                    placeholder="Ex: 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                    value={botToken}
+                    onChange={(e) => setBotToken(e.target.value)}
+                    className="input-base text-xs font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-zinc-400">Seu Chat ID no Telegram</label>
+                    <a
+                      href="https://t.me/userinfobot"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-sky-400 hover:underline flex items-center gap-0.5"
+                    >
+                      <HelpCircle className="h-2.5 w-2.5" />
+                      Como pegar meu Chat ID?
+                    </a>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Ex: 123456789 (mande /start para o @userinfobot)"
+                    value={chatId}
+                    onChange={(e) => setChatId(e.target.value)}
+                    className="input-base text-xs font-mono"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Feedback visual de diagnóstico do teste */}
         {testResult && (
@@ -296,7 +393,7 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
             ) : (
               <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
             )}
-            Testar Envio Agora
+            Testar Envio Imediato
           </Button>
 
           <div className="flex gap-2">
