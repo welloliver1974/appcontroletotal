@@ -218,33 +218,70 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
           </label>
         </div>
 
-        {/* Seletor Visual de Horário */}
-        <div className="space-y-2">
+        {/* Seletor Visual de Horário Customizado (Sem Popup Quebrado do Navegador) */}
+        <div className="space-y-2.5">
           <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
             <Clock className="h-3.5 w-3.5 text-indigo-400" />
             Horário do Envio Matinal
           </label>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative inline-flex items-center">
-              <input
-                type="time"
-                value={scheduleTime}
-                onChange={(e) => setScheduleTime(e.target.value)}
-                className="w-28 px-2.5 py-1.5 text-center text-sm font-semibold font-mono bg-zinc-900 border border-zinc-700 rounded-xl text-indigo-300 focus:outline-none focus:border-indigo-500 shadow-inner"
-              />
+          <div className="p-3 rounded-xl border border-zinc-800 bg-zinc-950/60 space-y-3">
+            <div className="flex items-center justify-center gap-2">
+              {/* Seletor de Hora */}
+              <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-700 rounded-xl px-2.5 py-1.5 shadow-inner">
+                <select
+                  value={scheduleTime.split(':')[0] || '07'}
+                  onChange={(e) => {
+                    const h = e.target.value
+                    const m = scheduleTime.split(':')[1] || '00'
+                    setScheduleTime(`${h}:${m}`)
+                  }}
+                  className="bg-transparent text-sm font-bold font-mono text-indigo-300 focus:outline-none cursor-pointer"
+                >
+                  {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => (
+                    <option key={h} value={h} className="bg-zinc-900 text-zinc-200">
+                      {h}h
+                    </option>
+                  ))}
+                </select>
+                <span className="text-zinc-500 font-bold">:</span>
+                {/* Seletor de Minuto */}
+                <select
+                  value={scheduleTime.split(':')[1] || '00'}
+                  onChange={(e) => {
+                    const h = scheduleTime.split(':')[0] || '07'
+                    const m = e.target.value
+                    setScheduleTime(`${h}:${m}`)
+                  }}
+                  className="bg-transparent text-sm font-bold font-mono text-indigo-300 focus:outline-none cursor-pointer"
+                >
+                  {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(
+                    (m) => (
+                      <option key={m} value={m} className="bg-zinc-900 text-zinc-200">
+                        {m} min
+                      </option>
+                    ),
+                  )}
+                </select>
+              </div>
+
+              <span className="text-xs text-zinc-400 font-medium">
+                (Horário selecionado: <strong className="text-indigo-300 font-mono">{scheduleTime}</strong>)
+              </span>
             </div>
 
-            <div className="flex flex-wrap gap-1">
+            {/* Presets Rápidos */}
+            <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 border-t border-zinc-900">
+              <span className="text-[10px] text-zinc-500 mr-1">Atalhos:</span>
               {PRESET_TIMES.map((time) => (
                 <button
                   key={time}
                   type="button"
                   onClick={() => setScheduleTime(time)}
-                  className={`px-2 py-1 text-[11px] font-mono rounded-lg transition-all border ${
+                  className={`px-2.5 py-1 text-xs font-mono rounded-lg transition-all border ${
                     scheduleTime === time
-                      ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-200 font-semibold'
-                      : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                      ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200 font-bold shadow-sm'
+                      : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
                   }`}
                 >
                   {time}
