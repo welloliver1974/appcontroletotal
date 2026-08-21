@@ -180,9 +180,14 @@ export async function sendHermesWebhook(
 
   const body = {
     event,
+    module: event.split('_')[0] || 'briefing',
+    action: event,
     timestamp: new Date().toISOString(),
     source: 'life-os-hub',
+    message: typeof payload === 'object' && payload !== null && 'content' in payload ? (payload as Record<string, unknown>).content : typeof payload === 'string' ? payload : '',
+    text: typeof payload === 'object' && payload !== null && 'content' in payload ? (payload as Record<string, unknown>).content : typeof payload === 'string' ? payload : '',
     payload,
+    data: payload,
   }
 
   const headers: Record<string, string> = {
