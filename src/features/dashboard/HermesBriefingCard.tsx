@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import {
   Bot,
   Clock,
-  Copy,
   RefreshCw,
   Sparkles,
   Square,
@@ -180,16 +179,6 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
     return lines.join('\n')
   }
 
-  const handleCopy = async () => {
-    const text = formatTelegramBriefing()
-    try {
-      await navigator.clipboard.writeText(text)
-      toast.success('Resumo matinal copiado para a área de transferência! 📋')
-    } catch {
-      toast.info('Texto pronto para envio.')
-    }
-  }
-
   const handleToggleVoice = () => {
     if (isPlayingVoice) {
       stopSpeaking()
@@ -245,14 +234,14 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto shrink-0 pt-1 lg:pt-0">
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto shrink-0 pt-1 lg:pt-0">
             {/* 1. Botão Ouvir Voz + Seletor de Voz */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-1 sm:flex-initial">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleToggleVoice}
-                className={`text-[11px] sm:text-xs gap-1 px-2.5 py-1.5 justify-center flex-1 transition-all ${
+                className={`text-[11px] sm:text-xs gap-1 px-3 py-1.5 justify-center flex-1 sm:flex-initial transition-all ${
                   isPlayingVoice
                     ? 'bg-purple-500/20 border-purple-500/40 text-purple-300 animate-pulse'
                     : 'text-purple-300 hover:text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30'
@@ -278,35 +267,23 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
               variant="ghost"
               size="sm"
               onClick={() => setShowScheduleModal(true)}
-              className="text-[11px] sm:text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 gap-1 px-2.5 py-1.5 justify-center"
+              className="text-[11px] sm:text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 gap-1 px-3 py-1.5 justify-center flex-1 sm:flex-initial"
               title="Configurar horários matinal e noturno"
             >
-              <Clock className="h-3 w-3" />
+              <Clock className="h-3.5 w-3.5" />
               <span>Agendar</span>
             </Button>
 
-            {/* 3. Botão Copiar */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCopy}
-              className="text-[11px] sm:text-xs text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/60 border border-zinc-700/60 gap-1 px-2.5 py-1.5 justify-center"
-              title="Copiar texto do resumo"
-            >
-              <Copy className="h-3 w-3" />
-              <span>Copiar</span>
-            </Button>
-
-            {/* 4. Botão Atualizar */}
+            {/* 3. Botão Atualizar */}
             <Button
               variant="ghost"
               size="sm"
               onClick={generateAIBriefing}
               disabled={loading}
-              className="text-[11px] sm:text-xs text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 gap-1 px-2.5 py-1.5 justify-center"
+              className="text-[11px] sm:text-xs text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 gap-1 px-3 py-1.5 justify-center flex-1 sm:flex-initial"
               title="Gerar nova síntese executiva com IA"
             >
-              <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               <span>{loading ? 'Sintetizando...' : 'Atualizar'}</span>
             </Button>
           </div>
