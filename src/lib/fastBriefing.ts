@@ -7,6 +7,7 @@ import { getHermesAdvancedConfig } from './hermes'
 import type { DashboardData } from '@/features/dashboard/dashboardData'
 import { calculateVehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
 import { isValidIsoDate } from './utils'
+import { fetchCurrentWeather } from './weatherService'
 
 export async function generateFastAIBriefing(data: DashboardData): Promise<string> {
   const config = getHermesAdvancedConfig()
@@ -14,6 +15,9 @@ export async function generateFastAIBriefing(data: DashboardData): Promise<strin
   const now = new Date()
   const todayIso = now.toISOString().slice(0, 10)
   const tomorrowIso = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+
+  // Clima em tempo real (Open-Meteo)
+  const weather = await fetchCurrentWeather().catch(() => null)
 
   // 1. Agenda de 2 dias (Hoje e Amanhã)
   const todayEvents = (data.events || [])
@@ -103,16 +107,21 @@ export async function generateFastAIBriefing(data: DashboardData): Promise<strin
             ? `Revisão pendente: ${urgentAssets[0].name}`
             : 'Todos os ativos e veículos revisados'
 
+      const weatherText = weather
+        ? `${weather.icon} ${weather.description}, temperatura atual ${weather.temperature}°C (máx ${weather.tempMax}°C / mín ${weather.tempMin}°C)`
+        : 'Clima estável'
+
       const systemPrompt = `Você é o HERMES, o copiloto executivo e pessoal do Life OS Hub.
 Escreva um briefing matinal em português brasileiro, fluído, inteligente, encorpador e motivador (com cerca de 3 a 4 frases bem articuladas).
 DIRETRIZES:
-1. Comece com uma saudação executiva calorosa e destaque os compromissos de HOJE.
+1. Comece com uma saudação executiva calorosa, mencione brevemente o clima do dia (${weatherText}) e destaque os compromissos de HOJE.
 2. Dê uma visão prévia dos compromissos de AMANHÃ para que o usuário se planeje com antecedência.
 3. Se houver itens em falta na despensa ou alerta real de manutenção, mencione de forma construtiva. Se estiver tudo em dia, parabenize pela organização.
 4. Feche com uma frase inspiradora de foco e alta performance para o dia.
 NÃO use marcadores com hífen ou tópicos — escreva em texto corrido e elegante.`
 
       const userPrompt = `DADOS ATUAIS (${now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}):
+- Clima: ${weatherText}
 - Agenda Hoje: ${todayText}
 - Agenda Amanhã: ${tomorrowText}
 - Finanças do Mês: R$ ${totalMonthSpent.toFixed(2)} gastos registrados

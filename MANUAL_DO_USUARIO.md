@@ -28,6 +28,13 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 * **`📅 + Evento`**: Cadastra um novo compromisso na Agenda.
 * **`⛽ Abastecer`**: Registra o odômetro atual (Km), litros e valor para calcular o consumo médio do veículo.
 
+### 🤖 Briefing do Hermes com Voz, Clima & Agendamento Matinal:
+* **`🔊 Ouvir / ⏹️ Parar`**: Narra todo o resumo matinal com voz natural em português brasileiro.
+* **`🌤️ Clima em Tempo Real`**: Exibe a temperatura e condição climática da sua cidade (Open-Meteo).
+* **`⏰ Agendar`**: Configura o horário de envio automático do resumo diário (Telegram ou WhatsApp Webhook).
+* **`📋 Copiar` & `✈️ Telegram`**: Exporta o resumo formatado em 1 clique.
+* **`🔄 Atualizar`**: Regenera o briefing instantaneamente com base em 2 dias de agenda e estado atual.
+
 ### 📱 Abas Rápidas de Navegação no Celular:
 * No smartphone, a Dashboard conta com um seletor no topo dos cards para acesso imediato sem rolagem excessiva:
   * **🎯 `Rotina & Agenda`**: Mostra os Hábitos de hoje, Próximos Compromissos e Diário Life-Log.

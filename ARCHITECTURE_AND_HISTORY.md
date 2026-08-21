@@ -718,9 +718,22 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   3. **Texto Executivo, Fluido e Encorpado ([fastBriefing.ts](file:///e:/Apps/AppControleTotal/src/lib/fastBriefing.ts)):**
      - Geração de 3 a 4 frases completas e agradáveis, combinando agenda, status financeiro do mês e despensa sem parecer telegráfico, mantendo tempo de resposta < 1 segundo.
 
+## 🎧 42. Tríade Executiva do Hermes: Voz Nativa (TTS), Clima em Tempo Real & Agendamento Automático Matinal (21/08/2026)
+
+* **Recursos Implementados:**
+  1. **🎧 Hermes Voice — Leitura por Voz Nativa em Português ([speechSynthesis.ts](file:///e:/Apps/AppControleTotal/src/lib/speechSynthesis.ts)):**
+     - Leitura de alta qualidade do briefing matinal via Web Speech API nativa (Google / Microsoft pt-BR) com cadência de 1.05x.
+     - Botão interativo **"Ouvir 🔊"** / **"Parar ⏹️"** com animação de pulso e limpeza automática de caracteres markdown durante a locução.
+  2. **☀️ Clima do Dia em Tempo Real ([weatherService.ts](file:///e:/Apps/AppControleTotal/src/lib/weatherService.ts)):**
+     - Integração pública e gratuita com a API Open-Meteo (zero custo de chaves e alta precisão de coordenadas/timezone).
+     - Badge climático no card do briefing (`🌤️ 26°C São Paulo`) com cache de 30 minutos em `sessionStorage`.
+     - Inclusão natural do clima no prompt e no texto do briefing matinal gerado pela IA.
+  3. **⏰ Agendamento Matinal Automático & Disparo ([HermesScheduleModal.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/HermesScheduleModal.tsx)):**
+     - Modal dedicado para ativar envio matinal diário, escolher o horário (ex: `07:00`), canal de entrega (Telegram Bot ou Webhook da VPS do Hermes) e botão para **"Testar Envio Imediato"**.
+
 ---
 
-## 🔮 42. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
+## 🔮 43. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
 
 1. **📊 Exportação de Prestação de Contas / Reembolso de Viagem a Trabalho (PDF / Excel):**
    - Gerar relatório formal com tabela de Km rodados, datas, cidades visitadas e valor de reembolso por Km (ex: R$ 1,20/km) para envio à empresa.
