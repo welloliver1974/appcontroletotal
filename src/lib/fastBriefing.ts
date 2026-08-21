@@ -1,33 +1,55 @@
 /**
- * Ultra-Fast Hermes Morning Briefing Generator.
- * Directly queries Groq (Llama 3.1 8B Instant / 3.3 70B) or OpenRouter in < 400ms,
- * with zero redundant DB queries (uses in-memory DashboardData) and instant smart heuristic fallback.
+ * Refined Hermes Morning Briefing Generator.
+ * Considers a 2-day agenda horizon (Today + Tomorrow), monthly finances,
+ * pantry items, and verified maintenance alerts (no phantom vehicle alerts).
  */
 import { getHermesAdvancedConfig } from './hermes'
 import type { DashboardData } from '@/features/dashboard/dashboardData'
 import { calculateVehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
+import { isValidIsoDate } from './utils'
 
 export async function generateFastAIBriefing(data: DashboardData): Promise<string> {
   const config = getHermesAdvancedConfig()
 
   const now = new Date()
-  const y = now.getFullYear()
-  const m = String(now.getMonth() + 1).padStart(2, '0')
-  const d = String(now.getDate()).padStart(2, '0')
-  const todayStr = `${y}-${m}-${d}`
+  const todayIso = now.toISOString().slice(0, 10)
+  const tomorrowIso = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
 
-  const todayEvents = (data.events || []).filter((e) => e.date === todayStr)
-  const lowStock = (data.pantry || []).filter((p) => p.qty <= p.lowThreshold)
-  const urgentAssets = (data.assets || []).filter(
-    (a) => typeof a.lifePct === 'number' && a.lifePct > 0 && a.lifePct <= 20,
+  // 1. Agenda de 2 dias (Hoje e Amanhã)
+  const todayEvents = (data.events || [])
+    .filter((e) => e.date === todayIso)
+    .sort((a, b) => (a.timeStart || '').localeCompare(b.timeStart || ''))
+
+  const tomorrowEvents = (data.events || [])
+    .filter((e) => e.date === tomorrowIso)
+    .sort((a, b) => (a.timeStart || '').localeCompare(b.timeStart || ''))
+
+  // 2. Despensa
+  const lowStock = (data.pantry || []).filter((p) => Number(p.qty || 0) <= Number(p.lowThreshold || 1))
+
+  // 3. Manutenção real (apenas se data explícita estiver cadastrada e for próxima)
+  const urgentAssets = (data.assets || []).filter((a) => {
+    if (!a.nextMaintenance || !isValidIsoDate(a.nextMaintenance)) return false
+    return a.nextMaintenance <= tomorrowIso
+  })
+
+  // 4. Veículos reais (somente se houver dados suficientes de odômetro)
+  const vehicleAlerts = (data.assets || [])
+    .filter((a) => a.category === 'carro' || a.category === 'moto')
+    .map((a) => ({ asset: a, stats: calculateVehiclePredictiveStats(a.id, data.maintenance || []) }))
+    .filter((v) => v.stats && v.stats.hasEnoughData && (v.stats.urgency === 'critical' || v.stats.urgency === 'warning'))
+
+  // 5. Finanças do mês (somatório das categorias semanais)
+  const totalMonthSpent = (data.spending || []).reduce(
+    (acc, s) =>
+      acc +
+      (Number(s.despensa) || 0) +
+      (Number(s.manutencao) || 0) +
+      (Number(s.viagens) || 0),
+    0,
   )
 
-  const vehicleAlerts = (data.assets || [])
-    .filter((a) => a.category === 'carro')
-    .map((a) => ({ asset: a, stats: calculateVehiclePredictiveStats(a.id, data.maintenance || []) }))
-    .filter((v) => v.stats && (v.stats.urgency === 'critical' || v.stats.urgency === 'warning'))
-
-  // 1. Identify API Key and Best Fast Endpoint
+  // Identifica chave de API para geração com IA
   const groqKey =
     config.groqApiKey ||
     (config.provider === 'groq' ? config.llmApiKey : '') ||
@@ -37,19 +59,17 @@ export async function generateFastAIBriefing(data: DashboardData): Promise<strin
   const genericKey = config.llmApiKey || import.meta.env.VITE_LLM_API_KEY || ''
   const apiKey = groqKey || genericKey
 
-  // If user has Groq or OpenRouter/NVIDIA key, attempt ultra-fast LLM call (< 400ms)
   if (apiKey) {
     try {
       const isGroq = Boolean(groqKey || config.provider === 'groq')
       const isOpenRouter = config.provider === 'openrouter' || apiKey.startsWith('sk-or-')
 
       let endpoint = 'https://api.groq.com/openai/v1/chat/completions'
-      let model = 'llama-3.1-8b-instant' // Ultra-rapid generation (< 300ms)
+      let model = 'llama-3.3-70b-versatile'
 
       if (isGroq) {
         endpoint = 'https://api.groq.com/openai/v1/chat/completions'
-        // Use fast instant model or configured Groq model
-        model = config.llmModel.includes('llama-3') ? config.llmModel : 'llama-3.1-8b-instant'
+        model = config.llmModel || 'llama-3.3-70b-versatile'
       } else if (isOpenRouter) {
         endpoint = 'https://openrouter.ai/api/v1/chat/completions'
         model = config.llmModel || 'meta-llama/llama-3.3-70b-instruct'
@@ -61,35 +81,48 @@ export async function generateFastAIBriefing(data: DashboardData): Promise<strin
         model = config.llmModel || 'default-model'
       }
 
-      const eventsText =
+      const todayText =
         todayEvents.length > 0
           ? todayEvents.map((e) => `${e.title}${e.timeStart ? ` às ${e.timeStart}` : ''}`).join(', ')
-          : 'agenda livre'
+          : 'Nenhum compromisso marcado para hoje'
+
+      const tomorrowText =
+        tomorrowEvents.length > 0
+          ? tomorrowEvents.map((e) => `${e.title}${e.timeStart ? ` às ${e.timeStart}` : ''}`).join(', ')
+          : 'Agenda livre amanhã'
 
       const pantryText =
         lowStock.length > 0
-          ? `${lowStock.length} itens acabando (${lowStock.slice(0, 2).map((i) => i.name).join(', ')})`
-          : 'despensa em dia'
+          ? `${lowStock.length} itens acabando (${lowStock.slice(0, 3).map((i) => i.name).join(', ')})`
+          : 'Despensa 100% em dia'
 
-      const alertsText =
+      const maintenanceText =
         vehicleAlerts.length > 0 && vehicleAlerts[0].stats
-          ? `Alerta carro: ${vehicleAlerts[0].stats.formattedSummary}`
+          ? `Alerta veicular: ${vehicleAlerts[0].stats.formattedSummary}`
           : urgentAssets.length > 0
-            ? `Manutenção: ${urgentAssets[0].name} com vida útil baixa`
-            : 'ativos todos revisados'
+            ? `Revisão pendente: ${urgentAssets[0].name}`
+            : 'Todos os ativos e veículos revisados'
 
-      const systemPrompt =
-        'Você é o Hermes, assistente executivo e motivador do Life OS. Escreva um briefing matinal em português em no máximo 2 frases curtas, elegantes e objetivas com foco em ação e produtividade. Não use introduções genéricas.'
+      const systemPrompt = `Você é o HERMES, o copiloto executivo e pessoal do Life OS Hub.
+Escreva um briefing matinal em português brasileiro, fluído, inteligente, encorpador e motivador (com cerca de 3 a 4 frases bem articuladas).
+DIRETRIZES:
+1. Comece com uma saudação executiva calorosa e destaque os compromissos de HOJE.
+2. Dê uma visão prévia dos compromissos de AMANHÃ para que o usuário se planeje com antecedência.
+3. Se houver itens em falta na despensa ou alerta real de manutenção, mencione de forma construtiva. Se estiver tudo em dia, parabenize pela organização.
+4. Feche com uma frase inspiradora de foco e alta performance para o dia.
+NÃO use marcadores com hífen ou tópicos — escreva em texto corrido e elegante.`
 
-      const userPrompt = `Contexto de hoje (${now.toLocaleDateString('pt-BR')}):
-- Compromissos: ${eventsText}
+      const userPrompt = `DADOS ATUAIS (${now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}):
+- Agenda Hoje: ${todayText}
+- Agenda Amanhã: ${tomorrowText}
+- Finanças do Mês: R$ ${totalMonthSpent.toFixed(2)} gastos registrados
 - Despensa: ${pantryText}
-- Alertas: ${alertsText}
+- Manutenção: ${maintenanceText}
 
-Gere o briefing matinal executivo (2 frases curtas):`
+Gere o briefing matinal executivo:`
 
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 4000) // Fast 4s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 6000)
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -110,8 +143,8 @@ Gere o briefing matinal executivo (2 frases curtas):`
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          temperature: 0.6,
-          max_tokens: 120,
+          temperature: 0.7,
+          max_tokens: 280,
         }),
         signal: controller.signal,
       })
@@ -122,48 +155,64 @@ Gere o briefing matinal executivo (2 frases curtas):`
         const json = await res.json()
         const text = json.choices?.[0]?.message?.content?.trim()
         if (text) {
-          // Remove quotes if LLM wraps in quotation marks
           return text.replace(/^["']|["']$/g, '')
         }
       }
     } catch (err) {
-      console.warn('[FastBriefing] LLM request fallback:', err)
+      console.warn('[RefinedBriefing] LLM request fallback:', err)
     }
   }
 
-  // 2. Instant Smart Dynamic Briefing (Zero Latency Heuristic Fallback)
-  return buildSmartDynamicBriefing(todayEvents, lowStock, vehicleAlerts, urgentAssets)
+  // Fallback heurístico inteligente refinado (0ms)
+  return buildSmartRefinedBriefing(todayEvents, tomorrowEvents, lowStock, vehicleAlerts, urgentAssets, totalMonthSpent)
 }
 
-function buildSmartDynamicBriefing(
+function buildSmartRefinedBriefing(
   todayEvents: any[],
+  tomorrowEvents: any[],
   lowStock: any[],
   vehicleAlerts: any[],
   urgentAssets: any[],
+  totalMonthSpent: number,
 ): string {
-  const parts: string[] = []
+  const sentences: string[] = []
 
+  // 1. Saudação + Hoje
   if (todayEvents.length > 0) {
-    parts.push(
-      `Você tem ${todayEvents.length} compromisso(s) hoje, com foco principal em "${todayEvents[0].title}"${todayEvents[0].timeStart ? ` às ${todayEvents[0].timeStart}` : ''}`,
+    const nextEvt = todayEvents[0]
+    sentences.push(
+      `Bom dia! Seu foco principal para hoje é "${nextEvt.title}"${nextEvt.timeStart ? ` às ${nextEvt.timeStart}` : ''}${todayEvents.length > 1 ? `, com mais ${todayEvents.length - 1} compromisso(s) na pauta` : ''}.`,
     )
   } else {
-    parts.push('Sua agenda está limpa de compromissos para hoje, dia perfeito para foco em projetos')
+    sentences.push('Bom dia! Sua agenda de hoje está livre de compromissos fixos, um ótimo cenário para focar em projetos prioritários.')
   }
 
-  if (lowStock.length > 0) {
-    parts.push(
-      `Lembre-se de repor ${lowStock.length} item(ns) na despensa (${lowStock.slice(0, 2).map((i) => i.name).join(', ')})`,
+  // 2. Panorama de Amanhã
+  if (tomorrowEvents.length > 0) {
+    sentences.push(
+      `Para amanhã, você já tem ${tomorrowEvents.length} atividade(s) programada(s), iniciando por "${tomorrowEvents[0].title}"${tomorrowEvents[0].timeStart ? ` às ${tomorrowEvents[0].timeStart}` : ''}.`,
     )
+  } else {
+    sentences.push('Amanhã o dia também segue calmo na agenda.')
   }
 
-  if (vehicleAlerts.length > 0 && vehicleAlerts[0].stats) {
-    parts.push(`Atenção ao veículo: ${vehicleAlerts[0].stats.formattedSummary}`)
+  // 3. Despensa / Manutenção / Finanças
+  if (lowStock.length > 0) {
+    sentences.push(
+      `Na despensa, vale a pena repor ${lowStock.length} item(ns) em baixa (${lowStock.slice(0, 2).map((i) => i.name).join(', ')}).`,
+    )
+  } else if (vehicleAlerts.length > 0 && vehicleAlerts[0].stats) {
+    sentences.push(`No carro: ${vehicleAlerts[0].stats.formattedSummary}.`)
   } else if (urgentAssets.length > 0) {
-    parts.push(`Atenção: ${urgentAssets[0].name} com vida útil baixa`)
-  } else if (lowStock.length === 0) {
-    parts.push('Todos os seus ativos, despensa e manutenções estão 100% em dia!')
+    sentences.push(`Fique atento à revisão de ${urgentAssets[0].name}.`)
+  } else if (totalMonthSpent > 0) {
+    sentences.push(`Seus gastos acumulados no mês somam R$ ${totalMonthSpent.toFixed(2)}, com despensa e ativos em dia.`)
+  } else {
+    sentences.push('Sua despensa, veículos e ativos estão 100% organizados e em dia.')
   }
 
-  return parts.join('. ') + '.'
+  // 4. Fechamento
+  sentences.push('Tenha um excelente dia de produtividade e conquistas!')
+
+  return sentences.join(' ')
 }

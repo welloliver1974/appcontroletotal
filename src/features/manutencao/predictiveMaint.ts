@@ -71,7 +71,23 @@ export function calculateVehiclePredictiveStats(
     })
     .sort((a, b) => (b.odometerKm || 0) - (a.odometerKm || 0))
 
-  const lastOilChangeKm = oilRecords[0]?.odometerKm || Math.floor(currentKm / oilIntervalKm) * oilIntervalKm
+  // Se não houver nenhum registro de óleo/revisão cadastrado pelo usuário, não forçar previsão fantasma
+  if (oilRecords.length === 0) {
+    return {
+      hasEnoughData: false,
+      currentKm,
+      avgKmPerDay,
+      lastOilChangeKm: 0,
+      nextOilChangeKm: 0,
+      kmRemaining: 0,
+      daysRemaining: 0,
+      predictedDate: '',
+      urgency: 'ok',
+      formattedSummary: `${currentKm.toLocaleString('pt-BR')} km rodados · Veículo em dia`,
+    }
+  }
+
+  const lastOilChangeKm = oilRecords[0].odometerKm || 0
   const nextOilChangeKm = lastOilChangeKm + oilIntervalKm
   const kmRemaining = nextOilChangeKm - currentKm
   const daysRemaining = Math.max(0, Math.round(kmRemaining / avgKmPerDay))

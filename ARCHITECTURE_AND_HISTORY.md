@@ -707,13 +707,16 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
-## ⚡ 41. Otimização Ultra-Rápida do Briefing do Hermes (< 400ms) (21/08/2026)
+## ⚡ 41. Refinamento do Briefing do Hermes: Horizonte de 2 Dias de Agenda + Eliminação de Alertas Fantasmas de Veículo (21/08/2026)
 
-* **Diagnóstico da Lentidão:** O botão "Atualizar" chamava `sendHermesChat()`, que executava queries pesadas e síncronas em 8 tabelas inteiras do banco para montar o RAG do sistema, tentava rotas proxy inexistentes e usava janelas de 800 tokens com timeout de 15s.
-* **Solução Implementada ([fastBriefing.ts](file:///e:/Apps/AppControleTotal/src/lib/fastBriefing.ts)):**
-  1. **Zero Queries de Banco Redundantes:** Utiliza diretamente o objeto `DashboardData` que já está em memória no componente.
-  2. **Chamada Direta & Enxuta:** Prompt executivo com limite de 120 tokens, timeout ágil de 4s e suporte prioritário ao motor Groq (`llama-3.1-8b-instant` / `llama-3.3-70b-versatile`) respondendo em **< 350ms**.
-  3. **Fallback Dinâmico Inteligente Instantâneo (0ms):** Se o usuário estiver sem internet ou sem chave de API, gera imediatamente um resumo executivo inteligente baseado na agenda, despensa e alertas do dia.
+* **Diagnóstico & Melhorias Aplicadas:**
+  1. **Horizonte de 2 Dias de Agenda (Hoje + Amanhã):**
+     - O briefing agora analisa os compromissos de **Hoje** e antecipa a pauta de **Amanhã**, permitindo ao usuário planejar com antecedência reuniões e tarefas.
+  2. **Eliminação de Alertas Fantasmas de Veículo ([predictiveMaint.ts](file:///e:/Apps/AppControleTotal/src/features/manutencao/predictiveMaint.ts)):**
+     - O algoritmo de previsão veicular calculava alerta crítico/aviso forçado mesmo quando o usuário não possuía registros de troca de óleo ou havia limpado a data de manutenção do cadastro do carro.
+     - Corrigido para retornar `urgency: 'ok'` e `hasEnoughData: false` quando não houver dados reais, respeitando a limpeza da data feita pelo usuário.
+  3. **Texto Executivo, Fluido e Encorpado ([fastBriefing.ts](file:///e:/Apps/AppControleTotal/src/lib/fastBriefing.ts)):**
+     - Geração de 3 a 4 frases completas e agradáveis, combinando agenda, status financeiro do mês e despensa sem parecer telegráfico, mantendo tempo de resposta < 1 segundo.
 
 ---
 
