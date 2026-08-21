@@ -28,12 +28,12 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 * **`📅 + Evento`**: Cadastra um novo compromisso na Agenda.
 * **`⛽ Abastecer`**: Registra o odômetro atual (Km), litros e valor para calcular o consumo médio do veículo.
 
-### 🤖 Briefing do Hermes com Voz, Clima & Agendamento Matinal:
-* **`🔊 Ouvir / ⏹️ Parar`**: Narra todo o resumo matinal com voz natural em português brasileiro.
+### 🤖 Briefing do Hermes com Voz 👩/👨, Clima & Disparos 24/7 na Nuvem:
+* **`🔊 Ouvir / ⏹️ Parar`**: Narra o resumo matinal e o passo a passo de receitas com voz natural em português brasileiro.
+* **`👩 / 👨 Seletor Rápido de Voz`**: Alterne entre a voz feminina clara/ágil (`👩`) e masculina encorpada/grave (`👨`) com apenas 1 clique.
 * **`🌤️ Clima em Tempo Real`**: Exibe a temperatura e condição climática da sua cidade (Open-Meteo).
-* **`⏰ Agendar`**: Configura o horário de envio automático do resumo diário (Telegram ou WhatsApp Webhook).
-* **`📋 Copiar` & `✈️ Telegram`**: Exporta o resumo formatado em 1 clique.
-* **`🔄 Atualizar`**: Regenera o briefing instantaneamente com base em 2 dias de agenda e estado atual.
+* **`⏰ Agendar`**: Configura os horários matinal (ex: `07:00`) e debriefing noturno (ex: `21:30`), com disparos autônomos 24/7 direto no seu Telegram Bot.
+* **`🔄 Atualizar`**: Regenera a síntese executiva do Hermes instantaneamente com IA.
 
 ### 📱 Abas Rápidas de Navegação no Celular:
 * No smartphone, a Dashboard conta com um seletor no topo dos cards para acesso imediato sem rolagem excessiva:

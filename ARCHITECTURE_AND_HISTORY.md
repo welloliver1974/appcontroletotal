@@ -747,18 +747,41 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   5. **🎙️ Hermes Quick-Capture ([hermesActions.ts](file:///e:/Apps/AppControleTotal/src/lib/hermesActions.ts)):**
      - Suporte a comandos de voz e texto do Telegram para inserção automática no Supabase (despesas, despensa, agenda e lifelog).
 
+## 📱 44. Refinamento de UI Mobile & Motor Acústico TTS do Hermes (21/08/2026)
+
+* **Melhorias e Ajustes Arquiteturais:**
+  1. **🎙️ Motor Acústico TTS com Separação Vocal Clara ([speechSynthesis.ts](file:///e:/Apps/AppControleTotal/src/lib/speechSynthesis.ts)):**
+     - **Contraste Acústico Marcante:** Ajuste de frequência tonal evidente entre voz **Feminina 👩** (`pitch: 1.25` / tom agudo e fluido) e voz **Masculina 👨** (`pitch: 0.70` / tom grave, encorpado e firme).
+     - **Descoberta Dinâmica de Vozes Nativas:** Listener para `speechSynthesis.onvoiceschanged` com regex inteligente para encontrar vozes brasileiras de alta fidelidade instaladas no SO (Windows/iOS/Android/Chrome).
+  2. **✨ Limpeza e Minimalismo da Barra de Ações do Dashboard ([HermesBriefingCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/HermesBriefingCard.tsx)):**
+     - Remoção de botões obsoletos e redundantes (`Telegram` e `Copiar`), uma vez que os disparos são 100% autônomos na nuvem via GitHub Actions.
+     - **Barra de Ações 3-in-1 Compacta:** `Ouvir 🔊` (com alternador `👩/👨`), `Agendar ⏰` e `Atualizar 🔄`.
+  3. **📱 Responsividade Mobile Perfeita (Split Button Integrado):**
+     - Criação de um *Split Button* unificado com a mesma altura milimétrica (`h-8`), com proteção anti-encolhimento (`shrink-0`) para o botão `👩/👨` no celular.
+     - Grid proporcional de 3 colunas (`grid-cols-3 sm:flex`) garantindo alinhamento e facilidade de toque em telas menores.
+
 ---
 
-## 🔮 44. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
+## 🔮 45. Roadmap de Novas Ideias Geniais para o Life OS Hub
 
-1. **📊 Exportação de Prestação de Contas / Reembolso de Viagem a Trabalho (PDF / Excel):**
-   - Gerar relatório formal com tabela de Km rodados, datas, cidades visitadas e valor de reembolso por Km (ex: R$ 1,20/km) para envio à empresa.
-2. **🔔 Notificações Push Web (Web Push API com VAPID):**
-   - Notificações de alerta matinal do Hermes e lembretes de contas a vencer mesmo com o app fechado no celular.
-3. **⛽ Gráfico de Eficiência de Consumo do Veículo (Km/L ao longo do tempo):**
-   - Visualização gráfica da variação de consumo (cidade vs estrada) no módulo de Manutenção.
-5. **🏷️ Leitor de Código de Barras / EAN na Despensa (Scanner de Câmera):**
-   - Utilizar a câmera para bipar o código de barras de alimentos na despensa e buscar o nome do produto automaticamente via API pública (Cosmos/OpenFoodFacts).
+1. **✈️ Modo Piloto Automático de Viagens (Smart Travel Assistant):**
+   - Ao criar uma viagem com destino e datas, o Hermes gera automaticamente:
+     - Previsão do tempo dos dias no destino.
+     - Checklist inteligente de malas e documentos (adaptado ao clima e objetivo).
+     - Estimativa de custos (combustível estimado com base no Km/L do carro cadastrado + pedágios).
+     - Alerta de abastecimento pré-viagem com odômetro recomendado.
+
+2. **🏷️ Scanner de Cupom Fiscal com OCR / Leitor de Código de Barras (Despensa & Finanças):**
+   - Leitor de código de barras (EAN-13) na Despensa para adicionar alimentos apenas apontando a câmera (integrado com API gratuita OpenFoodFacts para autocompletar nome, categoria e validade média).
+
+3. **💡 Conselheiro Financeiro Preditivo do Hermes (Burn Rate & Safe-to-Spend):**
+   - O Hermes calcula o seu ritmo de gastos diário (*Burn Rate*) e informa no Briefing Matinal: *"Você tem R$ 45,00 livres por dia até o final do mês para fechar no azul"*.
+
+4. **🚗 Diagnóstico Veicular de Custo por Km Rodado (Total Cost of Ownership):**
+   - Painel dinâmico no módulo de Manutenção cruzando gastos de combustível, seguro, IPVA e revisões para mostrar o custo real por Km do veículo (ex: `R$ 0,78 / Km`).
+
+5. **🧘 Lifelog Voice Memo Instantâneo com Análise de Humor por IA:**
+   - Botão rápido de gravação de áudio no Dashboard: você fala seus pensamentos ou como foi o dia, o Hermes transcreve, sintetiza as conquistas do dia e classifica seu nível de energia e humor no gráfico de bem-estar.
 
 ---
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
