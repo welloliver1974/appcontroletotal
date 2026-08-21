@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
-import { Copy, Send, Share2 } from 'lucide-react'
+import { Copy, Printer, Send } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/stores/toastStore'
+import { sendDirectTelegramMessage } from '@/lib/hermes'
 import type { FixedBill, SpendingItem } from '@/data/types'
 
 interface MonthlyReportModalProps {
@@ -84,7 +85,6 @@ export function MonthlyReportModal({
       categoryBreakdown: catArray,
       paidBills: paid,
       unpaidBills: unpaid,
-      _totalBillsAmount: billsTotal,
       remainingBudget: remaining,
       budgetUsagePct: usagePct,
     }
@@ -93,23 +93,26 @@ export function MonthlyReportModal({
   // Texto formatado para WhatsApp / Telegram
   const formattedText = useMemo(() => {
     const lines = [
-      `📊 *LIFE OS HUB — RELATÓRIO FINANCEIRO*`,
-      `🗓️ *Mês:* ${monthLabel.toUpperCase()}`,
-      `━━━━━━━━━━━━━━━━━━━━━━`,
-      `💵 *Total de Gastos:* ${formatBRL(monthTotal)} (${monthSpendingCount} lançamentos)`,
-      `🎯 *Teto Mensal:* ${formatBRL(monthlyBudget)}`,
-      `💰 *Saldo Disponível:* ${formatBRL(remainingBudget)} (${100 - budgetUsagePct}% livre)`,
+      `📊 *RELATÓRIO FINANCEIRO — ${monthLabel.toUpperCase()}*`,
+      `━━━━━━━━━━━━━━━━━━━━`,
+      `💰 *Total Gasto:* ${formatBRL(monthTotal)} (${monthSpendingCount} lançamentos)`,
+      `🎯 *Teto Orçamentário:* ${formatBRL(monthlyBudget)}`,
+      `📉 *Saldo Restante:* ${formatBRL(remainingBudget)} (${100 - budgetUsagePct}% disponível)`,
       ``,
-      `🏷️ *Gastos por Categoria:*`,
-      ...categoryBreakdown.map((c) => `• ${c.name}: ${formatBRL(c.amount)} (${c.pct}%)`),
+      `📁 *Gastos por Categoria:*`,
+      ...categoryBreakdown.map(
+        (c) => `• *${c.name}:* ${formatBRL(c.amount)} (${c.pct}%)`,
+      ),
+      categoryBreakdown.length === 0 ? '• Nenhum gasto registrado neste mês.' : '',
       ``,
-      `📌 *Contas Fixas & Assinaturas (${paidBills.length}/${fixedBills.length} pagas):*`,
-      ...paidBills.map((b) => `✓ ${b.name}: ${formatBRL(Number(b.amount))} (Pago)`),
-      ...unpaidBills.map((b) => `⏳ ${b.name}: ${formatBRL(Number(b.amount))} (Vence dia ${b.dueDay})`),
-      `━━━━━━━━━━━━━━━━━━━━━━`,
-      `Gerado automaticamente pelo Life OS Hub 🚀`,
+      `📌 *Contas Fixas:*`,
+      `• Pagas (${paidBills.length}): ${paidBills.map((b) => b.name).join(', ') || 'Nenhuma'}`,
+      `• Pendentes (${unpaidBills.length}): ${unpaidBills.map((b) => `${b.name} (${formatBRL(b.amount)})`).join(', ') || 'Nenhuma pendente ✓'}`,
+      ``,
+      `🚀 _Gerado pelo Life OS Hub_`,
     ]
-    return lines.join('\n')
+
+    return lines.filter(Boolean).join('\n')
   }, [
     monthLabel,
     monthTotal,
@@ -120,35 +123,164 @@ export function MonthlyReportModal({
     categoryBreakdown,
     paidBills,
     unpaidBills,
-    fixedBills.length,
   ])
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(formattedText)
-      toast.success('Relatório copiado com sucesso! 📋')
+      toast.success('Relatório copiado para a área de transferência! 📋')
     } catch {
       toast.info(formattedText)
     }
   }
 
-  const handleSendTelegram = () => {
-    const telegramUrl = `https://t.me/share/url?text=${encodeURIComponent(formattedText)}`
-    window.open(telegramUrl, '_blank', 'noopener,noreferrer')
-    toast.success('Abrindo Telegram para envio do relatório! ✈️')
+  const handleSendTelegram = async () => {
+    const res = await sendDirectTelegramMessage(formattedText)
+    if (res.ok) {
+      toast.success('Relatório financeiro enviado direto para seu Telegram! 📱✈️')
+    } else {
+      const telegramUrl = `https://t.me/share/url?text=${encodeURIComponent(formattedText)}`
+      window.open(telegramUrl, '_blank', 'noopener,noreferrer')
+      toast.info('Abrindo Telegram...')
+    }
   }
 
-  const handleNativeShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Relatório Financeiro - ${monthLabel}`,
-          text: formattedText,
-        })
-      } catch {}
-    } else {
-      handleSendTelegram()
+  const handlePrintPDF = () => {
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      toast.error('Permita pop-ups no navegador para gerar o PDF.')
+      return
     }
+
+    const categoriesRows = categoryBreakdown
+      .map(
+        (c) => `
+        <tr>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 500;">${c.name}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600;">${formatBRL(c.amount)}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #64748b;">${c.pct}%</td>
+        </tr>`,
+      )
+      .join('')
+
+    const fixedRows = [
+      ...paidBills.map(
+        (b) => `
+        <tr>
+          <td style="padding: 6px 12px; border-bottom: 1px solid #f1f5f9;">${b.name}</td>
+          <td style="padding: 6px 12px; border-bottom: 1px solid #f1f5f9; text-align: right;">${formatBRL(b.amount)}</td>
+          <td style="padding: 6px 12px; border-bottom: 1px solid #f1f5f9; text-align: right; color: #16a34a; font-weight: bold;">Pago ✓</td>
+        </tr>`,
+      ),
+      ...unpaidBills.map(
+        (b) => `
+        <tr>
+          <td style="padding: 6px 12px; border-bottom: 1px solid #f1f5f9;">${b.name}</td>
+          <td style="padding: 6px 12px; border-bottom: 1px solid #f1f5f9; text-align: right;">${formatBRL(b.amount)}</td>
+          <td style="padding: 6px 12px; border-bottom: 1px solid #f1f5f9; text-align: right; color: #ea580c; font-weight: bold;">Pendente</td>
+        </tr>`,
+      ),
+    ].join('')
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Relatório Financeiro - ${monthLabel}</title>
+        <meta charset="utf-8" />
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 40px; }
+          .header { border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+          .title { font-size: 24px; font-weight: 800; color: #0f172a; margin: 0; }
+          .subtitle { font-size: 14px; color: #64748b; margin-top: 4px; text-transform: capitalize; }
+          .kpis { display: flex; gap: 16px; margin-bottom: 28px; }
+          .kpi-card { flex: 1; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; background: #f8fafc; }
+          .kpi-title { font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; }
+          .kpi-value { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 4px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; }
+          th { background: #f1f5f9; text-align: left; padding: 10px 12px; font-weight: 700; color: #334155; border-bottom: 2px solid #cbd5e1; }
+          .section-title { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+          .footer { border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center; font-size: 11px; color: #94a3b8; margin-top: 40px; }
+          @media print {
+            body { margin: 20px; }
+            button { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <h1 class="title">Life OS Hub — Relatório Financeiro</h1>
+            <p class="subtitle">Fechamento do Mês: ${monthLabel}</p>
+          </div>
+          <div style="text-align: right; font-size: 12px; color: #64748b;">
+            Emissão: ${new Date().toLocaleDateString('pt-BR')}
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi-card">
+            <div class="kpi-title">Total Gasto</div>
+            <div class="kpi-value" style="color: #0f172a;">${formatBRL(monthTotal)}</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Teto Mensal</div>
+            <div class="kpi-value">${formatBRL(monthlyBudget)}</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Saldo Restante</div>
+            <div class="kpi-value" style="color: ${remainingBudget > 0 ? '#16a34a' : '#dc2626'};">${formatBRL(remainingBudget)}</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Lançamentos</div>
+            <div class="kpi-value">${monthSpendingCount}</div>
+          </div>
+        </div>
+
+        <div class="section-title">Detalhamento por Categoria</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Categoria</th>
+              <th style="text-align: right;">Total Gasto</th>
+              <th style="text-align: right;">Participação</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${categoriesRows || '<tr><td colspan="3" style="padding: 12px; text-align: center;">Nenhum gasto registrado.</td></tr>'}
+          </tbody>
+        </table>
+
+        <div class="section-title">Contas Fixas & Recorrentes</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Conta</th>
+              <th style="text-align: right;">Valor</th>
+              <th style="text-align: right;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${fixedRows || '<tr><td colspan="3" style="padding: 12px; text-align: center;">Nenhuma conta cadastrada.</td></tr>'}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          Documento gerado automaticamente pelo Life OS Hub • Copiloto Hermes AI
+        </div>
+
+        <script>
+          window.onload = function() {
+            window.print();
+          }
+        </script>
+      </body>
+      </html>
+    `
+
+    printWindow.document.write(html)
+    printWindow.document.close()
+    toast.success('Gerando documento para impressão / salvar em PDF! 📄✨')
   }
 
   return (
@@ -195,12 +327,22 @@ export function MonthlyReportModal({
         </div>
 
         {/* Ações */}
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800">
-          <Button variant="ghost" size="sm" onClick={onClose}>
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-800">
+          <Button variant="ghost" size="sm" onClick={onClose} className="text-xs">
             Fechar
           </Button>
 
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handlePrintPDF}
+              className="gap-1.5 text-xs text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:bg-amber-500/10"
+              title="Gerar PDF executivo para impressão ou download"
+            >
+              <Printer className="h-3.5 w-3.5" /> PDF / Imprimir
+            </Button>
+
             <Button
               variant="ghost"
               size="sm"
@@ -211,21 +353,12 @@ export function MonthlyReportModal({
             </Button>
 
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleNativeShare}
-              className="gap-1.5 text-xs text-zinc-300 hover:text-white"
-            >
-              <Share2 className="h-3.5 w-3.5" /> Compartilhar
-            </Button>
-
-            <Button
               variant="primary"
-              size="md"
+              size="sm"
               onClick={handleSendTelegram}
-              className="gap-2 bg-sky-600 hover:bg-sky-500 text-white shadow-md shadow-sky-600/20 font-medium"
+              className="gap-1.5 bg-sky-600 hover:bg-sky-500 text-white shadow-md shadow-sky-600/20 font-medium text-xs"
             >
-              <Send className="h-4 w-4" /> Enviar para Telegram
+              <Send className="h-3.5 w-3.5" /> Telegram Bot
             </Button>
           </div>
         </div>

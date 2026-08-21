@@ -225,3 +225,96 @@ function buildSmartRefinedBriefing(
 
   return sentences.join(' ')
 }
+
+/**
+ * Generates Night Debriefing (Fechamento do Dia às 21:30).
+ */
+export async function generateNightDebriefing(data: DashboardData): Promise<string> {
+  const config = getHermesAdvancedConfig()
+  const now = new Date()
+  const todayIso = now.toISOString().slice(0, 10)
+  const tomorrowIso = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+
+  const todayEvents = (data.events || []).filter((e) => e.date === todayIso)
+  const tomorrowEvents = (data.events || []).filter((e) => e.date === tomorrowIso)
+
+  // Despesas registradas
+  const totalMonthSpent = (data.spending || []).reduce(
+    (acc, s) =>
+      acc +
+      (Number(s.despensa) || 0) +
+      (Number(s.manutencao) || 0) +
+      (Number(s.viagens) || 0),
+    0,
+  )
+
+  const groqKey =
+    config.groqApiKey ||
+    (config.provider === 'groq' ? config.llmApiKey : '') ||
+    import.meta.env.VITE_GROQ_API_KEY ||
+    ''
+  const genericKey = config.llmApiKey || import.meta.env.VITE_LLM_API_KEY || ''
+  const apiKey = groqKey || genericKey
+
+  if (apiKey) {
+    try {
+      let endpoint = 'https://api.groq.com/openai/v1/chat/completions'
+      let model = config.llmModel || 'llama-3.3-70b-versatile'
+
+      if (config.provider === 'openrouter' || apiKey.startsWith('sk-or-')) {
+        endpoint = 'https://openrouter.ai/api/v1/chat/completions'
+        model = config.llmModel || 'meta-llama/llama-3.3-70b-instruct'
+      }
+
+      const systemPrompt = `Você é o HERMES, copiloto executivo do Life OS Hub.
+Escreva um fechamento noturno carinhoso, inteligente e relaxante (3 frases) para o usuário descansar a mente.
+1. Parabenize pelo dia e mencione que os compromissos de hoje foram concluídos.
+2. Dê uma visão leve do que espera por ele amanhã.
+3. Lembre com delicadeza de registrar algum gasto que tenha ficado pendente e deseje uma excelente noite de sono reparador.`
+
+      const userPrompt = `DADOS DA NOITE:
+- Compromissos de Hoje: ${todayEvents.length} atividades
+- Amanhã: ${tomorrowEvents.length > 0 ? tomorrowEvents.map((e) => e.title).join(', ') : 'Agenda livre'}
+- Total Gasto no Mês: R$ ${totalMonthSpent.toFixed(2)}
+
+Gere o Debriefing Noturno:`
+
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 4000)
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.6,
+          max_tokens: 220,
+        }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (res.ok) {
+        const json = await res.json()
+        const text = json.choices?.[0]?.message?.content?.trim()
+        if (text) return text.replace(/^["']|["']$/g, '')
+      }
+    } catch {}
+  }
+
+  // Fallback noturno
+  const tomorrowPreview =
+    tomorrowEvents.length > 0
+      ? `Para amanhã, você tem ${tomorrowEvents.length} compromisso(s) previsto(s) (iniciando por "${tomorrowEvents[0].title}").`
+      : 'Sua agenda de amanhã está livre para focar em novos projetos.'
+
+  return `Boa noite! Mais um dia de conquistas concluído com sucesso. ${tomorrowPreview} Se realizou alguma compra ou despesa hoje, lembre-se de registrar antes de dormir. Tenha uma excelente noite de descanso!`
+}

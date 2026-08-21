@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { LayoutGrid, List, Plus, Search, ShoppingBasket, ShoppingCart, X } from 'lucide-react'
+import { ChefHat, LayoutGrid, List, Plus, Search, ShoppingBasket, ShoppingCart, X } from 'lucide-react'
 import { MODULE_BY_ID } from '@/lib/modules'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -13,6 +13,7 @@ import { PantryItemCard } from './PantryItemCard'
 import { PantryListView } from './PantryListView'
 import { PantryItemForm, type PantryItemDraft } from './PantryItemForm'
 import { SupermarketModeModal } from './SupermarketModeModal'
+import { HermesChefModal } from './HermesChefModal'
 import { WebhookExport } from './WebhookExport'
 import { categories, isExpired, isExpiringSoon, isLow, sortItems } from './despensaUtils'
 
@@ -58,6 +59,7 @@ export function DespensaPage() {
   const module = MODULE_BY_ID['despensa']
   const { data, setItems } = useDespensaData()
   const [supermarketOpen, setSupermarketOpen] = useState(false)
+  const [chefOpen, setChefOpen] = useState(false)
   const [form, setForm] = useState<FormState>(null)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [statusTab, setStatusTab] = useState<StatusTab>('all')
@@ -204,6 +206,17 @@ export function DespensaPage() {
                     <span>Cards</span>
                   </button>
                 </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setChefOpen(true)}
+                  className="h-8 px-2.5 text-xs bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 gap-1.5 font-medium"
+                  title="Sugerir receitas inteligentes com itens da despensa"
+                >
+                  <ChefHat className="h-3.5 w-3.5 text-amber-400" />
+                  <span>Hermes Chef</span>
+                </Button>
 
                 <Button
                   variant="ghost"
@@ -406,6 +419,14 @@ export function DespensaPage() {
           items={data?.items ?? []}
           onClose={() => setSupermarketOpen(false)}
           onCompleteShopping={handleCompleteShopping}
+        />
+      )}
+
+      {chefOpen && (
+        <HermesChefModal
+          open={chefOpen}
+          items={data?.items ?? []}
+          onClose={() => setChefOpen(false)}
         />
       )}
     </div>

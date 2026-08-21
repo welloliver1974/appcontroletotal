@@ -731,17 +731,31 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   3. **⏰ Agendamento Matinal Automático & Disparo ([HermesScheduleModal.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/HermesScheduleModal.tsx)):**
      - Modal dedicado para ativar envio matinal diário, escolher o horário (ex: `07:00`), canal de entrega (Telegram Bot ou Webhook da VPS do Hermes) e botão para **"Testar Envio Imediato"**.
 
+## 🍳 43. Suíte Executiva do Hermes: Chef IA, Debriefing Noturno, Autonomia de Combustível, Relatório PDF & Quick-Capture (21/08/2026)
+
+* **Recursos Implementados:**
+  1. **🍳 Hermes Chef com Leitura por Voz & Telegram ([HermesChefModal.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/HermesChefModal.tsx)):**
+     - IA analisa itens disponíveis e com validade próxima na despensa para sugerir 3 receitas práticas com tempo, porções, modo de preparo e substituições.
+     - Suporte a Hermes Voice 🔊 para ouvir a receita passo a passo enquanto cozinha e botão de envio direto formatado para o Telegram Bot.
+  2. **🌙 Debriefing Noturno & Agendamento Duplo ([HermesScheduleModal.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/HermesScheduleModal.tsx), [fastBriefing.ts](file:///e:/Apps/AppControleTotal/src/lib/fastBriefing.ts)):**
+     - Fechamento executivo noturno do dia às 21:30 com resumo de compromissos concluídos, prévia do dia seguinte e lembrete financeiro suave.
+     - Seletor duplo independente (Briefing Matinal ☀️ + Debriefing Noturno 🌙) com atalhos rápidos e botões de teste instantâneo.
+  3. **⛽ Autonomia Inteligente do Tanque ([predictiveMaint.ts](file:///e:/Apps/AppControleTotal/src/features/manutencao/predictiveMaint.ts)):**
+     - Cálculo de autonomia restante estimada (Km) e porcentagem do tanque baseados no histórico de abastecimentos e odômetro atual, com alertas de reserva.
+  4. **📊 Relatório Financeiro Mensal com Exportação PDF ([MonthlyReportModal.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/MonthlyReportModal.tsx)):**
+     - Modal com visualização formatada, botão de impressão limpa / Salvar em PDF executivo A4 e envio direto para o Telegram Bot.
+  5. **🎙️ Hermes Quick-Capture ([hermesActions.ts](file:///e:/Apps/AppControleTotal/src/lib/hermesActions.ts)):**
+     - Suporte a comandos de voz e texto do Telegram para inserção automática no Supabase (despesas, despensa, agenda e lifelog).
+
 ---
 
-## 🔮 43. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
+## 🔮 44. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
 
 1. **📊 Exportação de Prestação de Contas / Reembolso de Viagem a Trabalho (PDF / Excel):**
    - Gerar relatório formal com tabela de Km rodados, datas, cidades visitadas e valor de reembolso por Km (ex: R$ 1,20/km) para envio à empresa.
-2. **🎙️ Lançamento de Gastos e Agenda por Áudio via WhatsApp (Webhook Hermes):**
-   - Integrar webhook do Hermes na VPS para receber áudios encaminhados do WhatsApp e executar *function calling* direto no Supabase.
-3. **🔔 Notificações Push Web (Web Push API com VAPID):**
+2. **🔔 Notificações Push Web (Web Push API com VAPID):**
    - Notificações de alerta matinal do Hermes e lembretes de contas a vencer mesmo com o app fechado no celular.
-4. **⛽ Gráfico de Eficiência de Consumo do Veículo (Km/L ao longo do tempo):**
+3. **⛽ Gráfico de Eficiência de Consumo do Veículo (Km/L ao longo do tempo):**
    - Visualização gráfica da variação de consumo (cidade vs estrada) no módulo de Manutenção.
 5. **🏷️ Leitor de Código de Barras / EAN na Despensa (Scanner de Câmera):**
    - Utilizar a câmera para bipar o código de barras de alimentos na despensa e buscar o nome do produto automaticamente via API pública (Cosmos/OpenFoodFacts).
