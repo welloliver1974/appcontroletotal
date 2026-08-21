@@ -403,12 +403,12 @@ Crie 3 receitas deliciosas e fáceis:`
                       <span>{isPlayingVoice ? 'Parar' : 'Ouvir'}</span>
                     </button>
 
-                    <div className="h-3 w-[1px] bg-purple-500/30" />
+                    <div className="h-3 w-[1px] bg-purple-500/30 shrink-0" />
 
                     <button
                       type="button"
                       onClick={toggleVoiceGender}
-                      className="flex items-center px-1.5 py-1 text-xs font-medium text-purple-300 hover:text-purple-100 hover:bg-purple-500/20 transition-colors"
+                      className="flex items-center justify-center px-2 py-1 text-sm hover:bg-purple-500/20 transition-colors shrink-0 select-none"
                       title={`Alternar voz (Atual: ${voiceGender === 'female' ? 'Feminina 👩' : 'Masculina 👨'})`}
                     >
                       <span>{voiceGender === 'female' ? '👩' : '👨'}</span>

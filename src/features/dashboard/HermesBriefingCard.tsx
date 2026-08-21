@@ -234,33 +234,33 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto shrink-0 pt-1 lg:pt-0">
+          <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full lg:w-auto shrink-0 pt-1 lg:pt-0">
             {/* 1. Botão Ouvir Voz Unificado com Seletor Integrado */}
             <div
-              className={`inline-flex items-center rounded-lg border border-purple-500/30 bg-purple-500/10 transition-all overflow-hidden flex-1 sm:flex-initial ${
+              className={`inline-flex items-center rounded-lg border border-purple-500/30 bg-purple-500/10 transition-all overflow-hidden w-full sm:w-auto ${
                 isPlayingVoice ? 'bg-purple-500/20 border-purple-500/50 shadow-sm shadow-purple-500/20' : ''
               }`}
             >
               <button
                 type="button"
                 onClick={handleToggleVoice}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-purple-300 hover:text-purple-100 hover:bg-purple-500/20 transition-colors flex-1 sm:flex-initial justify-center"
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 text-[11px] sm:text-xs font-medium text-purple-300 hover:text-purple-100 hover:bg-purple-500/20 transition-colors flex-1 justify-center min-w-0"
                 title={isPlayingVoice ? 'Parar leitura por voz' : `Ouvir briefing narrado (${voiceGender === 'female' ? 'Voz Feminina' : 'Voz Masculina'})`}
               >
                 {isPlayingVoice ? (
-                  <Square className="h-3 w-3 fill-current animate-pulse text-purple-300" />
+                  <Square className="h-3 w-3 shrink-0 fill-current animate-pulse text-purple-300" />
                 ) : (
-                  <Volume2 className="h-3.5 w-3.5 text-purple-300" />
+                  <Volume2 className="h-3.5 w-3.5 shrink-0 text-purple-300" />
                 )}
-                <span>{isPlayingVoice ? 'Parar' : 'Ouvir'}</span>
+                <span className="truncate">{isPlayingVoice ? 'Parar' : 'Ouvir'}</span>
               </button>
 
-              <div className="h-3.5 w-[1px] bg-purple-500/30" />
+              <div className="h-4 w-[1px] bg-purple-500/30 shrink-0" />
 
               <button
                 type="button"
                 onClick={toggleVoiceGender}
-                className="flex items-center gap-0.5 px-2 py-1.5 text-xs font-medium text-purple-300 hover:text-purple-100 hover:bg-purple-500/20 transition-colors"
+                className="flex items-center justify-center px-2 sm:px-2.5 py-1.5 text-xs sm:text-sm hover:bg-purple-500/20 transition-colors shrink-0 select-none"
                 title={`Alternar voz (Atual: ${voiceGender === 'female' ? 'Feminina 👩' : 'Masculina 👨'})`}
               >
                 <span>{voiceGender === 'female' ? '👩' : '👨'}</span>
@@ -272,11 +272,11 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
               variant="ghost"
               size="sm"
               onClick={() => setShowScheduleModal(true)}
-              className="text-[11px] sm:text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 gap-1 px-3 py-1.5 justify-center flex-1 sm:flex-initial"
+              className="text-[11px] sm:text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 gap-1 px-1.5 sm:px-3 py-1.5 justify-center w-full sm:w-auto"
               title="Configurar horários matinal e noturno"
             >
-              <Clock className="h-3.5 w-3.5" />
-              <span>Agendar</span>
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Agendar</span>
             </Button>
 
             {/* 3. Botão Atualizar */}
@@ -285,11 +285,11 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
               size="sm"
               onClick={generateAIBriefing}
               disabled={loading}
-              className="text-[11px] sm:text-xs text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 gap-1 px-3 py-1.5 justify-center flex-1 sm:flex-initial"
+              className="text-[11px] sm:text-xs text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 gap-1 px-1.5 sm:px-3 py-1.5 justify-center w-full sm:w-auto"
               title="Gerar nova síntese executiva com IA"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-              <span>{loading ? 'Sintetizando...' : 'Atualizar'}</span>
+              <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${loading ? 'animate-spin' : ''}`} />
+              <span className="truncate">{loading ? 'Gerando...' : 'Atualizar'}</span>
             </Button>
           </div>
         </div>
