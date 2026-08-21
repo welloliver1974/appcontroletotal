@@ -3,9 +3,11 @@ import {
   Camera,
   Check,
   CheckCircle2,
+  ClipboardPaste,
   Edit2,
   Eye,
   EyeOff,
+  Key,
   Link as LinkIcon,
   Loader2,
   Plus,
@@ -20,7 +22,13 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { compressImageForOcr, type CompressionResult } from '@/lib/imageCompressor'
 import { parseReceiptWithVision, type ParsedReceiptData, type ScannedPantryItem } from '@/lib/receiptScanner'
-import { detectQrCodeFromFile, parseSefazUrl, type SefazQrCodeData } from '@/lib/qrReceiptReader'
+import {
+  detectQrCodeFromFile,
+  formatAccessKey,
+  parseAccessKey,
+  parseSefazUrl,
+  type SefazQrCodeData,
+} from '@/lib/qrReceiptReader'
 import { db } from '@/lib/db'
 import type { PantryItem } from '@/data/types'
 import { toast } from '@/stores/toastStore'
@@ -50,9 +58,11 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
   const [analyzing, setAnalyzing] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  // Manual URL input state
+  // Manual URL & Access Key states
   const [showManualUrl, setShowManualUrl] = useState(false)
   const [manualUrl, setManualUrl] = useState('')
+  const [showAccessKeyInput, setShowAccessKeyInput] = useState(false)
+  const [accessKeyInput, setAccessKeyInput] = useState('')
 
   // Editable Form State
   const [establishment, setEstablishment] = useState('')
@@ -67,7 +77,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
   const [showPhotoPreview, setShowPhotoPreview] = useState(false)
   const [hasResult, setHasResult] = useState(false)
 
-  // Apply parsed QR result into form
+  // Apply parsed QR / Access Key result into form
   const applyQrResult = (qr: SefazQrCodeData) => {
     setQrInfo(qr)
     setErrorMsg(null)
@@ -80,11 +90,59 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     setDate(qr.date || new Date().toISOString().slice(0, 10))
     setTime('')
     setCategory('Despensa')
-    setSyncWithPantry(false) // No products detected from bare QR code
+    setSyncWithPantry(false) // No products detected from bare QR code / access key
     setItems([])
     setSelectedItems({})
     setHasResult(true)
-    toast.success('QR Code SEFAZ lido com sucesso! 🧾✨')
+    toast.success(
+      qr.accessKey ? 'Chave de Acesso identificada com sucesso! 🔑✨' : 'QR Code SEFAZ lido com sucesso! 🧾✨',
+    )
+  }
+
+  // Handle Access Key (44 digits) typing and auto-formatting
+  const handleAccessKeyChange = (val: string) => {
+    const formatted = formatAccessKey(val)
+    setAccessKeyInput(formatted)
+  }
+
+  // Handle pasting Access Key from Clipboard
+  const handlePasteAccessKey = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) {
+        const clean = text.replace(/\D/g, '')
+        if (clean.length === 44) {
+          const formatted = formatAccessKey(clean)
+          setAccessKeyInput(formatted)
+          const parsed = parseAccessKey(clean)
+          if (parsed) {
+            applyQrResult(parsed)
+            setShowAccessKeyInput(false)
+            return
+          }
+        } else {
+          setAccessKeyInput(formatAccessKey(text))
+        }
+      }
+    } catch {
+      toast.error('Não foi possível acessar a área de transferência. Cole manualmente no campo.')
+    }
+  }
+
+  // Submit Access Key manually
+  const handleAccessKeySubmit = () => {
+    const cleanDigits = accessKeyInput.replace(/\D/g, '')
+    if (cleanDigits.length !== 44) {
+      toast.error(`A Chave de Acesso precisa ter 44 dígitos (atualmente tem ${cleanDigits.length}).`)
+      return
+    }
+    const parsed = parseAccessKey(cleanDigits)
+    if (parsed) {
+      applyQrResult(parsed)
+      setShowAccessKeyInput(false)
+    } else {
+      toast.error('Chave de Acesso inválida. Verifique os números digitados.')
+    }
   }
 
   // 1. Fotografar QR Code de perto (Modo Rápido com Câmera Nativa)
@@ -310,7 +368,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
               </div>
 
               {/* Action Buttons Grid */}
-              <div className="grid sm:grid-cols-2 gap-3 pt-2">
+              <div className="grid sm:grid-cols-3 gap-3 pt-2">
                 {/* Opção 1: Fotografar QR Code */}
                 <button
                   type="button"
@@ -322,16 +380,16 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                       <Scan className="h-5 w-5" />
                     </div>
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                      Mais Rápido ⚡
+                      Rápido ⚡
                     </span>
                   </div>
 
                   <div className="space-y-1">
                     <h5 className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
-                      Fotografar QR Code
+                      QR Code
                     </h5>
                     <p className="text-[11px] text-zinc-400 leading-tight">
-                      Abre a câmera em foco máximo para tirar a foto de perto do QR Code da SEFAZ.
+                      Foto de perto do QR Code fiscal.
                     </p>
                   </div>
                 </button>
@@ -340,30 +398,116 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                 <button
                   type="button"
                   onClick={() => fullFileInputRef.current?.click()}
-                  className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/60 hover:bg-zinc-900/80 hover:border-zinc-700 text-left transition-all group flex flex-col justify-between space-y-3"
+                  className="p-4 rounded-xl border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 hover:border-purple-500 text-left transition-all group flex flex-col justify-between space-y-3 shadow-lg shadow-purple-500/5"
                 >
                   <div className="flex items-center justify-between w-full">
                     <div className="h-10 w-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform">
                       <Camera className="h-5 w-5" />
                     </div>
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">
-                      Lê Produtos 🛒
+                      Despensa 🛒
                     </span>
                   </div>
 
                   <div className="space-y-1">
                     <h5 className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
-                      Foto Completa do Cupom (IA)
+                      Foto Cupom (IA)
                     </h5>
                     <p className="text-[11px] text-zinc-400 leading-tight">
-                      Fotografa o cupom inteiro para a IA ler todos os itens e abastecer a Despensa.
+                      Lê itens e alimenta a despensa.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Opção 3: Chave de Acesso (44 Dígitos) */}
+                <button
+                  type="button"
+                  onClick={() => setShowAccessKeyInput(!showAccessKeyInput)}
+                  className={`p-4 rounded-xl border text-left transition-all group flex flex-col justify-between space-y-3 shadow-lg ${
+                    showAccessKeyInput
+                      ? 'border-amber-500 bg-amber-500/20 shadow-amber-500/10'
+                      : 'border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500 shadow-amber-500/5'
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="h-10 w-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Key className="h-5 w-5" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
+                      44 Dígitos 🔑
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h5 className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
+                      Chave de Acesso
+                    </h5>
+                    <p className="text-[11px] text-zinc-400 leading-tight">
+                      Digitar ou colar os 44 números da nota.
                     </p>
                   </div>
                 </button>
               </div>
 
+              {/* Caixa de Entrada da Chave de Acesso */}
+              {showAccessKeyInput && (
+                <div className="p-4 rounded-xl bg-zinc-950 border border-amber-500/30 text-left space-y-3 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                      <Key className="h-3.5 w-3.5" /> Chave de Consulta da Nota (44 dígitos)
+                    </label>
+                    <span className="text-[11px] font-mono text-zinc-400">
+                      {accessKeyInput.replace(/\D/g, '').length} / 44 dígitos
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={accessKeyInput}
+                        onChange={(e) => handleAccessKeyChange(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleAccessKeySubmit()
+                        }}
+                        placeholder="3524 0800 0000 0000 0000 0000 0000 0000 0000 0000 0000"
+                        className="input-base text-xs font-mono tracking-wider w-full pr-10 border-amber-500/40 focus:border-amber-400"
+                      />
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="soft"
+                      size="sm"
+                      onClick={handlePasteAccessKey}
+                      className="text-xs gap-1 border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200"
+                      title="Colar da área de transferência"
+                    >
+                      <ClipboardPaste className="h-3.5 w-3.5 text-amber-400" />
+                      Colar
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={handleAccessKeySubmit}
+                      disabled={accessKeyInput.replace(/\D/g, '').length !== 44}
+                      className="text-xs bg-amber-600 hover:bg-amber-500 text-white font-bold"
+                    >
+                      OK
+                    </Button>
+                  </div>
+
+                  <p className="text-[11px] text-zinc-400 leading-tight">
+                    💡 A chave de 44 números fica impressa logo abaixo ou acima do código de barras do cupom.
+                  </p>
+                </div>
+              )}
+
               {/* Botão de Link Manual */}
-              <div className="pt-2">
+              <div className="pt-1">
                 <button
                   type="button"
                   onClick={() => setShowManualUrl(!showManualUrl)}

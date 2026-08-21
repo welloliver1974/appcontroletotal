@@ -161,7 +161,9 @@ export function LiveQrScanner({ onScan, onClose }: LiveQrScannerProps) {
 
     if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
       try {
-        barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] })
+        barcodeDetector = new (window as any).BarcodeDetector({
+          formats: ['qr_code', 'code_128', 'code_39', 'itf', 'ean_13'],
+        })
       } catch {
         barcodeDetector = null
       }

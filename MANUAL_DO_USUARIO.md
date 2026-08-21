@@ -40,14 +40,25 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 
 ---
 
-## 2. 🧾 Scanner OCR Híbrido em 2 Etapas com Leitor QR Code SEFAZ & Despensa Inteligente
+## 2. 🧾 Scanner OCR Híbrido: QR Code SEFAZ, Foto Completa (IA) & Chave de Acesso (44 Dígitos)
  
-### Como usar:
+### 3 Formas Inteligentes de Ler o Cupom:
+1. **⚡ Fotografar QR Code (Modo Rápido):**
+   * Fotografa o QR Code fiscal de perto usando a câmera nativa com foco nítido.
+   * Lê instantaneamente os dados fiscais da SEFAZ (NFC-e / SAT).
+2. **🛒 Foto Completa do Cupom (IA & Despensa):**
+   * Fotografa o cupom inteiro para o Gemini/Llama Vision ler item por item, calcular descontos e abastecer a **Despensa**.
+3. **🔑 Chave de Acesso (44 Dígitos & Código de Barras 1D):**
+   * Digite ou clique no botão **"Colar 📋"** para inserir a Chave de Consulta impressa na nota fiscal.
+   * O sistema formata automaticamente de 4 em 4 números (`3524 0800 0000...`) e extrai na mesma hora o CNPJ da loja, Estado/UF, data e tipo de nota.
+   * A câmera também reconhece o **código de barras 1D** impresso no cupom logo acima da chave.
+
+### Como funciona o fluxo:
 1. Clique em **`🧾 Escanear Cupom`** no topo do Dashboard ou em Finanças.
-2. Tire uma foto do cupom fiscal ou envie uma imagem da galeria. O sistema aplica **auto-realce de contraste térmico** e processa em 2 etapas (Visão OCR + Cérebro Llama 70B com suporte a QR Code SEFAZ).
-3. A IA processa a foto com alta precisão e carrega os dados em uma tela de conferência editável:
-   * **Badge de QR Code SEFAZ:** Exibe confirmação oficial se o cupom contiver QR Code fiscal (NFC-e / SAT).
-   * **Estabelecimento / Loja:** Nome comercial identificado (totalmente editável).
+2. Escolha uma das 3 opções acima (QR Code, Foto Completa ou Chave de Acesso).
+3. Os dados são carregados na tela de conferência editável:
+   * **Badge de QR Code / Chave SEFAZ:** Exibe confirmação oficial dos dados fiscais.
+   * **Estabelecimento / Loja:** Nome comercial ou CNPJ identificado (totalmente editável).
    * **Valor Total Pago (R$):** Valor líquido final pós-desconto.
    * **Categoria, Data e Hora:** Ajustáveis livremente.
    * **Visualizador da Foto:** Botão para abrir a imagem original ao lado dos dados para rápida conferência.

@@ -689,7 +689,25 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
-## 🔮 40. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
+## 🔑 40. Suporte à Chave de Acesso (44 Dígitos), Leitor de Código de Barras 1D e Auto-Preenchimento Fiscal (21/08/2026)
+
+* **Motivação:** Em cupons fiscais impressos em papel térmico pequeno ou de baixa resolução, o micro QR Code da SEFAZ pode ter leitura difícil por câmeras móveis sem lente macro dedicada. A inclusão da **Chave de Acesso numérica (44 dígitos)** fornece uma rota de entrada 100% à prova de falhas.
+* **Recursos Implementados:**
+  1. **🔑 Card & Campo Dedicado para Chave de Acesso (44 Dígitos) ([ReceiptScannerModal.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/ReceiptScannerModal.tsx)):**
+     - Opção de entrada direta lado a lado com QR Code e Foto Completa da IA.
+     - **Máscara Automática em Blocos de 4:** Formatação instantânea (`3524 0800 0000 ...`) para facilitar digitação e conferência.
+     - **Botão "Colar 📋":** Captura instantânea do clipboard com `navigator.clipboard.readText()`.
+     - **Contador em Tempo Real:** Indicador dinâmico de `X / 44 dígitos`.
+  2. **🧠 Parser Instantâneo da Chave Fiscal ([qrReceiptReader.ts](file:///e:/Apps/AppControleTotal/src/lib/qrReceiptReader.ts)):**
+     - `parseAccessKey(key)`: Extrai UF do estado (dígitos 1-2), Ano/Mês de emissão (dígitos 3-6), CNPJ formatado do estabelecimento (dígitos 7-20), Modelo da nota (65 = NFC-e, 59 = SAT, 55 = NF-e) e Data base.
+     - Funciona 100% offline e sem latência de rede.
+  3. **📷 Leitor de Código de Barras 1D no Scanner de Câmera ([LiveQrScanner.tsx](file:///e:/Apps/AppControleTotal/src/components/ui/LiveQrScanner.tsx)):**
+     - Suporte nativo a `code_128`, `itf`, `ean_13` e `code_39` no `BarcodeDetector`.
+     - Permite que a câmera leia instantaneamente o código de barras compridinho impresso no cupom logo acima da chave numérica.
+
+---
+
+## 🔮 41. Roadmap de Oportunidades & Próximos Passos (O que poderemos fazer a seguir)
 
 1. **📊 Exportação de Prestação de Contas / Reembolso de Viagem a Trabalho (PDF / Excel):**
    - Gerar relatório formal com tabela de Km rodados, datas, cidades visitadas e valor de reembolso por Km (ex: R$ 1,20/km) para envio à empresa.

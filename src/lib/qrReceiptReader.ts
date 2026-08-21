@@ -19,14 +19,61 @@ const UF_MAP: Record<string, string> = {
 }
 
 /**
- * Parses raw SEFAZ QR Code URL and extracts access key and fiscal metadata.
+ * Parses a 44-digit NF-e/NFC-e/SAT access key directly without needing URL params.
+ */
+export function parseAccessKey(rawKey: string): SefazQrCodeData | null {
+  if (!rawKey || typeof rawKey !== 'string') return null
+  const cleanKey = rawKey.replace(/\D/g, '').trim()
+  if (cleanKey.length !== 44) return null
+
+  const ufCode = cleanKey.slice(0, 2)
+  const uf = UF_MAP[ufCode] || ufCode
+  const yearMonth = cleanKey.slice(2, 6)
+  const rawCnpj = cleanKey.slice(6, 20)
+  const cnpj = rawCnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+  const model = cleanKey.slice(20, 22)
+
+  const year = 2000 + parseInt(cleanKey.substring(2, 4), 10)
+  const month = parseInt(cleanKey.substring(4, 6), 10)
+  let dateStr: string | undefined
+  if (!isNaN(year) && !isNaN(month)) {
+    dateStr = `${year}-${String(month).padStart(2, '0')}-01`
+  }
+
+  return {
+    rawUrl: cleanKey,
+    accessKey: cleanKey,
+    cnpj,
+    uf,
+    yearMonth,
+    date: dateStr,
+    model: model === '65' ? 'NFC-e' : model === '59' ? 'SAT' : model === '55' ? 'NF-e' : model,
+  }
+}
+
+/**
+ * Formats a 44-digit key into blocks of 4 digits for easy reading (e.g. 0000 0000 0000 ...)
+ */
+export function formatAccessKey(key: string): string {
+  const digits = key.replace(/\D/g, '').slice(0, 44)
+  return digits.replace(/(\d{4})(?=\d)/g, '$1 ')
+}
+
+/**
+ * Parses raw SEFAZ QR Code URL or direct Access Key and extracts fiscal metadata.
  * Uses robust pipe field index parsing (avoiding hash indices).
  */
 export function parseSefazUrl(url: string): SefazQrCodeData | null {
   if (!url || typeof url !== 'string') return null
 
+  const cleanUrl = url.trim()
+  // If user pasted a 44-digit access key directly
+  const onlyDigits = cleanUrl.replace(/\D/g, '')
+  if (onlyDigits.length === 44 && !cleanUrl.includes('://')) {
+    return parseAccessKey(onlyDigits)
+  }
+
   try {
-    const cleanUrl = url.trim()
     const parsed = new URL(cleanUrl)
     let accessKey = ''
     let totalAmount: number | undefined
@@ -82,7 +129,7 @@ export function parseSefazUrl(url: string): SefazQrCodeData | null {
       uf = UF_MAP[ufCode] || ufCode
       yearMonth = accessKey.slice(2, 6)
       const rawCnpj = accessKey.slice(6, 20)
-      cnpj = rawCnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+      cnpj = rawCnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
       model = accessKey.slice(20, 22)
 
       const year = 2000 + parseInt(accessKey.substring(2, 4), 10)
@@ -100,25 +147,31 @@ export function parseSefazUrl(url: string): SefazQrCodeData | null {
       yearMonth,
       totalAmount,
       date: dateStr,
-      model: model === '65' ? 'NFC-e' : model === '59' ? 'SAT' : model,
+      model: model === '65' ? 'NFC-e' : model === '59' ? 'SAT' : model === '55' ? 'NF-e' : model,
     }
   } catch {
+    // If not a valid URL, check if contains 44 digits
+    if (onlyDigits.length === 44) {
+      return parseAccessKey(onlyDigits)
+    }
     return null
   }
 }
 
 /**
- * High-precision QR code decoder ported from appmercado.
- * 1. Tenta nativo BarcodeDetector via createImageBitmap.
+ * High-precision QR & Barcode decoder ported from appmercado.
+ * 1. Tenta nativo BarcodeDetector via createImageBitmap (QR + Code 128 / Barcode 1D).
  * 2. Recorta área central (65%) para fotos tiradas pelo celular em alta resolução.
  * 3. Faz varredura multi-escala [1200, 800, 1600, 2000].
  */
 export async function decodeQrFromImageElement(img: HTMLImageElement): Promise<string | null> {
-  // 1. BarcodeDetector nativo no bitmap original
+  // 1. BarcodeDetector nativo no bitmap original (QR + Código de barras da Chave 1D)
   if (typeof window !== 'undefined' && 'BarcodeDetector' in window && typeof createImageBitmap === 'function') {
     try {
       const bitmap = await createImageBitmap(img)
-      const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] })
+      const detector = new (window as any).BarcodeDetector({
+        formats: ['qr_code', 'code_128', 'code_39', 'itf', 'ean_13'],
+      })
       const barcodes = await detector.detect(bitmap)
       bitmap.close?.()
       if (barcodes.length > 0 && barcodes[0].rawValue) {
