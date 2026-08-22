@@ -237,8 +237,18 @@ export async function sendDirectTelegramMessage(
   overrideChatId?: string,
 ): Promise<{ ok: boolean; status: number; response: string }> {
   const config = getHermesAdvancedConfig()
-  const botToken = (overrideToken || config.telegramBotToken || '').trim()
-  const chatId = (overrideChatId || config.telegramChatId || '').trim()
+  const botToken = (
+    overrideToken ||
+    config.telegramBotToken ||
+    import.meta.env.VITE_TELEGRAM_BOT_TOKEN ||
+    ''
+  ).trim()
+  const chatId = (
+    overrideChatId ||
+    config.telegramChatId ||
+    import.meta.env.VITE_TELEGRAM_CHAT_ID ||
+    ''
+  ).trim()
 
   if (!botToken || !chatId) {
     return {
@@ -252,9 +262,10 @@ export async function sendDirectTelegramMessage(
   const cleanToken = botToken.startsWith('bot') ? botToken.slice(3) : botToken
   const url = `https://api.telegram.org/bot${cleanToken}/sendMessage`
 
+  // 1. Primeira tentativa: com parse_mode Markdown
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
+    const timeout = setTimeout(() => controller.abort(), 10000)
 
     const res = await fetch(url, {
       method: 'POST',
@@ -280,12 +291,54 @@ export async function sendDirectTelegramMessage(
       }
     }
 
+    // Se falhou por erro de parse do Markdown, tenta novamente como texto puro
+    if (json.description && json.description.toLowerCase().includes('parse')) {
+      const cleanText = text.replace(/[*_`[\]()]/g, '')
+      const retryRes = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: cleanText,
+        }),
+      })
+      const retryJson = await retryRes.json()
+      if (retryRes.ok && retryJson.ok) {
+        return {
+          ok: true,
+          status: 200,
+          response: 'Mensagem entregue no seu Telegram com sucesso (modo texto seguro)! 📱✨',
+        }
+      }
+    }
+
     return {
       ok: false,
       status: res.status,
       response: json.description || 'Erro retornado pela API do Telegram.',
     }
   } catch (err) {
+    // 2. Segunda tentativa de resiliência: Envio sem formatação em caso de falha de conexão inicial
+    try {
+      const cleanText = text.replace(/[*_`[\]()]/g, '')
+      const retryRes = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: cleanText,
+        }),
+      })
+      const retryJson = await retryRes.json()
+      if (retryRes.ok && retryJson.ok) {
+        return {
+          ok: true,
+          status: 200,
+          response: 'Mensagem entregue no seu Telegram com sucesso! 📱✨',
+        }
+      }
+    } catch {}
+
     return {
       ok: false,
       status: 0,

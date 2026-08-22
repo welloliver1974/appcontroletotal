@@ -30,11 +30,11 @@ try {
   }
 } catch {}
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
-const TELEGRAM_BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '8638107104:AAHd2IYOmLRB1kOl3Rcr0TFnNvlIo0-UjDk'
-const TELEGRAM_CHAT_ID = process.env.VITE_TELEGRAM_CHAT_ID || process.env.TELEGRAM_CHAT_ID || '497789001'
-const GROQ_API_KEY = process.env.VITE_GROQ_API_KEY || process.env.GROQ_API_KEY || process.env.VITE_LLM_API_KEY || process.env.LLM_API_KEY
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://fxjdaqpfjdntbyjettun.supabase.co'
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'sb_publishable_Vo2Dk5JtUa4wI_dYxaXRFA_j6aA2seP'
+let TELEGRAM_BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '8638107104:AAHd2IYOmLRB1kOl3Rcr0TFnNvlIo0-UjDk'
+let TELEGRAM_CHAT_ID = process.env.VITE_TELEGRAM_CHAT_ID || process.env.TELEGRAM_CHAT_ID || '497789001'
+let GROQ_API_KEY = process.env.VITE_GROQ_API_KEY || process.env.GROQ_API_KEY || process.env.VITE_LLM_API_KEY || process.env.LLM_API_KEY
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error('[HermesCron] Erro: SUPABASE_URL ou SUPABASE_ANON_KEY não fornecidos.')
@@ -43,6 +43,27 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 const mode = process.argv[2] === 'night' ? 'night' : 'morning'
+
+async function syncCloudSettings() {
+  try {
+    const { data } = await supabase
+      .from('app_settings')
+      .select('data')
+      .eq('id', 'hermes_config')
+      .maybeSingle()
+
+    if (data?.data) {
+      const cfg = data.data
+      if (cfg.telegramBotToken) TELEGRAM_BOT_TOKEN = cfg.telegramBotToken.trim()
+      if (cfg.telegramChatId) TELEGRAM_CHAT_ID = cfg.telegramChatId.trim()
+      if (cfg.groqApiKey) GROQ_API_KEY = cfg.groqApiKey.trim()
+      else if (cfg.llmApiKey && cfg.provider === 'groq') GROQ_API_KEY = cfg.llmApiKey.trim()
+      console.log('[HermesCron] Configurações sincronizadas da nuvem com sucesso.')
+    }
+  } catch (err) {
+    console.warn('[HermesCron] Não foi possível ler app_settings, usando padrões:', err.message)
+  }
+}
 
 async function fetchDashboardData() {
   const now = new Date()
@@ -193,28 +214,54 @@ Gere o Briefing Matinal:`
 }
 
 async function sendTelegramMessage(text) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`
-  const res = await fetch(url, {
+  const cleanToken = TELEGRAM_BOT_TOKEN.startsWith('bot') ? TELEGRAM_BOT_TOKEN.slice(3) : TELEGRAM_BOT_TOKEN
+  const url = `https://api.telegram.org/bot${cleanToken}/sendMessage`
+
+  // 1. Tenta envio com formatação Markdown
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: text,
+        parse_mode: 'Markdown'
+      })
+    })
+
+    const json = await res.json()
+    if (res.ok && json.ok) {
+      return json
+    }
+
+    console.warn('[HermesCron] Tentativa Markdown retornou:', json.description)
+  } catch (err) {
+    console.warn('[HermesCron] Erro na requisição Markdown:', err.message)
+  }
+
+  // 2. Fallback resiliente: envia como texto limpo se o Markdown falhar
+  console.log('[HermesCron] Reenviando em modo texto seguro...')
+  const cleanText = text.replace(/[*_`[\]()]/g, '')
+  const retryRes = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: TELEGRAM_CHAT_ID,
-      text: text,
-      parse_mode: 'Markdown'
+      text: cleanText
     })
   })
 
-  if (!res.ok) {
-    const errText = await res.text()
-    throw new Error(`Falha Telegram (${res.status}): ${errText}`)
+  if (!retryRes.ok) {
+    const errText = await retryRes.text()
+    throw new Error(`Falha Telegram (${retryRes.status}): ${errText}`)
   }
 
-  const json = await res.json()
-  return json
+  return await retryRes.json()
 }
 
 async function main() {
   console.log(`[HermesCron] Iniciando disparo no modo: ${mode.toUpperCase()}...`)
+  await syncCloudSettings()
   const data = await fetchDashboardData()
   const message = await generateAIBriefing(data)
   const result = await sendTelegramMessage(message)

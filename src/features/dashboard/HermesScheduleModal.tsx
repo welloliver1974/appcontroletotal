@@ -20,6 +20,10 @@ import {
   sendDirectTelegramMessage,
   sendHermesWebhook,
 } from '@/lib/hermes'
+import {
+  getHermesScheduleConfig,
+  getLastDispatch,
+} from '@/lib/hermesScheduler'
 import { toast } from '@/stores/toastStore'
 
 interface HermesScheduleModalProps {
@@ -33,57 +37,22 @@ const NIGHT_PRESETS = ['20:30', '21:00', '21:30', '22:00']
 
 export function HermesScheduleModal({ open, onClose, briefingText }: HermesScheduleModalProps) {
   const config = getHermesAdvancedConfig()
+  const scheduleConfig = getHermesScheduleConfig()
+  const lastDispatch = getLastDispatch()
 
-  const [morningEnabled, setMorningEnabled] = useState(() => {
-    try {
-      const stored = localStorage.getItem('act.hermes.autoBriefing')
-      return stored ? JSON.parse(stored).morningEnabled ?? true : true
-    } catch {
-      return true
-    }
-  })
+  const [morningEnabled, setMorningEnabled] = useState(scheduleConfig.morningEnabled ?? true)
+  const [morningTime, setMorningTime] = useState(scheduleConfig.morningTime || '07:00')
+  const [nightEnabled, setNightEnabled] = useState(scheduleConfig.nightEnabled ?? true)
+  const [nightTime, setNightTime] = useState(scheduleConfig.nightTime || '21:30')
+  const [channel, setChannel] = useState<'telegram' | 'webhook'>(scheduleConfig.channel || 'telegram')
 
-  const [morningTime, setMorningTime] = useState(() => {
-    try {
-      const stored = localStorage.getItem('act.hermes.autoBriefing')
-      return stored ? JSON.parse(stored).morningTime || '07:00' : '07:00'
-    } catch {
-      return '07:00'
-    }
-  })
-
-  const [nightEnabled, setNightEnabled] = useState(() => {
-    try {
-      const stored = localStorage.getItem('act.hermes.autoBriefing')
-      return stored ? JSON.parse(stored).nightEnabled ?? true : true
-    } catch {
-      return true
-    }
-  })
-
-  const [nightTime, setNightTime] = useState(() => {
-    try {
-      const stored = localStorage.getItem('act.hermes.autoBriefing')
-      return stored ? JSON.parse(stored).nightTime || '21:30' : '21:30'
-    } catch {
-      return '21:30'
-    }
-  })
-
-  const [channel, setChannel] = useState<'telegram' | 'webhook'>(() => {
-    try {
-      const stored = localStorage.getItem('act.hermes.autoBriefing')
-      return stored ? JSON.parse(stored).channel || 'telegram' : 'telegram'
-    } catch {
-      return 'telegram'
-    }
-  })
-
-  const [botToken, setBotToken] = useState(config.telegramBotToken || '')
-  const [chatId, setChatId] = useState(config.telegramChatId || '')
-  const [showTelegramSetup, setShowTelegramSetup] = useState(
-    !config.telegramBotToken || !config.telegramChatId,
+  const [botToken, setBotToken] = useState(
+    scheduleConfig.telegramBotToken || config.telegramBotToken || import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '',
   )
+  const [chatId, setChatId] = useState(
+    scheduleConfig.telegramChatId || config.telegramChatId || import.meta.env.VITE_TELEGRAM_CHAT_ID || '',
+  )
+  const [showTelegramSetup, setShowTelegramSetup] = useState(!botToken || !chatId)
 
   const [testing, setTesting] = useState<'morning' | 'night' | null>(null)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
@@ -214,8 +183,28 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
     <Modal open={open} onClose={onClose} title="⏰ Agendamentos do Hermes (Matinal & Noturno)">
       <div className="space-y-4 pt-1 text-zinc-200">
         <p className="text-xs text-zinc-400 leading-relaxed">
-          Receba o **Briefing Matinal com IA** para planejar seu dia e o **Debriefing Noturno** para fechar o dia com tranquilidade direto no seu Telegram.
+          Receba o <strong>Briefing Matinal com IA</strong> para planejar seu dia e o <strong>Debriefing Noturno</strong> para fechar o dia com tranquilidade direto no seu Telegram.
         </p>
+
+        {/* Status do Agendador Ativo */}
+        <div className="p-3 rounded-xl border border-indigo-500/20 bg-indigo-950/30 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <div>
+              <span className="font-semibold text-zinc-200">Agendador 24/7 Ativo</span>
+              <p className="text-[10px] text-zinc-400">
+                Dispara via app aberto e via nuvem autônoma quando fechado.
+              </p>
+            </div>
+          </div>
+          <div className="text-right text-[10px] text-zinc-400">
+            {lastDispatch.morningDate && <div>☀️ Último: {lastDispatch.morningDate}</div>}
+            {lastDispatch.nightDate && <div>🌙 Último: {lastDispatch.nightDate}</div>}
+          </div>
+        </div>
 
         {/* 1. Card Matinal */}
         <div className="p-3.5 rounded-xl border border-indigo-500/30 bg-indigo-950/20 space-y-2.5">
