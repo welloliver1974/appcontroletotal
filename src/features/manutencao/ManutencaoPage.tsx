@@ -54,16 +54,20 @@ function ManutencaoSkeleton() {
 /** Fase 3 — Manutenção & Ativos: CRUD de ativos, vida útil e histórico de registros. */
 export function ManutencaoPage() {
   const module = MODULE_BY_ID['manutencao']
-  const { data, setAssets, setRecords } = useManutencaoData()
+  const { data, reload, setAssets, setRecords } = useManutencaoData()
   const [openAsset, setOpenAsset] = useState<AssetFormState>(null)
   const [openRecord, setOpenRecord] = useState(false)
   const [openFuelLog, setOpenFuelLog] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  // Sync initial unsynced records
+  // Sync initial unsynced records (both directions)
   useEffect(() => {
-    void syncAllUnsyncedMaintenance()
-  }, [])
+    void syncAllUnsyncedMaintenance().then((synced) => {
+      if (synced > 0) {
+        void reload()
+      }
+    })
+  }, [reload])
 
   // Keep a selection: default = most urgent asset; fall back after deletes.
   useEffect(() => {

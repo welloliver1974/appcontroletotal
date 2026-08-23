@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Calendar, Check, Fuel, Gauge, X, Zap } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -35,6 +35,13 @@ export function FuelLogModal({
   )
 
   const [assetId, setAssetId] = useState(() => vehicleAssets[0]?.id || assets[0]?.id || '')
+
+  useEffect(() => {
+    if (!assetId || !assets.some((a) => a.id === assetId)) {
+      const fallback = vehicleAssets[0]?.id || assets[0]?.id || ''
+      if (fallback) setAssetId(fallback)
+    }
+  }, [vehicleAssets, assets, assetId])
   const [currentKm, setCurrentKm] = useState('')
   const [liters, setLiters] = useState('')
   const [totalCost, setTotalCost] = useState('')

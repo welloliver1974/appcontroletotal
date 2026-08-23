@@ -760,9 +760,27 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
      - Criação de um *Split Button* unificado com a mesma altura milimétrica (`h-8`), com proteção anti-encolhimento (`shrink-0`) para o botão `👩/👨` no celular.
      - Grid proporcional de 3 colunas (`grid-cols-3 sm:flex`) garantindo alinhamento e facilidade de toque em telas menores.
 
+## ⛽ 45. Sincronização Bidirecional Finanças ⇄ Manutenção & Filtros de Abastecimento (23/08/2026)
+
+* **Problema Identificado:**
+  - Abastecimentos salvos via Gastos rápidos ou cupons ficavam registrados em Finanças (`spendingEntries`), mas não refletiam na lista inferior de Manutenção (`maintenance`).
+  - Falta de identificadores visuais claros e filtros dedicados para separar abastecimentos de manutenções preventivas.
+
+* **Solução e Melhorias Implementadas:**
+  1. **🔄 Sincronização Bidirecional Inteligente ([maintFinanceSync.ts](file:///e:/Apps/AppControleTotal/src/lib/maintFinanceSync.ts)):**
+     - Função `syncAllUnsyncedMaintenance()` atualizada para sincronizar nos dois sentidos:
+       - `maintenance ➔ spendingEntries`: lança gastos veiculares no extrato financeiro.
+       - `spendingEntries ➔ maintenance`: detecta automaticamente despesas de combustível/posto e gera os registros no histórico do veículo correspondente.
+  2. **🏷️ Filtros de Histórico & Badges Dedicadas ([RecordsSection.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/RecordsSection.tsx)):**
+     - Seletor de visualização rápida: `Todos`, `Abastecimentos ⛽` e `Manutenções 🔧`.
+     - Subtotais inteligentes: destaque do valor investido em Combustível vs Serviços/Peças.
+     - Ícone `Fuel` com tom âmbar e badge destacada para registros de abastecimento.
+  3. **🚗 Seleção Reativa de Veículo no Modal ([FuelLogModal.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/FuelLogModal.tsx)):**
+     - Sincronização do veículo selecionado com `useEffect` garantindo vinculação imediata ao primeiro veículo cadastrado.
+
 ---
 
-## 🔮 45. Roadmap de Novas Ideias Geniais para o Life OS Hub
+## 🔮 46. Roadmap de Novas Ideias Geniais para o Life OS Hub
 
 1. **✈️ Modo Piloto Automático de Viagens (Smart Travel Assistant):**
    - Ao criar uma viagem com destino e datas, o Hermes gera automaticamente:

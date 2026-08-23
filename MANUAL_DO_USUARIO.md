@@ -84,7 +84,8 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 * **⛽ Abastecimento Inteligente com Sincronização em Finanças:**
   * Toda vez que você abastecer, use o botão **`⛽ Abastecer`** informando a quilometragem atual do painel, litros e valor pago.
   * O sistema calcula na hora o **Consumo Médio ($\text{km/L}$)**, **Preço por Litro** e **Custo por Km**.
-  * **Sincronização Financeira:** O valor abastecido é automaticamente lançado no seu extrato de **Finanças** (categoria `Transporte`) e deduzido do seu **Orçamento Mensal** na Dashboard.
+  * **Sincronização Bidirecional:** Qualquer abastecimento registrado (seja pelo botão rápido, pelo menu de Manutenção ou por cupom/gasto financeiro) é sincronizado automaticamente entre **Finanças** e o **Histórico do Veículo**.
+  * **Filtros no Histórico:** Na tela de Manutenção, use os botões de filtro (`Todos`, `Abastecimentos ⛽` e `Manutenções 🔧`) para alternar e ver seus abastecimentos e serviços de forma organizada.
 * **🏠 Ativos e Gestão de Patrimônio (Carro, Moto, Casa, Equipamentos):**
   * Cadastre seus veículos ou imóveis para manter o histórico de revisões, troca de óleo, seguro ou reformas.
   * **Revisões Opcionais:** A data de próxima manutenção é 100% opcional; se não houver revisão prevista, o ativo fica como *"Em dia / Sem revisão agendada"*, sem alarmes desnecessários.
