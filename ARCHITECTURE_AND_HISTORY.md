@@ -777,6 +777,14 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
      - Ícone `Fuel` com tom âmbar e badge destacada para registros de abastecimento.
   3. **🚗 Seleção Reativa de Veículo no Modal ([FuelLogModal.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/FuelLogModal.tsx)):**
      - Sincronização do veículo selecionado com `useEffect` garantindo vinculação imediata ao primeiro veículo cadastrado.
+  4. **⚡ Painel Executivo de Consumo & Combustível ([VehicleFuelPerformanceCard.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/VehicleFuelPerformanceCard.tsx)):**
+     - Card proeminente no topo da seção de registros exibindo:
+       - **Consumo Médio Real (km/L)** calculado automaticamente.
+       - **Custo Médio por Km Rodado (R$/km)**.
+       - **Último Preço Pago por Litro (R$/L)** e Litragem abastecida.
+       - **Total Acumulado Investido em Combustível**.
+       - **Nível e Autonomia do Tanque** com barra de progresso visual de km restantes.
+       - Botão de atalho para rápido lançamento de novo abastecimento.
 
 ---
 

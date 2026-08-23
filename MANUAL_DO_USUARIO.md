@@ -85,6 +85,12 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
   * Toda vez que você abastecer, use o botão **`⛽ Abastecer`** informando a quilometragem atual do painel, litros e valor pago.
   * O sistema calcula na hora o **Consumo Médio ($\text{km/L}$)**, **Preço por Litro** e **Custo por Km**.
   * **Sincronização Bidirecional:** Qualquer abastecimento registrado (seja pelo botão rápido, pelo menu de Manutenção ou por cupom/gasto financeiro) é sincronizado automaticamente entre **Finanças** e o **Histórico do Veículo**.
+  * **⚡ Painel de Consumo & Combustível:** Logo abaixo dos cartões dos veículos na tela de Manutenção, um painel executivo apresenta:
+    * **Consumo Médio ($\text{km/L}$):** Rendimento real do veículo calculado entre abastecimentos.
+    * **Custo por Km ($\text{R\$/km}$):** Custo de combustível por quilômetro rodado.
+    * **Último Litro ($\text{R\$/L}$):** Preço unitário pago no último posto com litragem.
+    * **Total em Combustível:** Total acumulado investido no veículo.
+    * **Autonomia e Nível do Tanque:** Barra visual com porcentagem e estimativa de quilômetros restantes antes da reserva.
   * **Filtros no Histórico:** Na tela de Manutenção, use os botões de filtro (`Todos`, `Abastecimentos ⛽` e `Manutenções 🔧`) para alternar e ver seus abastecimentos e serviços de forma organizada.
 * **🏠 Ativos e Gestão de Patrimônio (Carro, Moto, Casa, Equipamentos):**
   * Cadastre seus veículos ou imóveis para manter o histórico de revisões, troca de óleo, seguro ou reformas.
