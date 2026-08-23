@@ -12,6 +12,7 @@ import {
 import {
   sendHermesChat,
   getHermesAdvancedConfig,
+  loadHermesConfigFromCloud,
   type ChatMessage,
   type HermesChatResult,
 } from '@/lib/hermes'
@@ -34,6 +35,10 @@ export function HermesChatDrawer() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<unknown>(null)
   const config = getHermesAdvancedConfig()
+
+  useEffect(() => {
+    void loadHermesConfigFromCloud()
+  }, [])
 
   useEffect(() => {
     if (open) {

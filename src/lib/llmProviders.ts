@@ -40,7 +40,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     modelsEndpoint: 'https://api.groq.com/openai/v1/models',
     chatEndpoint: 'https://api.groq.com/openai/v1/chat/completions',
     docsUrl: 'https://console.groq.com/keys',
-    defaultModel: 'llama-3.3-70b-versatile',
+    defaultModel: 'openai/gpt-oss-120b',
   },
   nvidia: {
     id: 'nvidia',
@@ -83,11 +83,11 @@ export const DEFAULT_NVIDIA_MODELS: ModelItem[] = [
 ]
 
 export const DEFAULT_GROQ_MODELS: ModelItem[] = [
-  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile (Recomendado)' },
-  { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant' },
-  { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill Llama 70B' },
-  { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B 32k' },
-  { id: 'gemma2-9b-it', name: 'Gemma 2 9B IT' },
+  { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (Recomendado - Máxima Inteligência)', description: 'Raciocínio livre de alta capacidade' },
+  { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B (Ultra-Rápido)', description: 'Velocidade instantânea' },
+  { id: 'qwen/qwen3.6-27b', name: 'Qwen 3.6 27B', description: 'Excelente em português' },
+  { id: 'groq/compound', name: 'Groq Compound', description: 'Múltiplos agentes combinados' },
+  { id: 'groq/compound-mini', name: 'Groq Compound Mini', description: 'Versão compacta' },
 ]
 
 function parseModelList(json: unknown): ModelItem[] {

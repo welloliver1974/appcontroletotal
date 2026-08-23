@@ -27,13 +27,21 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
+      const provider = parsed.provider || 'groq'
+      const rawModel = parsed.llmModel || ''
+      const defaultModel = provider === 'groq' ? 'openai/gpt-oss-120b' : 'meta-llama/llama-3.3-70b-instruct'
+      const normalizedModel =
+        !rawModel || rawModel === 'llama-3.3-70b-versatile' || rawModel === 'llama-3.1-70b-versatile'
+          ? defaultModel
+          : rawModel
+
       return {
         vpsUrl: parsed.vpsUrl || import.meta.env.VITE_HERMES_WEBHOOK_URL || '',
         vpsSecret: parsed.vpsSecret || import.meta.env.VITE_HERMES_API_KEY || '',
-        provider: parsed.provider || 'groq',
-        llmApiKey: parsed.llmApiKey || import.meta.env.VITE_LLM_API_KEY || '',
-        groqApiKey: parsed.groqApiKey || import.meta.env.VITE_GROQ_API_KEY || '',
-        llmModel: parsed.llmModel || 'llama-3.3-70b-versatile',
+        provider,
+        llmApiKey: parsed.llmApiKey || parsed.groqApiKey || import.meta.env.VITE_LLM_API_KEY || '',
+        groqApiKey: parsed.groqApiKey || parsed.llmApiKey || import.meta.env.VITE_GROQ_API_KEY || '',
+        llmModel: normalizedModel,
         customBaseUrl: parsed.customBaseUrl || '',
         telegramBotUrl: parsed.telegramBotUrl || '',
         telegramBotToken: parsed.telegramBotToken || import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '',
@@ -49,7 +57,7 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
     provider: 'groq',
     llmApiKey: import.meta.env.VITE_LLM_API_KEY || '',
     groqApiKey: import.meta.env.VITE_GROQ_API_KEY || '',
-    llmModel: 'llama-3.3-70b-versatile',
+    llmModel: 'openai/gpt-oss-120b',
     customBaseUrl: '',
     telegramBotUrl: '',
     telegramBotToken: import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '',
@@ -442,16 +450,68 @@ export async function sendHermesChat(
 
   // LLM Provider Setup (Groq, OpenRouter, NVIDIA, Custom)
   const provider = PROVIDERS[config.provider] || PROVIDERS.groq
+  const apiKey = (config.provider === 'groq' ? (config.groqApiKey || config.llmApiKey) : config.llmApiKey || config.groqApiKey || '').trim()
+  const modelToUse =
+    config.provider === 'groq' && (!config.llmModel || config.llmModel.includes('llama-3.3-70b-versatile') || config.llmModel.includes('llama-3.1-70b-versatile'))
+      ? 'openai/gpt-oss-120b'
+      : (config.llmModel || provider.defaultModel)
+
   let endpoint = provider.chatEndpoint
   if (config.provider === 'custom' && config.customBaseUrl) {
     endpoint = `${config.customBaseUrl.replace(/\/+$/, '')}/chat/completions`
   }
 
-  // 1. Try Serverless Proxy first (bypasses browser CORS for NVIDIA / OpenRouter / Groq)
-  if (config.provider !== 'vps' && config.llmApiKey) {
+  // 1. Direct LLM Provider Fetch (Prioridade máxima para IA Livre, Rápida e Aberta)
+  if (apiKey && endpoint) {
     try {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 5000)
+      const timeout = setTimeout(() => controller.abort(), 12000)
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      }
+
+      if (config.provider === 'openrouter') {
+        headers['HTTP-Referer'] = 'https://appcontroletotal.local'
+        headers['X-Title'] = 'Life OS Hub - Hermes'
+      }
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: fullMessages,
+          temperature: 0.7,
+          max_tokens: 1000,
+        }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeout)
+
+      if (res.ok) {
+        const data = await res.json()
+        const rawReply = data.choices?.[0]?.message?.content || ''
+        if (rawReply) {
+          const { cleanedReply, actions } = await extractAndExecuteHermesActions(rawReply)
+          return { reply: cleanedReply, actions, source: 'llm' }
+        }
+      } else {
+        const errJson = await res.json().catch(() => null)
+        console.warn('[HermesChat] Direct LLM returned non-ok status:', res.status, errJson)
+      }
+    } catch (err) {
+      console.warn('[HermesChat] Direct LLM fetch error:', err)
+    }
+  }
+
+  // 2. Serverless Proxy Fallback (Bypasses CORS if needed)
+  if (config.provider !== 'vps' && apiKey) {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 6000)
 
       const proxyRes = await fetch('/api/llm/proxy', {
         method: 'POST',
@@ -459,8 +519,8 @@ export async function sendHermesChat(
         body: JSON.stringify({
           action: 'chat',
           provider: config.provider,
-          apiKey: config.llmApiKey.trim(),
-          model: config.llmModel || provider.defaultModel,
+          apiKey,
+          model: modelToUse,
           messages: fullMessages,
           customUrl: config.customBaseUrl,
         }),
@@ -478,50 +538,7 @@ export async function sendHermesChat(
         }
       }
     } catch {
-      // Proxy unavailable, fallback to direct fetch
-    }
-  }
-
-  // 2. Direct LLM Provider Fetch (Fallback)
-  if (config.llmApiKey && endpoint) {
-    try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 7000)
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.llmApiKey.trim()}`,
-      }
-
-      if (config.provider === 'openrouter') {
-        headers['HTTP-Referer'] = 'https://appcontroletotal.local'
-        headers['X-Title'] = 'Life OS Hub - Hermes'
-      }
-
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model: config.llmModel || provider.defaultModel,
-          messages: fullMessages,
-          temperature: 0.7,
-          max_tokens: 800,
-        }),
-        signal: controller.signal,
-      })
-
-      clearTimeout(timeout)
-
-      if (res.ok) {
-        const data = await res.json()
-        const rawReply = data.choices?.[0]?.message?.content || ''
-        if (rawReply) {
-          const { cleanedReply, actions } = await extractAndExecuteHermesActions(rawReply)
-          return { reply: cleanedReply, actions, source: 'llm' }
-        }
-      }
-    } catch (err) {
-      console.warn('[HermesChat] Provider error:', err)
+      // Proxy unavailable, fallback to local
     }
   }
 

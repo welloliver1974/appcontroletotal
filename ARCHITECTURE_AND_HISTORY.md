@@ -786,20 +786,23 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
        - **Nível e Autonomia do Tanque** com barra de progresso visual de km restantes.
        - Botão de atalho para rápido lançamento de novo abastecimento.
 
-## ✏️ 46. Edição de Registros de Manutenção & Motor Anti-Travamento do Hermes Copilot (23/08/2026)
+## ✏️ 46. Ativação da IA Livre Generativa (GPT-OSS 120B / Groq) & Resolução de Travamentos no Hermes (23/08/2026)
 
-* **Problemas Identificados:**
-  - Usuários não conseguiam editar registros e abastecimentos após salvos (como corrigir quilometragem/odômetro esquecido ou valores).
-  - O Hermes Copilot flutuante ficava em estado infinito de *"pensando..."* caso a requisição de IA remota enfrentasse instabilidade de rede ou se a chave de API externa estivesse ausente.
+* **Diagnóstico do Problema:**
+  - O Hermes Copilot flutuante travava no estado *"pensando..."* porque:
+    1. A configuração no banco apontava para o provedor `nvidia` (cuja API estava travando em timeout de conexão de 300 segundos).
+    2. O modelo anterior configurado na Groq (`llama-3.3-70b-versatile`) havia sido descontinuado e retornava erro 404.
+    3. As requisições tentavam primeiro um proxy sem timeout estrito antes de recorrer à conexão direta.
 
 * **Soluções Implementadas:**
-  1. **✏️ Edição Completa de Registros & Abastecimentos ([RecordForm.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/RecordForm.tsx), [RecordsSection.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/RecordsSection.tsx), [ManutencaoPage.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/ManutencaoPage.tsx)):**
-     - Botão com ícone de Lápis (`Pencil`) em cada linha do histórico de manutenção.
-     - Modal de edição permitindo retificar Odômetro (Km), Custo (R$), Descrição/Posto, Data e Ativo/Veículo vinculado.
-  2. **⏱️ Timeouts Estritos Anti-Travamento ([hermes.ts](file:///e:/Apps/AppControleTotal/src/lib/hermes.ts)):**
-     - Aplicação de `AbortController` com timeouts de 5 a 7 segundos para chamadas de proxy e APIs de LLM externas, evitando travamentos de UI.
-  3. **🌙 Motor Local Humanizado de Respostas & Saudações ([hermes.ts](file:///e:/Apps/AppControleTotal/src/lib/hermes.ts)):**
-     - Respostas instantâneas para saudações como *"Boa noite"*, *"Bom dia"*, *"Olá"*, integrando automaticamente com o resumo do dia seguinte (agenda, finanças do mês, despensa e odômetro do veículo), funcionando 100% offline ou sem chave de API.
+  1. **🧠 Conexão com IA Generativa 100% Livre & Aberta:**
+     - Conectado ao modelo **`openai/gpt-oss-120b`** na **Groq**, modelo de raciocínio livre de 120 bilhões de parâmetros rodando a velocidades instantâneas com a chave ativa do usuário.
+     - Atualizada a lista de modelos ativos na Groq em [llmProviders.ts](file:///e:/Apps/AppControleTotal/src/lib/llmProviders.ts) (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.6-27b`).
+     - Sincronização automática das credenciais da nuvem diretamente ao abrir o drawer de chat do Hermes ([HermesChatDrawer.tsx](file:///e:/Apps/AppControleTotal/src/components/hermes/HermesChatDrawer.tsx)).
+  2. **⚡ Chamada Direta Client-Side com CORS Nativo:**
+     - Chamada direta prioritária para a API da Groq (`https://api.groq.com/openai/v1/chat/completions`), respondendo qualquer pergunta de forma fluida, livre, empática e natural.
+  3. **🛡️ Fallback Local de Emergência:**
+     - Caso o usuário fique offline, o motor local assume com segurança para responder sem travar a interface.
 
 ---
 
