@@ -786,9 +786,24 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
        - **Nível e Autonomia do Tanque** com barra de progresso visual de km restantes.
        - Botão de atalho para rápido lançamento de novo abastecimento.
 
+## ✏️ 46. Edição de Registros de Manutenção & Motor Anti-Travamento do Hermes Copilot (23/08/2026)
+
+* **Problemas Identificados:**
+  - Usuários não conseguiam editar registros e abastecimentos após salvos (como corrigir quilometragem/odômetro esquecido ou valores).
+  - O Hermes Copilot flutuante ficava em estado infinito de *"pensando..."* caso a requisição de IA remota enfrentasse instabilidade de rede ou se a chave de API externa estivesse ausente.
+
+* **Soluções Implementadas:**
+  1. **✏️ Edição Completa de Registros & Abastecimentos ([RecordForm.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/RecordForm.tsx), [RecordsSection.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/RecordsSection.tsx), [ManutencaoPage.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/ManutencaoPage.tsx)):**
+     - Botão com ícone de Lápis (`Pencil`) em cada linha do histórico de manutenção.
+     - Modal de edição permitindo retificar Odômetro (Km), Custo (R$), Descrição/Posto, Data e Ativo/Veículo vinculado.
+  2. **⏱️ Timeouts Estritos Anti-Travamento ([hermes.ts](file:///e:/Apps/AppControleTotal/src/lib/hermes.ts)):**
+     - Aplicação de `AbortController` com timeouts de 5 a 7 segundos para chamadas de proxy e APIs de LLM externas, evitando travamentos de UI.
+  3. **🌙 Motor Local Humanizado de Respostas & Saudações ([hermes.ts](file:///e:/Apps/AppControleTotal/src/lib/hermes.ts)):**
+     - Respostas instantâneas para saudações como *"Boa noite"*, *"Bom dia"*, *"Olá"*, integrando automaticamente com o resumo do dia seguinte (agenda, finanças do mês, despensa e odômetro do veículo), funcionando 100% offline ou sem chave de API.
+
 ---
 
-## 🔮 46. Roadmap de Novas Ideias Geniais para o Life OS Hub
+## 🔮 47. Roadmap de Novas Ideias Geniais para o Life OS Hub
 
 1. **✈️ Modo Piloto Automático de Viagens (Smart Travel Assistant):**
    - Ao criar uma viagem com destino e datas, o Hermes gera automaticamente:

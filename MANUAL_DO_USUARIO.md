@@ -91,7 +91,7 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
     * **Último Litro ($\text{R\$/L}$):** Preço unitário pago no último posto com litragem.
     * **Total em Combustível:** Total acumulado investido no veículo.
     * **Autonomia e Nível do Tanque:** Barra visual com porcentagem e estimativa de quilômetros restantes antes da reserva.
-  * **Filtros no Histórico:** Na tela de Manutenção, use os botões de filtro (`Todos`, `Abastecimentos ⛽` e `Manutenções 🔧`) para alternar e ver seus abastecimentos e serviços de forma organizada.
+  * **Filtros e Edição no Histórico:** Na tela de Manutenção, use os botões de filtro (`Todos`, `Abastecimentos ⛽` e `Manutenções 🔧`) para alternar os registros. Ao lado de cada item, utilize o **botão de Lápis (✏️)** para editar odômetro, valor, posto ou data a qualquer momento.
 * **🏠 Ativos e Gestão de Patrimônio (Carro, Moto, Casa, Equipamentos):**
   * Cadastre seus veículos ou imóveis para manter o histórico de revisões, troca de óleo, seguro ou reformas.
   * **Revisões Opcionais:** A data de próxima manutenção é 100% opcional; se não houver revisão prevista, o ativo fica como *"Em dia / Sem revisão agendada"*, sem alarmes desnecessários.
@@ -101,17 +101,19 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 
 ## 4. 🧠 Hermes Copiloto & "Pergunte ao meu Life OS"
 
-O assistente Hermes está conectado a todas as 15 coleções do seu banco de dados em tempo real.
+O assistente Hermes está conectado a todas as 15 coleções do seu banco de dados em tempo real e possui motor inteligente com resposta instantânea e proteção anti-travamento.
 
 ### Como conversar:
-* Clique no botão flutuante do **Hermes (`🤖`)** no canto inferior direito.
+* Clique no botão flutuante do **Hermes (`🤖`)** no canto inferior direito de qualquer tela.
 * Você pode digitar ou usar o botão de **Microfone (`🎙️`)** para falar.
+* O Hermes responde imediatamente a saudações (*"Boa noite"*, *"Bom dia"*, *"Olá"*) integrando os dados da sua agenda e do seu dia!
 
 ### Exemplos de perguntas que você pode fazer:
+* *"Boa noite!"* (receba o debriefing e lembrete dos compromissos de amanhã)
 * *"Quanto eu já gastei este mês em alimentação?"*
 * *"Quais contas fixas ainda estão pendentes para pagar?"*
 * *"O que está acabando ou vencendo na minha despensa?"*
-* *"Quando é a próxima revisão do meu carro?"*
+* *"Qual a quilometragem do meu carro e quando é a próxima revisão?"*
 * *"Quais são meus compromissos para os próximos 3 dias?"*
 
 ---
