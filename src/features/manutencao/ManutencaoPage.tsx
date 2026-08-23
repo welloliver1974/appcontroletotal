@@ -18,6 +18,7 @@ import { sortAssetsByUrgency } from './maintUtils'
 import { syncMaintenanceRecordToFinance, syncAllUnsyncedMaintenance } from '@/lib/maintFinanceSync'
 
 type AssetFormState = null | { mode: 'new' } | { mode: 'edit'; asset: Asset }
+type RecordFormState = null | { mode: 'new'; defaultAssetId?: string } | { mode: 'edit'; record: MaintenanceRecord }
 
 function ManutencaoSkeleton() {
   return (
@@ -57,7 +58,7 @@ export function ManutencaoPage() {
   const module = MODULE_BY_ID['manutencao']
   const { data, reload, setAssets, setRecords } = useManutencaoData()
   const [openAsset, setOpenAsset] = useState<AssetFormState>(null)
-  const [openRecord, setOpenRecord] = useState(false)
+  const [openRecord, setOpenRecord] = useState<RecordFormState>(null)
   const [openFuelLog, setOpenFuelLog] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -101,26 +102,39 @@ export function ManutencaoPage() {
 
   const saveRecord = async (draft: RecordDraft) => {
     if (!data) return
-    const created = await api.create<MaintenanceRecord>('maintenance', {
-      assetId: draft.assetId,
-      title: draft.title,
-      cost: draft.cost,
-      date: draft.date,
-      odometerKm: draft.odometerKm,
-    })
-    setRecords([created, ...data.records])
 
-    // Sincronizar gasto com Finanças se houver custo e syncFinance não for falso
-    if (draft.cost > 0 && draft.syncFinance !== false) {
-      await syncMaintenanceRecordToFinance(created, data.assets)
+    if (openRecord?.mode === 'edit') {
+      const updated = await api.update<MaintenanceRecord>('maintenance', openRecord.record.id, {
+        assetId: draft.assetId,
+        title: draft.title,
+        cost: draft.cost,
+        date: draft.date,
+        odometerKm: draft.odometerKm,
+      })
+      setRecords(updated)
+    } else {
+      const created = await api.create<MaintenanceRecord>('maintenance', {
+        assetId: draft.assetId,
+        title: draft.title,
+        cost: draft.cost,
+        date: draft.date,
+        odometerKm: draft.odometerKm,
+      })
+      setRecords([created, ...data.records])
+
+      // Sincronizar gasto com Finanças se houver custo e syncFinance não for falso
+      if (draft.cost > 0 && draft.syncFinance !== false) {
+        await syncMaintenanceRecordToFinance(created, data.assets)
+      }
+
+      // Keep the asset's lastMaintenance in sync with the newest record.
+      const target = data.assets.find((a) => a.id === created.assetId)
+      if (target && (!target.lastMaintenance || created.date > target.lastMaintenance)) {
+        setAssets(await api.update<Asset>('assets', target.id, { lastMaintenance: created.date }))
+      }
     }
 
-    // Keep the asset's lastMaintenance in sync with the newest record.
-    const target = data.assets.find((a) => a.id === created.assetId)
-    if (target && (!target.lastMaintenance || created.date > target.lastMaintenance)) {
-      setAssets(await api.update<Asset>('assets', target.id, { lastMaintenance: created.date }))
-    }
-    setOpenRecord(false)
+    setOpenRecord(null)
   }
 
   const deleteRecord = async (id: string) => {
@@ -179,7 +193,7 @@ export function ManutencaoPage() {
                     onRemove={deleteAsset}
                     onNewRecord={() => {
                       setSelectedId(a.id)
-                      setOpenRecord(true)
+                      setOpenRecord({ mode: 'new', defaultAssetId: a.id })
                     }}
                   />
                 ))}
@@ -209,7 +223,8 @@ export function ManutencaoPage() {
             records={data.records}
             selectedId={selectedId}
             onSelect={setSelectedId}
-            onNewRecord={() => setOpenRecord(true)}
+            onNewRecord={() => setOpenRecord({ mode: 'new', defaultAssetId: selectedId ?? undefined })}
+            onEditRecord={(r) => setOpenRecord({ mode: 'edit', record: r })}
             onNewAsset={() => setOpenAsset({ mode: 'new' })}
             onRemove={deleteRecord}
           />
@@ -227,9 +242,11 @@ export function ManutencaoPage() {
       )}
       {openRecord && (
         <RecordForm
+          key={openRecord.mode === 'edit' ? openRecord.record.id : 'new'}
           assets={data?.assets ?? []}
-          defaultAssetId={selectedId ?? undefined}
-          onClose={() => setOpenRecord(false)}
+          defaultAssetId={openRecord.mode === 'new' ? openRecord.defaultAssetId : undefined}
+          record={openRecord.mode === 'edit' ? openRecord.record : undefined}
+          onClose={() => setOpenRecord(null)}
           onSubmit={saveRecord}
         />
       )}

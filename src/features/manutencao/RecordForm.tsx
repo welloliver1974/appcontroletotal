@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { isoOffset } from '@/lib/utils'
-import type { Asset } from '@/data/types'
+import type { Asset, MaintenanceRecord } from '@/data/types'
 
 export interface RecordDraft {
   assetId: string
@@ -13,24 +13,26 @@ export interface RecordDraft {
   syncFinance?: boolean
 }
 
-/** Modal for a new maintenance record (tied to the selected asset by default). */
+/** Modal for a new or existing maintenance/fuel record. */
 export function RecordForm({
   assets,
   defaultAssetId,
+  record,
   onClose,
   onSubmit,
 }: {
   assets: Asset[]
   defaultAssetId?: string
+  record?: MaintenanceRecord
   onClose: () => void
   onSubmit: (draft: RecordDraft) => Promise<void> | void
 }) {
-  const [assetId, setAssetId] = useState(defaultAssetId ?? assets[0]?.id ?? '')
-  const [title, setTitle] = useState('')
-  const [cost, setCost] = useState('')
-  const [date, setDate] = useState(isoOffset(0))
-  const [odometer, setOdometer] = useState('')
-  const [syncFinance, setSyncFinance] = useState(true)
+  const [assetId, setAssetId] = useState(record?.assetId ?? defaultAssetId ?? assets[0]?.id ?? '')
+  const [title, setTitle] = useState(record?.title ?? '')
+  const [cost, setCost] = useState(record ? String(record.cost).replace('.', ',') : '')
+  const [date, setDate] = useState(record?.date ?? isoOffset(0))
+  const [odometer, setOdometer] = useState(record?.odometerKm ? String(record.odometerKm) : '')
+  const [syncFinance, setSyncFinance] = useState(record ? false : true)
 
   const selectedAsset = assets.find((a) => a.id === assetId)
   const isVehicle = selectedAsset?.category === 'carro' || selectedAsset?.category === 'moto'
@@ -38,7 +40,7 @@ export function RecordForm({
   const submit = () => {
     if (!assetId || !title.trim()) return
     const costN = Number.parseFloat(cost.replace('.', '').replace(',', '.')) || 0
-    const km = Number.parseInt(odometer, 10)
+    const km = Number.parseInt(odometer.replace(/\D/g, ''), 10)
     void onSubmit({
       assetId,
       title: title.trim(),
@@ -49,8 +51,15 @@ export function RecordForm({
     })
   }
 
+  const isEdit = !!record
+  const isFuel = title.includes('⛽') || title.toLowerCase().includes('abastecimento')
+
   return (
-    <Modal open onClose={onClose} title="Novo registro de serviço / manutenção">
+    <Modal
+      open
+      onClose={onClose}
+      title={isEdit ? (isFuel ? 'Editar Abastecimento ⛽' : 'Editar Registro de Manutenção 🔧') : 'Novo Registro de Serviço / Abastecimento'}
+    >
       <div className="space-y-4">
         <div>
           <label htmlFor="record-asset" className="mb-1.5 block text-xs font-medium text-zinc-500">

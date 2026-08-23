@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Fuel, Trash2, Wrench } from 'lucide-react'
+import { Fuel, Pencil, Trash2, Wrench } from 'lucide-react'
 import type { Asset, MaintenanceRecord } from '@/data/types'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
@@ -35,6 +35,7 @@ export function RecordsSection({
   selectedId,
   onSelect,
   onNewRecord,
+  onEditRecord,
   onNewAsset,
   onRemove,
 }: {
@@ -43,6 +44,7 @@ export function RecordsSection({
   selectedId: string | null
   onSelect: (id: string) => void
   onNewRecord: () => void
+  onEditRecord?: (record: MaintenanceRecord) => void
   onNewAsset: () => void
   onRemove: (id: string) => Promise<void> | void
 }) {
@@ -232,25 +234,38 @@ export function RecordsSection({
                                 </span>
                               )}
                             </div>
-                            {pendingDelete === r.id ? (
-                              <Button
-                                variant="danger"
-                                size="sm"
-                                onClick={() => request(r.id, () => void onRemove(r.id))}
-                              >
-                                Remover?
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Excluir registro"
-                                onClick={() => request(r.id, () => void onRemove(r.id))}
-                                className="h-7 w-7 hover:text-rose-300"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
+                            <div className="flex items-center gap-1">
+                              {onEditRecord && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="Editar registro"
+                                  onClick={() => onEditRecord(r)}
+                                  className="h-7 w-7 text-zinc-400 hover:text-zinc-100"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                              {pendingDelete === r.id ? (
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  onClick={() => request(r.id, () => void onRemove(r.id))}
+                                >
+                                  Remover?
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="Excluir registro"
+                                  onClick={() => request(r.id, () => void onRemove(r.id))}
+                                  className="h-7 w-7 hover:text-rose-300"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
                           </div>
                           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-zinc-500">
                             <span
