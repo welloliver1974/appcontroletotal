@@ -408,6 +408,9 @@ export async function sendHermesChat(
   // If VPS is configured as provider
   if (config.provider === 'vps' && config.vpsUrl) {
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 6000)
+
       const vpsChatUrl = `${config.vpsUrl.replace(/\/+$/, '')}/api/chat`
       const res = await fetch(vpsChatUrl, {
         method: 'POST',
@@ -419,7 +422,10 @@ export async function sendHermesChat(
           messages: fullMessages,
           model: config.llmModel,
         }),
+        signal: controller.signal,
       })
+
+      clearTimeout(timeout)
 
       if (res.ok) {
         const data = await res.json()
@@ -444,6 +450,9 @@ export async function sendHermesChat(
   // 1. Try Serverless Proxy first (bypasses browser CORS for NVIDIA / OpenRouter / Groq)
   if (config.provider !== 'vps' && config.llmApiKey) {
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 5000)
+
       const proxyRes = await fetch('/api/llm/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -455,7 +464,10 @@ export async function sendHermesChat(
           messages: fullMessages,
           customUrl: config.customBaseUrl,
         }),
+        signal: controller.signal,
       })
+
+      clearTimeout(timeout)
 
       if (proxyRes.ok) {
         const data = await proxyRes.json()
@@ -471,11 +483,10 @@ export async function sendHermesChat(
   }
 
   // 2. Direct LLM Provider Fetch (Fallback)
-
   if (config.llmApiKey && endpoint) {
     try {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 15000)
+      const timeout = setTimeout(() => controller.abort(), 7000)
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -520,33 +531,113 @@ export async function sendHermesChat(
 
 /**
  * Fallback response generator when offline or without API key.
+ * Provides instant, warm and data-rich answers using local DB state.
  */
 async function generateLocalHermesResponse(userMessage: string): Promise<HermesChatResult> {
-  const lower = userMessage.toLowerCase()
+  const lower = userMessage.toLowerCase().trim()
 
-  if (lower.includes('despensa') || lower.includes('comprar') || lower.includes('leite') || lower.includes('arroz')) {
-    const pantry = await db.get<Record<string, unknown>>('pantry').catch(() => [])
-    const low = pantry.filter((p) => Number(p.quantity || 0) <= Number(p.minQuantity || 1))
+  // 1. Saudações de Noite (Boa noite / até amanhã / debriefing)
+  if (
+    lower.includes('boa noite') ||
+    lower.includes('boa-noite') ||
+    lower.includes('dormir') ||
+    lower.includes('debriefing') ||
+    lower.includes('ate amanha') ||
+    lower.includes('até amanhã')
+  ) {
+    const events = await db.get<Record<string, unknown>>('events').catch(() => [])
+    const tomorrowIso = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+    const tomorrowEvents = events.filter((e) => String(e.date || '').startsWith(tomorrowIso))
+
+    const agendaText =
+      tomorrowEvents.length > 0
+        ? `Lembrete: você tem ${tomorrowEvents.length} compromisso(s) agendado(s) para amanhã (${tomorrowEvents.map((e) => e.title).join(', ')}).`
+        : 'Sua agenda está livre para amanhã.'
+
     return {
-      reply: `Hermes (Local): Você tem ${pantry.length} itens cadastrados na despensa. ${low.length > 0 ? `Atenção: ${low.map((i) => i.name).join(', ')} estão com estoque baixo.` : 'Tudo com estoque adequado.'}`,
+      reply: `Boa noite! 🌙✨ Espero que seu dia tenha sido excelente e produtivo. ${agendaText} Descanse bem e recarregue as energias! Se precisar de mim amanhã, estarei por aqui a postos.`,
       actions: [],
       source: 'local',
     }
   }
 
-  if (lower.includes('agenda') || lower.includes('hoje') || lower.includes('compromisso')) {
+  // 2. Saudações de Dia / Geral (Bom dia, Boa tarde, Olá, Oi)
+  if (
+    lower.includes('bom dia') ||
+    lower.includes('bom-dia') ||
+    lower.includes('boa tarde') ||
+    lower.includes('boa-tarde') ||
+    lower === 'ola' ||
+    lower === 'olá' ||
+    lower === 'oi' ||
+    lower === 'opa' ||
+    lower.startsWith('ola ') ||
+    lower.startsWith('olá ') ||
+    lower.startsWith('oi ') ||
+    lower.includes('tudo bem') ||
+    lower.includes('como vai')
+  ) {
+    const now = new Date()
+    const hour = now.getHours()
+    const greeting = hour < 12 ? 'Bom dia! ☀️' : hour < 18 ? 'Boa tarde! 🌤️' : 'Boa noite! 🌙'
+
+    return {
+      reply: `${greeting} Sou o Hermes, seu copiloto no Life OS Hub. Como posso te ajudar agora? Posso te informar seus gastos do mês, listar compromissos de hoje, conferir o estoque da despensa ou agendar um novo compromisso para você!`,
+      actions: [],
+      source: 'local',
+    }
+  }
+
+  // 3. Despensa e Compras
+  if (lower.includes('despensa') || lower.includes('comprar') || lower.includes('falta') || lower.includes('estoque') || lower.includes('mercado')) {
+    const pantry = await db.get<Record<string, unknown>>('pantry').catch(() => [])
+    const low = pantry.filter((p) => Number(p.quantity || p.qty || 0) <= Number(p.minQuantity || p.lowThreshold || 1))
+    return {
+      reply: `Hermes (Despensa): Você tem ${pantry.length} itens cadastrados no total. ${low.length > 0 ? `🛒 Em falta ou estoque baixo: ${low.map((i) => i.name).join(', ')}.` : '✅ Todos os itens estão com estoque adequado.'}`,
+      actions: [],
+      source: 'local',
+    }
+  }
+
+  // 4. Agenda e Compromissos
+  if (lower.includes('agenda') || lower.includes('hoje') || lower.includes('compromisso') || lower.includes('reunião') || lower.includes('reuniao')) {
     const events = await db.get<Record<string, unknown>>('events').catch(() => [])
     const today = new Date().toISOString().slice(0, 10)
     const todayEvents = events.filter((e) => String(e.date || '').startsWith(today))
     return {
-      reply: `Hermes (Local): Você tem ${todayEvents.length} compromisso(s) agendado(s) para hoje. ${todayEvents.map((e) => `• ${e.title} (${e.timeStart || ''})`).join(' ')}`,
+      reply: `Hermes (Agenda): Você tem ${todayEvents.length} compromisso(s) para hoje: ${todayEvents.length > 0 ? todayEvents.map((e) => `• ${e.title} (${e.timeStart || 'dia todo'})`).join(' ') : 'Nenhum compromisso agendado para hoje. Aproveite o dia livre!' }`,
+      actions: [],
+      source: 'local',
+    }
+  }
+
+  // 5. Finanças e Gastos
+  if (lower.includes('gasto') || lower.includes('gastei') || lower.includes('finanças') || lower.includes('financas') || lower.includes('dinheiro') || lower.includes('fatura')) {
+    const spending = await db.get<Record<string, unknown>>('spending_entries').catch(() => [])
+    const currentMonth = new Date().toISOString().slice(0, 7)
+    const monthSpending = spending.filter((s) => String(s.date || '').startsWith(currentMonth))
+    const total = monthSpending.reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
+    return {
+      reply: `Hermes (Finanças): Neste mês (${currentMonth}), você registrou ${monthSpending.length} despesa(s) somando R$ ${total.toFixed(2).replace('.', ',')}.`,
+      actions: [],
+      source: 'local',
+    }
+  }
+
+  // 6. Veículo, Combustível e Manutenção
+  if (lower.includes('carro') || lower.includes('moto') || lower.includes('veiculo') || lower.includes('veículo') || lower.includes('abastec') || lower.includes('combustivel') || lower.includes('combustível') || lower.includes('óleo') || lower.includes('oleo')) {
+    const assets = await db.get<Record<string, unknown>>('assets').catch(() => [])
+    const maint = await db.get<Record<string, unknown>>('maintenance').catch(() => [])
+    const vehicles = assets.filter((a) => a.category === 'carro' || a.category === 'moto')
+    return {
+      reply: `Hermes (Veículos): Você possui ${vehicles.length} veículo(s) cadastrado(s) (${vehicles.map((v) => v.name).join(', ')}), com um total de ${maint.length} registros de manutenção e abastecimento.`,
       actions: [],
       source: 'local',
     }
   }
 
   return {
-    reply: `Hermes: Recebi sua mensagem: "${userMessage}". Configure sua API Key (Groq, OpenRouter ou VPS Cloudflare) em Configurações ➔ Hermes & IA para conversas profundas com LLM.`,
+    reply: `Hermes: Entendido! Recebi sua mensagem: "${userMessage}".\n\n💡 **Dica:** Para habilitar conversas profundas com inteligência artificial generativa em tempo real, você pode configurar uma chave de API gratuita (da Groq ou OpenRouter) no menu **Configurações ➔ Hermes & IA**.`,
     actions: [],
     source: 'local',
   }
