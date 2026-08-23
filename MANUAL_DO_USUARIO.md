@@ -99,22 +99,23 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 
 ---
 
-## 4. 🧠 Hermes Copiloto & "Pergunte ao meu Life OS"
+## 4. 🧠 Hermes Copiloto — IA Generativa 100% Livre & Inteligente
 
-O assistente Hermes está conectado a todas as 15 coleções do seu banco de dados em tempo real e possui motor inteligente com resposta instantânea e proteção anti-travamento.
+O **Hermes** é o seu copiloto de Inteligência Artificial generativa real (LLM aberta **GPT-OSS de 120 Bilhões de parâmetros** via Groq), alimentado com raciocínio profundo e acesso em tempo real a todos os dados do seu Life OS Hub. Ele não usa respostas prontas ou scripts fechados: ele compreende o contexto da sua vida e responde de forma empática, personalizada e dinâmica.
 
 ### Como conversar:
-* Clique no botão flutuante do **Hermes (`🤖`)** no canto inferior direito de qualquer tela.
-* Você pode digitar ou usar o botão de **Microfone (`🎙️`)** para falar.
-* O Hermes responde imediatamente a saudações (*"Boa noite"*, *"Bom dia"*, *"Olá"*) integrando os dados da sua agenda e do seu dia!
+* Clique no botão flutuante do **Hermes (`🤖`)** no canto inferior direito de qualquer tela (ou use o atalho rápido no topo).
+* Você pode digitar naturalmente ou tocar no ícone de **Microfone (`🎙️`)** para falar por voz.
+* Converse livremente como se estivesse conversando com um consultor pessoal ou assistente executivo!
 
-### Exemplos de perguntas que você pode fazer:
-* *"Boa noite!"* (receba o debriefing e lembrete dos compromissos de amanhã)
-* *"Quanto eu já gastei este mês em alimentação?"*
-* *"Quais contas fixas ainda estão pendentes para pagar?"*
-* *"O que está acabando ou vencendo na minha despensa?"*
-* *"Qual a quilometragem do meu carro e quando é a próxima revisão?"*
-* *"Quais são meus compromissos para os próximos 3 dias?"*
+### Capacidades e Exemplos de Interação:
+* **💬 Conversas Livres e Abertas:** *"Hermes, boa noite! O que você achou da minha produtividade hoje?"* ou *"Me dê ideias de como economizar no mercado essa semana."*
+* **📊 Consultas Cirúrgicas dos seus Dados:** *"Quanto eu gastei de combustível até agora?"*, *"Quais contas vencem antes do dia 10?"*, *"Quantos km faltam para a próxima revisão do carro?"*
+* **⚡ Ações Automáticas por Linguagem Natural:** Você pode pedir para ele cadastrar ou agendar algo diretamente pelo chat:
+  - *"Adicione 3 caixas de leite na despensa."*
+  - *"Registre um gasto de R$ 35,00 com café no cartão."*
+  - *"Agende uma consulta médica para quarta-feira às 14:00."*
+* **🌙 Debriefing Noturno & Briefing Matinal:** Peça um resumo do seu dia ou um panorama do que vem pela frente amanhã.
 
 ---
 
