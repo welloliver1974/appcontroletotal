@@ -13,6 +13,7 @@ import { RecordsSection } from './RecordsSection'
 import { AssetForm, type AssetDraft } from './AssetForm'
 import { RecordForm, type RecordDraft } from './RecordForm'
 import { FuelLogModal } from './FuelLogModal'
+import { VehicleFuelPerformanceCard } from './VehicleFuelPerformanceCard'
 import { sortAssetsByUrgency } from './maintUtils'
 import { syncMaintenanceRecordToFinance, syncAllUnsyncedMaintenance } from '@/lib/maintFinanceSync'
 
@@ -185,6 +186,23 @@ export function ManutencaoPage() {
               </div>
             )}
           </div>
+
+          {(() => {
+            const selectedAsset = data.assets.find((a) => a.id === selectedId)
+            const vehicle =
+              selectedAsset && (selectedAsset.category === 'carro' || selectedAsset.category === 'moto')
+                ? selectedAsset
+                : data.assets.find((a) => a.category === 'carro' || a.category === 'moto')
+
+            if (!vehicle) return null
+            return (
+              <VehicleFuelPerformanceCard
+                asset={vehicle}
+                records={data.records}
+                onOpenFuelModal={() => setOpenFuelLog(true)}
+              />
+            )
+          })()}
 
           <RecordsSection
             assets={data.assets}
