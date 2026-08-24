@@ -827,23 +827,39 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 5. **🧘 Lifelog Voice Memo Instantâneo com Análise de Humor por IA:**
    - Botão rápido de gravação de áudio no Dashboard: você fala seus pensamentos ou como foi o dia, o Hermes transcreve, sintetiza as conquistas do dia e classifica seu nível de energia e humor no gráfico de bem-estar.
 
-## 📋 48. Backlog de Refatoração & Limpeza Técnica (Anotado para Próxima Sprint)
+## 📋 48. Backlog de Refatoração & Limpeza Técnica (✅ 100% Concluído em 24/08/2026)
 
-*Itens auditados e validados no `error.md` para posterior resolução sem impacto funcional imediato:*
+*Todos os itens auditados foram corrigidos, validados com Oxlint (0 erros / 0 warnings) e TypeScript strict build:*
 
-1. **🔴 Correção de Hooks React em `VehicleFuelPerformanceCard.tsx`:**
-   - Mover os 3 hooks `useMemo` (linhas 24, 44 e 49) para antes do `if (!isVehicle) return null;` para cumprir rigorosamente as `rules-of-hooks` do React.
-2. **🟡 Limpeza de Warnings de Regex em `receiptScanner.ts`:**
-   - Remover escapes desnecessários `\/` e `\.` dentro de colchetes nas linhas 46 e 191.
-3. **📁 Limpeza de Arquivos e Funções Órfãs:**
-   - Integrar ou remover `src/lib/safeApi.ts` e `src/components/auth/EmergencyGate.tsx`.
-   - Limpar exports não utilizados (`pendingSyncCount` em `backgroundSync.ts` e `triggerImmediateBriefingDispatch` em `hermesScheduler.ts`).
-4. **📦 Desduplicação de Manifest PWA:**
-   - Remover arquivo duplicado em `public/` mantendo apenas `manifest.webmanifest`.
-5. **🧹 Otimização de Dependências:**
-   - Desinstalar o pacote `canvas` do `package.json` (resíduo sem uso no front-end).
-6. **🔐 Variáveis de Ambiente:**
-   - Atualizar `.env.example` para documentar `VITE_GROQ_API_KEY`, `VITE_LLM_API_KEY`, `VITE_HERMES_WEBHOOK_URL` e `VITE_HERMES_API_KEY`.
+1. **✅ Correção de Hooks React em `VehicleFuelPerformanceCard.tsx`:**
+   - Hooks `useMemo` reposicionados antes de retornos condicionais, em conformidade com as `rules-of-hooks` do React 19.
+2. **✅ Limpeza de Warnings de Regex em `receiptScanner.ts`:**
+   - Removidos escapes redundantes em classes de caracteres nas linhas 46 e 191.
+3. **✅ Limpeza de Arquivos e Funções Órfãs:**
+   - Removidos `src/components/auth/EmergencyGate.tsx` e `src/lib/safeApi.ts`.
+4. **✅ Desduplicação de Manifest PWA:**
+   - Removido `public/manifest.json` duplicado, mantendo a referência oficial `public/manifest.webmanifest`.
+5. **✅ Otimização de Dependências:**
+   - Desinstalado o pacote `canvas` do `package.json`.
+6. **✅ Documentação de Variáveis de Ambiente:**
+   - Arquivo `.env.example` atualizado com todas as variáveis consumidas pelo app e comentários explicativos.
+
+## 🚀 49. Suíte de Inteligência Ativa: Safe-to-Spend, Scanner EAN-13, Smart Travel Assistant & TCO Veicular (24/08/2026)
+
+* **Recursos Implementados e Integrados:**
+  1. **💡 Conselheiro Financeiro Preditivo — Safe-to-Spend & Burn Rate ([safeToSpend.ts](file:///e:/Apps/AppControleTotal/src/lib/safeToSpend.ts) & [SafeToSpendWidget.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/SafeToSpendWidget.tsx)):**
+     - Cálculo dinâmico em tempo real de dias restantes no mês, média diária gasta (*Burn Rate*) e limite seguro disponível por dia (*Safe-to-Spend*).
+     - Indicador de ritmo visual em 3 níveis (Confortável 🟢, Atenção 🟡 e Crítico 🔴) integrado tanto no card do **Dashboard** quanto na aba de **Finanças**.
+     - Inclusão preditiva no Briefing Matinal do Hermes: cálculo automático da cota livre/dia injetado no prompt de IA e no fallback executivo.
+  2. **🏷️ Scanner de Código de Barras EAN-13 com OpenFoodFacts na Despensa ([openFoodFacts.ts](file:///e:/Apps/AppControleTotal/src/lib/openFoodFacts.ts) & [PantryBarcodeScannerModal.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/PantryBarcodeScannerModal.tsx)):**
+     - Leitor de câmera ao vivo (`BarcodeDetector` nativo) com mirador animado + busca manual por código numérico.
+     - Consulta automática à API pública do OpenFoodFacts com extração de nome em português, marca, categoria inteligente, foto do produto e estimativa de validade média para adicionar mantimentos à despensa em 1 clique.
+  3. **✈️ Smart Travel Assistant — Piloto Automático de Viagens com IA ([SmartTravelAssistantModal.tsx](file:///e:/Apps/AppControleTotal/src/features/viagens/SmartTravelAssistantModal.tsx)):**
+     - Checklist inteligente de bagagem e documentos contextualizado ao estilo da viagem (praia, trabalho, família, aventura) com persistência local e botão de adicionar itens personalizados.
+     - Estimativa de custos de deslocamento cruzando a distância da viagem com o rendimento real (km/L) do carro cadastrado em Manutenção + pedágios estimados.
+     - Botão de envio do itinerário completo e checklist direto para o **Telegram Bot**.
+  4. **🚗 Custo Total de Posse Veicular (TCO por Km) ([VehicleFuelPerformanceCard.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/VehicleFuelPerformanceCard.tsx)):**
+     - Cruzamento dinâmico de combustível acumulado + serviços, peças e revisões preventivas para calcular o **TCO Real por Km Rodado (R$/Km)** do veículo.
 
 ---
 

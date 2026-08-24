@@ -28,6 +28,7 @@ import { useFinancasData } from './useFinancasData'
 import { SpendingFormModal } from './SpendingFormModal'
 import { FixedBillFormModal } from './FixedBillFormModal'
 import { MonthlyReportModal } from './MonthlyReportModal'
+import { SafeToSpendWidget } from '@/features/dashboard/SafeToSpendWidget'
 
 const CATEGORY_ICONS: Record<string, { icon: typeof Utensils; color: string; bg: string }> = {
   alimentação: { icon: Utensils, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
@@ -283,6 +284,9 @@ export function FinancasPage() {
               )}
             </Card>
           </div>
+
+          {/* Safe-to-Spend & Conselheiro Preditivo */}
+          <SafeToSpendWidget spending={data.spending} monthlyBudget={data.monthlyBudget} />
 
           {/* 2. ABAS: EXTRATO DIÁRIO vs CONTAS FIXAS */}
           <div className="space-y-4">

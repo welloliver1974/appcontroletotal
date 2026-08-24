@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
-    "canvas": "^3.2.3",
     "jsqr": "^1.4.0",
     "lucide-react": "^1.31.0",
     "react": "^19.2.8",

@@ -40,6 +40,10 @@ npm run lint         # oxlint
 
 ## 🌟 Funcionalidades Avançadas & IA
 
+* **💡 Safe-to-Spend & Conselheiro Financeiro Preditivo:** Cálculo diário em tempo real da cota livre disponível até o final do mês, ritmo de gastos (*Burn Rate*) e status (🟢 Confortável, 🟡 Atenção e 🔴 Crítico) no Dashboard e Finanças.
+* **🏷️ Scanner EAN-13 com OpenFoodFacts na Despensa:** Leitura de código de barras de alimentos pela câmera ou busca manual, com autopreenchimento instantâneo de nome, foto, marca, categoria e validade média.
+* **✈️ Smart Travel Assistant (Piloto Automático de Viagens):** Checklist inteligente de bagagem e documentos por estilo de viagem com persistência local, cálculo de consumo e combustível baseado no rendimento real (km/L) do carro cadastrado e envio direto para o Telegram Bot.
+* **🚗 TCO Veicular por Km:** Cálculo do Custo Total de Posse (*Total Cost of Ownership*) por km rodado consolidando abastecimentos, peças e manutenções.
 * **Hermes Agent Copilot:** Assistente integrado com suporte a voz, chat flutuante e execução de ações em linguagem natural.
 * **Provedores de LLM:** Suporte a **NVIDIA AI Foundation**, **Groq**, **OpenRouter**, **VPS própria** e APIs OpenAI-compatíveis.
 * **Proxy Serverless de LLMs (`/api/llm/proxy`):** Bypassa bloqueios de CORS do navegador para chamadas à API da NVIDIA e outros provedores.

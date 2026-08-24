@@ -16,6 +16,7 @@ import { StopForm, type StopDraft } from './StopForm'
 import { PlaceForm, type PlaceDraft } from './PlaceForm'
 import { GoogleTimelineImporterModal } from './GoogleTimelineImporterModal'
 import { FamilyTripReportModal } from './FamilyTripReportModal'
+import { SmartTravelAssistantModal } from './SmartTravelAssistantModal'
 import { STATUS, newStopId, sortTrips } from './viagensUtils'
 
 type TripFormState = null | { mode: 'new' } | { mode: 'edit'; trip: Trip }
@@ -69,6 +70,7 @@ export function ViagensPage() {
   const [filter, setFilter] = useState<TripStatus | null>(null)
   const [timelineModalOpen, setTimelineModalOpen] = useState(false)
   const [familyReportTrip, setFamilyReportTrip] = useState<Trip | null>(null)
+  const [assistantTrip, setAssistantTrip] = useState<Trip | null>(null)
 
   const trips = data?.trips ?? []
   // If the active status no longer exists (e.g. last trip deleted), fall back to "all".
@@ -236,6 +238,7 @@ export function ViagensPage() {
                     onEditStop={(stop) => setStopForm({ tripId: trip.id, mode: 'edit', stop })}
                     onRemoveStop={(stopId) => void deleteStop(trip.id, stopId)}
                     onOpenReport={(t) => setFamilyReportTrip(t)}
+                    onOpenAssistant={(t) => setAssistantTrip(t)}
                   />
                 ))}
               </div>
@@ -296,6 +299,15 @@ export function ViagensPage() {
           open={Boolean(familyReportTrip)}
           trip={familyReportTrip}
           onClose={() => setFamilyReportTrip(null)}
+        />
+      )}
+
+      {/* Modal do Assistente Inteligente de Viagens com IA */}
+      {assistantTrip && (
+        <SmartTravelAssistantModal
+          open={Boolean(assistantTrip)}
+          trip={assistantTrip}
+          onClose={() => setAssistantTrip(null)}
         />
       )}
     </div>

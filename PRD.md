@@ -30,6 +30,7 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
 ======================================================================
 - DASHBOARD: 
   - Omnibox, KPIs, Grids de Alertas, "Próximos Compromissos" (Agenda), "Emails Críticos" (Inbox Inteligente).
+  - SAFE-TO-SPEND & CONSELHEIRO FINANCEIRO: Cota diária livre calculada em tempo real com indicador de ritmo e burn rate.
   - LIFE INSIGHTS: Componente de gráficos (recharts) exibindo tendências (ex: gastos, frequência de manutenção).
 - LIFE-LOG & LEITURA (CAPTURA DE MÍDIAS E LINKS):
   - PROCESSADOR DE LINKS: Tratamento especial para URLs do YOUTUBE (extração de título, thumbnail e resumo de áudio/vídeo) e INSTAGRAM (salvamento de posts, reels e legendas para ver depois).
@@ -37,10 +38,14 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
   - Visão Cofre de Fatos: Anotações rápidas, senhas, códigos de rastreio e notas com tags.
 - MANUTENÇÃO & ATIVOS:
   - Gestão de ativos (Carro/Casa), barra de vida útil visual, histórico e modal de novo registro.
+  - TCO POR KM: Métrica consolidada de custo total de operação por quilômetro rodado (combustível + peças e manutenções).
 - CONSUMO & DESPENSA:
   - Estoque visual e exportação de lista via Webhook para Hermes Agent/WhatsApp.
+  - SCANNER EAN-13: Leitor de código de barras com integração direta à API pública do OpenFoodFacts para autocompletar produtos.
+  - HERMES CHEF: Geração de receitas personalizadas com IA e narração em áudio.
 - VIAGENS & EXPERIÊNCIAS:
-  - Itinerário cronológico e locais salvos.
+  - Itinerário cronológico, paradas e locais salvos.
+  - SMART TRAVEL ASSISTANT: Checklist inteligente de malas/documentos por IA e estimativa de combustível baseada no Km/L do veículo cadastrado.
 - AGENDA & INTEGRATION (HERMES BRIDGE):
   - Sincronização bidirecional com calendário e inbox (filtrado pelo Hermes).
 

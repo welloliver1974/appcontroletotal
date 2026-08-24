@@ -7,13 +7,14 @@ Bem-vindo ao **Life OS Hub (AppControleTotal)**! Este manual foi criado para ser
 ## 📑 Sumário Rápido
 
 1. [⚡ Ações Rápidas no Dashboard & Biometria](#1-⚡-ações-rápidas-no-dashboard--biometria)
-2. [🧾 Scanner OCR de Despesas com Reposição na Despensa](#2-🧾-scanner-ocr-de-despesas-com-reposição-na-despensa)
-3. [🚗 Carro & Manutenção Preditiva](#3-🚗-carro--manutenção-preditiva)
-4. [🧠 Hermes Copiloto & "Pergunte ao meu Life OS"](#4-🧠-hermes-copiloto--pergunte-ao-meu-life-os)
-5. [✈️ Viagens, Modo Viagem & Importador Google Maps](#5-✈️-viagens-modo-viagem--importador-google-maps)
-6. [🛒 Despensa & Lista Rápida de Compras](#6-🛒-despensa--lista-rápida-de-compras)
-7. [🔒 Cofre de Documentos, Seguros & Notas](#7-🔒-cofre-de-documentos-seguros--notas)
-8. [📲 Instalação no Celular (PWA) & Sincronização](#8-📲-instalação-no-celular-pwa--sincronização)
+2. [💡 Conselheiro Financeiro Preditivo (Safe-to-Spend & Burn Rate)](#2-💡-conselheiro-financeiro-preditivo-safe-to-spend--burn-rate)
+3. [🧾 Scanner OCR de Despesas & Scanner de Código de Barras EAN-13](#3-🧾-scanner-ocr-de-despesas--scanner-de-código-de-barras-ean-13)
+4. [🚗 Carro, Manutenção Preditiva & TCO por Km](#4-🚗-carro-manutenção-preditiva--tco-por-km)
+5. [🧠 Hermes Copiloto & "Pergunte ao meu Life OS"](#5-🧠-hermes-copiloto--pergunte-ao-meu-life-os)
+6. [✈️ Viagens, Smart Travel Assistant & Importador Google Maps](#6-✈️-viagens-smart-travel-assistant--importador-google-maps)
+7. [🛒 Despensa, Modo Mercado & Hermes Chef](#7-🛒-despensa-modo-mercado--hermes-chef)
+8. [🔒 Cofre de Documentos, Seguros & Notas](#8-🔒-cofre-de-documentos-seguros--notas)
+9. [📲 Instalação no Celular (PWA) & Sincronização](#9-📲-instalação-no-celular-pwa--sincronização)
 
 ---
 
@@ -38,7 +39,7 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 ### 📱 Abas Rápidas de Navegação no Celular:
 * No smartphone, a Dashboard conta com um seletor no topo dos cards para acesso imediato sem rolagem excessiva:
   * **🎯 `Rotina & Agenda`**: Mostra os Hábitos de hoje, Próximos Compromissos e Diário Life-Log.
-  * **💰 `Finanças & Radar`**: Traz na hora o resumo de Finanças do Mês, Radar de Alertas prioritários e a Lista de Compras.
+  * **💰 `Finanças & Radar`**: Traz na hora o resumo de Finanças do Mês, cota de **Safe-to-Spend Diário**, Radar de Alertas prioritários e a Lista de Compras.
   * **📋 `Todos`**: Exibe a lista completa e contínua de todos os cards.
 
 ### 🔐 Desbloqueio por Biometria no Celular:
@@ -47,114 +48,94 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 
 ---
 
-## 2. 🧾 Scanner OCR Híbrido: QR Code SEFAZ, Foto Completa (IA) & Chave de Acesso (44 Dígitos)
- 
-### 3 Formas Inteligentes de Ler o Cupom:
-1. **⚡ Fotografar QR Code (Modo Rápido):**
-   * Fotografa o QR Code fiscal de perto usando a câmera nativa com foco nítido.
-   * Lê instantaneamente os dados fiscais da SEFAZ (NFC-e / SAT).
-2. **🛒 Foto Completa do Cupom (IA & Despensa):**
-   * Fotografa o cupom inteiro para o Gemini/Llama Vision ler item por item, calcular descontos e abastecer a **Despensa**.
-3. **🔑 Chave de Acesso (44 Dígitos & Código de Barras 1D):**
-   * Digite ou clique no botão **"Colar 📋"** para inserir a Chave de Consulta impressa na nota fiscal.
-   * O sistema formata automaticamente de 4 em 4 números (`3524 0800 0000...`) e extrai na mesma hora o CNPJ da loja, Estado/UF, data e tipo de nota.
-   * A câmera também reconhece o **código de barras 1D** impresso no cupom logo acima da chave.
+## 2. 💡 Conselheiro Financeiro Preditivo (Safe-to-Spend & Burn Rate)
 
-### Como funciona o fluxo:
-1. Clique em **`🧾 Escanear Cupom`** no topo do Dashboard ou em Finanças.
-2. Escolha uma das 3 opções acima (QR Code, Foto Completa ou Chave de Acesso).
-3. Os dados são carregados na tela de conferência editável:
-   * **Badge de QR Code / Chave SEFAZ:** Exibe confirmação oficial dos dados fiscais.
-   * **Estabelecimento / Loja:** Nome comercial ou CNPJ identificado (totalmente editável).
-   * **Valor Total Pago (R$):** Valor líquido final pós-desconto.
-   * **Categoria, Data e Hora:** Ajustáveis livremente.
-   * **Visualizador da Foto:** Botão para abrir a imagem original ao lado dos dados para rápida conferência.
-4. **Despensa Inteligente por Categoria:**
-   * **Alimentação (Padarias, Restaurantes, Bares, Lanches):** O estoque na Despensa fica **desmarcado por padrão** (consumo imediato). Você pode marcar caso deseje estocar algo.
-   * **Despensa (Supermercados, Atacadões, Hortifrutis):** O estoque fica **marcado por padrão** para abastecer os armários.
-   * Você pode editar produtos, alterar quantidades/unidades, remover itens com a lixeira ou clicar em **`+ Adicionar Item`**.
-5. **Salvar & Abastecer:**
-   * Clique em **`Salvar Gasto & Repor Despensa`** para registrar a despesa financeira e atualizar o estoque conforme sua escolha!
+O **Safe-to-Spend** é o seu termômetro financeiro diário para garantir que o orçamento mensal feche sempre no azul.
+
+* **Cota Livre Diária:** Calcula quantos reais você pode gastar livremente por dia até o último dia do mês: `(Orçamento Mensal - Gastos do Mês) / Dias Restantes`.
+* **Burn Rate Médio:** Exibe sua média real de gastos diários decorrida até a data atual.
+* **Indicador de Ritmo Inteligente:**
+  * 🟢 **Confortável:** Gastos controlados e cota diária equilibrada.
+  * 🟡 **Atenção:** Cota diária reduzida; desacelere gastos discricionários.
+  * 🔴 **Crítico:** Orçamento estourado ou com margem residual mínima.
+* **Onde encontrar:** No card de Finanças do Dashboard, no topo do menu **Finanças** e incluído no **Briefing Matinal do Hermes**.
 
 ---
 
-## 3. 🚗 Manutenção, Ativos & Abastecimento Integrado
+## 3. 🧾 Scanner OCR Híbrido & Scanner EAN-13 com OpenFoodFacts
+
+### 1. Leitura de Cupons Fiscais (Finanças & Reposição):
+* **⚡ Fotografar QR Code:** Lê instantaneamente dados fiscais da SEFAZ (NFC-e / SAT).
+* **🛒 Foto Completa do Cupom (IA):** Lê item por item, calcula descontos e abastece a Despensa.
+* **🔑 Chave de Acesso (44 Dígitos & Código de Barras 1D):** Digite ou cole a chave de 44 números; o app identifica o CNPJ da loja, data e valor.
+
+### 2. 🏷️ Scanner de Código de Barras de Alimentos (OpenFoodFacts na Despensa):
+* Na tela da **Despensa**, clique no botão **`Escanear EAN 🏷️`**.
+* Aponte a câmera para o código de barras de qualquer produto de supermercado (leite, café, bolachas, refrigerante, etc.).
+* O app consulta instantaneamente a base pública global do **OpenFoodFacts**, autocompletando:
+  * Nome do produto em português e marca.
+  * Foto da embalagem.
+  * Categoria inteligente (alimentos, bebidas, laticínios, limpeza, etc.).
+  * Validade estimada recomendada.
+* Basta conferir a quantidade e clicar em **`Adicionar à Despensa`**!
+
+---
+
+## 4. 🚗 Carro, Manutenção Preditiva & TCO por Km
 
 ### Como funciona:
-* **⛽ Abastecimento Inteligente com Sincronização em Finanças:**
-  * Toda vez que você abastecer, use o botão **`⛽ Abastecer`** informando a quilometragem atual do painel, litros e valor pago.
-  * O sistema calcula na hora o **Consumo Médio ($\text{km/L}$)**, **Preço por Litro** e **Custo por Km**.
-  * **Sincronização Bidirecional:** Qualquer abastecimento registrado (seja pelo botão rápido, pelo menu de Manutenção ou por cupom/gasto financeiro) é sincronizado automaticamente entre **Finanças** e o **Histórico do Veículo**.
-  * **⚡ Painel de Consumo & Combustível:** Logo abaixo dos cartões dos veículos na tela de Manutenção, um painel executivo apresenta:
-    * **Consumo Médio ($\text{km/L}$):** Rendimento real do veículo calculado entre abastecimentos.
-    * **Custo por Km ($\text{R\$/km}$):** Custo de combustível por quilômetro rodado.
-    * **Último Litro ($\text{R\$/L}$):** Preço unitário pago no último posto com litragem.
-    * **Total em Combustível:** Total acumulado investido no veículo.
-    * **Autonomia e Nível do Tanque:** Barra visual com porcentagem e estimativa de quilômetros restantes antes da reserva.
-  * **Filtros e Edição no Histórico:** Na tela de Manutenção, use os botões de filtro (`Todos`, `Abastecimentos ⛽` e `Manutenções 🔧`) para alternar os registros. Ao lado de cada item, utilize o **botão de Lápis (✏️)** para editar odômetro, valor, posto ou data a qualquer momento.
-* **🏠 Ativos e Gestão de Patrimônio (Carro, Moto, Casa, Equipamentos):**
-  * Cadastre seus veículos ou imóveis para manter o histórico de revisões, troca de óleo, seguro ou reformas.
-  * **Revisões Opcionais:** A data de próxima manutenção é 100% opcional; se não houver revisão prevista, o ativo fica como *"Em dia / Sem revisão agendada"*, sem alarmes desnecessários.
-  * **Manutenção Preditiva do Carro:** O app calcula o ritmo de rodagem ($\text{km/dia}$) e sugere a estimativa da próxima troca de óleo a cada 10.000 km.
+* **⛽ Abastecimento com Sincronização Automática:**
+  * Use o botão **`⛽ Abastecer`** informando a quilometragem atual do painel, litros e valor pago.
+  * Sincronização bidirecional instantânea entre **Finanças** e o **Histórico do Veículo**.
+* **⚡ Painel Executivo de Consumo & TCO:**
+  * **Consumo Médio ($\text{km/L}$):** Rendimento real do veículo calculado entre abastecimentos.
+  * **Custo por Km de Combustível ($\text{R\$/km}$):** Gasto específico de combustível a cada quilômetro rodado.
+  * **TCO Total / Km ($\text{R\$/km}$):** *Total Cost of Ownership* consolidando combustível + revisões preventivas, trocas de óleo e peças amortizadas pela quilometragem.
+  * **Autonomia e Nível do Tanque:** Barra visual com porcentagem e estimativa de km restantes até a reserva.
+* **🏠 Gestão de Patrimônio:** Cadastre seus veículos ou imóveis para manter o histórico de revisões, troca de óleo, seguro ou reformas.
 
 ---
 
-## 4. 🧠 Hermes Copiloto — IA Generativa 100% Livre & Inteligente
+## 5. 🧠 Hermes Copiloto — IA Generativa 100% Livre & Inteligente
 
-O **Hermes** é o seu copiloto de Inteligência Artificial generativa real (LLM aberta **GPT-OSS de 120 Bilhões de parâmetros** via Groq), alimentado com raciocínio profundo e acesso em tempo real a todos os dados do seu Life OS Hub. Ele não usa respostas prontas ou scripts fechados: ele compreende o contexto da sua vida e responde de forma empática, personalizada e dinâmica.
+O **Hermes** é o seu copiloto de Inteligência Artificial generativa real (LLM aberta **GPT-OSS de 120 Bilhões de parâmetros** via Groq), alimentado com raciocínio profundo e acesso em tempo real a todos os dados do seu Life OS Hub.
 
 ### Como conversar:
-* Clique no botão flutuante do **Hermes (`🤖`)** no canto inferior direito de qualquer tela (ou use o atalho rápido no topo).
-* Você pode digitar naturalmente ou tocar no ícone de **Microfone (`🎙️`)** para falar por voz.
-* Converse livremente como se estivesse conversando com um consultor pessoal ou assistente executivo!
-
-### Capacidades e Exemplos de Interação:
-* **💬 Conversas Livres e Abertas:** *"Hermes, boa noite! O que você achou da minha produtividade hoje?"* ou *"Me dê ideias de como economizar no mercado essa semana."*
-* **📊 Consultas Cirúrgicas dos seus Dados:** *"Quanto eu gastei de combustível até agora?"*, *"Quais contas vencem antes do dia 10?"*, *"Quantos km faltam para a próxima revisão do carro?"*
-* **⚡ Ações Automáticas por Linguagem Natural:** Você pode pedir para ele cadastrar ou agendar algo diretamente pelo chat:
-  - *"Adicione 3 caixas de leite na despensa."*
-  - *"Registre um gasto de R$ 35,00 com café no cartão."*
-  - *"Agende uma consulta médica para quarta-feira às 14:00."*
-* **🌙 Debriefing Noturno & Briefing Matinal:** Peça um resumo do seu dia ou um panorama do que vem pela frente amanhã.
+* Clique no botão flutuante do **Hermes (`🤖`)** no canto inferior direito de qualquer tela (ou use o atalho no topo).
+* Digite naturalmente ou toque no ícone de **Microfone (`🎙️`)** para falar por voz.
+* O Hermes executa ações automáticas no banco (inserir compras, despesas, eventos e diário) conforme solicitado.
 
 ---
 
-## 5. ✈️ Viagens, Modo Viagem & Importador Google Maps
+## 6. ✈️ Viagens, Smart Travel Assistant & Importador Google Maps
 
-### 🏷️ Tipos de Viagem:
-Ao criar ou importar uma viagem, defina o tipo:
-* **💼 Viagem a Trabalho:** Foco no controle de Km rodados e paradas comerciais (sem poluição com relatórios de compras pessoais).
-* **👨‍👩‍👧‍👦 Viagem em Família:** Ativa o botão **`📊 Gastos da Família`** para cruzar as despesas de hotéis, passeios e restaurantes e gerar um relatório formatado para o WhatsApp.
-* **🌴 Viagem Pessoal / Lazer.**
+### ✈️ Smart Travel Assistant (Piloto Automático de Viagens com IA):
+* Em qualquer card de viagem, clique em **`IA Piloto ✈️`**.
+* **Checklist Inteligente de Bagagem:** Lista de malas e documentos personalizada para o estilo da viagem (praia, trabalho, família), com caixas de seleção persistentes e botão para adicionar itens.
+* **Estimativa de Combustível e Pedágios:** Cruza a distância da viagem com a média de km/L do seu carro cadastrado para calcular a litragem necessária e o custo total previsto.
+* **Disparo para o Telegram:** Envie o itinerário e o checklist completo para o seu Telegram com 1 toque.
 
 ### 📥 Importar do Google Maps (Linha do Tempo):
-1. No menu **Viagens**, clique no botão **`📥 Importar Google Maps`**.
-2. Selecione o arquivo `.json` ou `.kml` exportado da sua Linha do Tempo do Google.
-3. O app extrai o destino, datas, Km percorrido e cria as paradas do itinerário dia a dia automaticamente.
-
-### 🌟 Modo Viagem no Dashboard:
-Durante as datas de uma viagem ativa, o topo do Dashboard exibe o painel da viagem com paradas do dia, conversor de moeda (USD/EUR ➔ BRL) e atalhos rápidos de documentos.
+* Clique em **`📥 Importar Google Maps`** e selecione o arquivo `.json` ou `.kml` para gerar o itinerário dia a dia automaticamente.
 
 ---
 
-## 6. 🛒 Despensa & Lista Rápida de Compras
+## 7. 🛒 Despensa, Modo Mercado & Hermes Chef
 
-### Na tela inicial (Dashboard):
-* O card **Lista de Compras & Despensa** monitora automaticamente itens que estão acabando (`quantidade <= limite mínimo`) ou com vencimento nos próximos 7 dias.
-* Quando estiver no mercado, clique no botão **`✓ Comprado`** no item para atualizar o estoque na hora.
-* Use o campo rápido para adicionar novos itens que você lembrou de comprar.
+* **👨‍🍳 Hermes Chef:** A IA analisa os itens disponíveis e prestes a vencer para sugerir 3 receitas práticas com áudio narrado passo a passo.
+* **🛒 Modo Supermercado:** Checklist interativo com itens em falta para ticar no carrinho e atualizar o estoque com 1 toque ao concluir as compras.
+* **🏷️ Scanner EAN-13:** Cadastro ultrarrápido apontando a câmera para os códigos de barra dos mantimentos.
 
 ---
 
-## 7. 🔒 Cofre de Documentos, Seguros & Notas
+## 8. 🔒 Cofre de Documentos, Seguros & Notas
 
 Acesse pelo menu **Life-Log ➔ Cofre de Documentos (`DocVault`)**:
-* Guarde apólices de seguro (carro, residencial, vida), cartões de vacina, cópias de CNH/RG e contratos.
-* Ficam protegidos e acessíveis mesmo sem conexão de internet (offline-first).
+* Guarde apólices de seguro (carro, residencial, vida), cartões de vacina, cópias de CNH/RG e contratos, acessíveis mesmo sem conexão de internet (offline-first).
 
 ---
 
-## 8. 📲 Instalação no Celular (PWA) & Sincronização
+## 9. 📲 Instalação no Celular (PWA) & Sincronização
 
 ### Como instalar no celular:
 * **No Android (Chrome):** Toque no banner no topo do app ou no menu dos 3 pontinhos ➔ **"Instalar Aplicativo"**.

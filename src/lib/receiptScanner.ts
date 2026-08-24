@@ -43,7 +43,7 @@ function normalizeBrazilianDate(dateStr?: string): string {
   }
 
   // DD/MM/YYYY or DD-MM-YYYY
-  const dmyMatch = clean.match(/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})/)
+  const dmyMatch = clean.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/)
   if (dmyMatch) {
     const day = dmyMatch[1].padStart(2, '0')
     const month = dmyMatch[2].padStart(2, '0')
@@ -188,7 +188,7 @@ function parseReceiptResponse(raw: string, existingQr?: SefazQrCodeData | null):
 
   const dateMatch =
     text.match(/"(?:date|data)"\s*:\s*"([^"]+)"/i) ||
-    text.match(/(\d{2}[\/\.-]\d{2}[\/\.-]\d{2,4})/)
+    text.match(/(\d{2}[/.-]\d{2}[/.-]\d{2,4})/)
   const date = dateMatch ? normalizeBrazilianDate(dateMatch[1]) : todayIso()
 
   const timeMatch =

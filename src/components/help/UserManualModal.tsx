@@ -67,19 +67,41 @@ const MANUAL_SECTIONS: ManualSection[] = [
     ],
   },
   {
+    id: 'safe-to-spend',
+    title: 'Safe-to-Spend & Conselheiro Financeiro',
+    icon: Sparkles,
+    color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+    badge: 'Preditivo',
+    content: [
+      {
+        subtitle: '💡 Cota Diária Livre (Safe-to-Spend)',
+        text: 'Calcula exatamente quanto você pode gastar por dia até o final do mês para não estourar o orçamento, dividindo a folga orçamentária pelos dias restantes.',
+        tip: 'O indicador no Dashboard mostra se o seu ritmo está Confortável 🟢, em Atenção 🟡 ou Crítico 🔴.',
+      },
+      {
+        subtitle: '🔥 Burn Rate Diário',
+        text: 'Acompanhe a sua média diária real de gastos já realizada no mês e compare com a meta permitida.',
+      },
+    ],
+  },
+  {
     id: 'car-maint',
-    title: 'Manutenção Preditiva do Carro',
+    title: 'Manutenção Preditiva & TCO por Km',
     icon: Car,
     color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
     badge: 'Automotivo',
     content: [
       {
-        subtitle: '⛽ Registro de Abastecimento',
-        text: 'Toda vez que abastecer, informe o odômetro (Km) do painel e os litros. O sistema calcula a média de consumo real (Km/L) e o ritmo de rodagem diário (Km/dia).',
+        subtitle: '⛽ Registro de Abastecimento & Consumo Médio',
+        text: 'Toda vez que abastecer, informe o odômetro (Km) do painel e os litros. O sistema calcula a média real (Km/L) e sincroniza automaticamente com Finanças.',
       },
       {
-        subtitle: '🔧 Previsão de Troca de Óleo e Revisões',
-        text: 'O algoritmo cruza sua média de Km/dia com o odômetro e calcula a data exata da próxima revisão periódica de 10.000 km, exibindo um alerta antecipado no Briefing Matinal do Hermes.',
+        subtitle: '🚗 TCO por Km (Custo Total de Posse)',
+        text: 'O painel de desempenho calcula o custo consolidado de combustível + revisões e trocas de peças amortizadas por cada quilômetro rodado.',
+      },
+      {
+        subtitle: '🔧 Previsão de Troca de Óleo',
+        text: 'O algoritmo cruza sua média de Km/dia com o odômetro e calcula a estimativa da próxima revisão periódica.',
       },
     ],
   },
@@ -92,50 +114,50 @@ const MANUAL_SECTIONS: ManualSection[] = [
     content: [
       {
         subtitle: '🤖 RAG Local Multi-Coleções',
-        text: 'O Hermes tem acesso em tempo real às finanças do mês, contas fixas pendentes, agenda dos próximos 3 dias, despensa, veículos e seguros.',
+        text: 'O Hermes tem acesso em tempo real às finanças do mês, cota de Safe-to-Spend, contas fixas pendentes, agenda dos próximos 3 dias, despensa, veículos e seguros.',
       },
       {
         subtitle: '💬 Exemplos de Perguntas',
-        text: 'Experimente perguntar: "Quanto gastei este mês?", "Quais contas vencem essa semana?", "O que está faltando na despensa?" ou "Quando é a revisão do meu carro?".',
+        text: 'Experimente perguntar: "Quanto posso gastar hoje?", "Quais contas vencem essa semana?", "O que está faltando na despensa?" ou "Quando é a revisão do meu carro?".',
         tip: 'Você pode usar o botão de Microfone (🎙️) para falar em vez de digitar.',
       },
     ],
   },
   {
     id: 'trips-maps',
-    title: 'Viagens, Google Maps & Relatórios',
+    title: 'Viagens & Smart Travel Assistant',
     icon: Compass,
     color: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
     badge: 'Viagens & Despesas',
     content: [
       {
-        subtitle: '💼 Viagem a Trabalho vs 👨‍👩‍👧‍👦 Viagem em Família',
-        text: 'Viagens a trabalho focam em Km rodados e paradas comerciais. Viagens em família ativam o botão "Gastos da Família" com relatório consolidado de despesas.',
+        subtitle: '✈️ Piloto Automático de Viagens com IA',
+        text: 'Clique no botão "IA Piloto ✈️" em qualquer viagem para ter um checklist inteligente de malas adaptado ao destino (praia, trabalho, família), estimativa de combustível baseada no Km/L do seu carro e envio direto para o Telegram.',
       },
       {
         subtitle: '🗺️ Importador da Linha do Tempo (Google Maps)',
         text: 'Em Viagens ➔ "Importar Google Maps", selecione o arquivo .json ou .kml da Linha do Tempo para gerar todo o itinerário e paradas automaticamente.',
       },
-      {
-        subtitle: '✈️ Modo Viagem Ativo no Dashboard',
-        text: 'Durante as datas de uma viagem ativa, o topo da Dashboard exibe o painel com as paradas de hoje, conversor de moedas (USD/EUR ➔ BRL) e atalho de seguros.',
-      },
     ],
   },
   {
     id: 'pantry-shopping',
-    title: 'Despensa & Lista de Compras',
+    title: 'Despensa, EAN-13 & Hermes Chef',
     icon: ShoppingBag,
     color: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
     badge: 'Casa & Estoque',
     content: [
       {
-        subtitle: '🛒 Card Inteligente na Dashboard',
-        text: 'Monitora produtos com estoque abaixo do limite ou vencimento nos próximos 7 dias. No mercado, clique em "✓ Comprado" para repor com 1 toque.',
+        subtitle: '🏷️ Scanner de Código de Barras (OpenFoodFacts)',
+        text: 'Aponte a câmera para o código de barras de qualquer produto de mercado. O app consulta a base global e preenche nome, marca, foto e validade estimada automaticamente.',
       },
       {
-        subtitle: '📦 Categorias Organizadas',
-        text: 'Separe mantimentos em Alimentos, Bebidas, Limpeza, Higiene e Farmácia para controle completo.',
+        subtitle: '👨‍🍳 Hermes Chef: O que cozinhar hoje?',
+        text: 'Clique em Hermes Chef na despensa para a IA sugerir receitas deliciosas aproveitando os ingredientes que você já tem em casa e narrando o modo de preparo por áudio.',
+      },
+      {
+        subtitle: '🛒 Modo Mercado Interativo',
+        text: 'Abra a lista de compras em formato de checklist no celular e dê baixa nos produtos conforme coloca no carrinho.',
       },
     ],
   },

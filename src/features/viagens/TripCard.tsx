@@ -1,4 +1,4 @@
-import { Clock, DollarSign, Pencil, Plane, Plus, Route, Trash2 } from 'lucide-react'
+import { Clock, DollarSign, Pencil, Plane, Plus, Route, Sparkles, Trash2 } from 'lucide-react'
 import type { Trip, TripStop } from '@/data/types'
 import { Button } from '@/components/ui/Button'
 import { IconTile } from '@/components/ui/primitives'
@@ -17,6 +17,7 @@ export function TripCard({
   onEditStop,
   onRemoveStop,
   onOpenReport,
+  onOpenAssistant,
 }: {
   trip: Trip
   onEdit: () => void
@@ -25,6 +26,7 @@ export function TripCard({
   onEditStop: (stop: TripStop) => void
   onRemoveStop: (stopId: string) => void
   onOpenReport?: (trip: Trip) => void
+  onOpenAssistant?: (trip: Trip) => void
 }) {
   // Two independent guards: one for the trip itself, one shared by stop rows.
   const { pendingDelete: pendingTrip, request: requestTrip } = usePendingDelete()
@@ -146,10 +148,23 @@ export function TripCard({
       )}
 
       <div className="mt-auto flex items-center justify-between gap-2 border-t border-zinc-800/70 pt-2">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <Button variant="soft" size="sm" className="h-7 px-2 text-[11px]" onClick={onNewStop}>
             <Plus className="h-3.5 w-3.5" /> Parada
           </Button>
+
+          {onOpenAssistant && (
+            <Button
+              variant="soft"
+              size="sm"
+              className="h-7 px-2 text-[11px] bg-cyan-500/10 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 gap-1 font-medium"
+              onClick={() => onOpenAssistant(trip)}
+              title="Abrir Assistente Inteligente com IA"
+            >
+              <Sparkles className="h-3 w-3 text-cyan-400" />
+              <span>IA Piloto</span>
+            </Button>
+          )}
 
           {trip.kind === 'familia' && onOpenReport && (
             <Button

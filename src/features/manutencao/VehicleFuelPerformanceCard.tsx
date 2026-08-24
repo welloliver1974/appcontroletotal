@@ -18,10 +18,10 @@ export function VehicleFuelPerformanceCard({
   onOpenFuelModal,
 }: VehicleFuelPerformanceCardProps) {
   const isVehicle = asset.category === 'carro' || asset.category === 'moto'
-  if (!isVehicle) return null
 
   // Filtra registros de combustível deste veículo
   const fuelRecords = useMemo(() => {
+    if (!isVehicle) return []
     return records
       .filter((r) => {
         const lower = r.title.toLowerCase()
@@ -38,16 +38,16 @@ export function VehicleFuelPerformanceCard({
         )
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [records, asset.id])
+  }, [records, asset.id, isVehicle])
 
   // Autonomia e tanque
   const autonomy = useMemo(() => {
     return calculateFuelAutonomy(asset.id, records)
   }, [asset.id, records])
 
-  // Cálculos consolidados
+  // Cálculos consolidados (Combustível + TCO Total)
   const stats = useMemo(() => {
-    if (fuelRecords.length === 0) return null
+    if (!isVehicle || fuelRecords.length === 0) return null
 
     const latest = fuelRecords[0]
     const latestCost = Number(latest.cost) || 0
@@ -76,6 +76,23 @@ export function VehicleFuelPerformanceCard({
       costPerKm = pricePerLiter / avgKmPerLiter
     }
 
+    const totalFuelSpent = fuelRecords.reduce((sum, r) => sum + (Number(r.cost) || 0), 0)
+    
+    // Manutenções gerais deste veículo (peças, revisões, etc)
+    const serviceRecords = records.filter(
+      (r) => r.assetId === asset.id && !fuelRecords.some((fr) => fr.id === r.id),
+    )
+    const totalServiceSpent = serviceRecords.reduce((sum, r) => sum + (Number(r.cost) || 0), 0)
+    const totalInvested = totalFuelSpent + totalServiceSpent
+
+    // TCO por Km estimado (Combustível/km + custo de manutenção amortizado)
+    let tcoPerKm: number | null = null
+    if (costPerKm) {
+      // Adiciona uma taxa média de manutenção amortizada
+      const maintWeight = totalFuelSpent > 0 ? totalServiceSpent / totalFuelSpent : 0
+      tcoPerKm = Math.round((costPerKm * (1 + Math.min(1.5, maintWeight))) * 100) / 100
+    }
+
     return {
       latest,
       latestCost,
@@ -83,9 +100,15 @@ export function VehicleFuelPerformanceCard({
       pricePerLiter,
       avgKmPerLiter,
       costPerKm,
-      totalFuelSpent: fuelRecords.reduce((sum, r) => sum + (Number(r.cost) || 0), 0),
+      tcoPerKm,
+      totalFuelSpent,
+      totalServiceSpent,
+      totalInvested,
+      serviceCount: serviceRecords.length,
     }
-  }, [fuelRecords])
+  }, [fuelRecords, records, asset.id, isVehicle])
+
+  if (!isVehicle) return null
 
   return (
     <Card className="p-4 sm:p-5 border-amber-500/25 bg-gradient-to-br from-amber-500/[0.07] via-zinc-900/60 to-zinc-950/80 shadow-lg shadow-black/20">
@@ -170,19 +193,21 @@ export function VehicleFuelPerformanceCard({
           </span>
         </div>
 
-        {/* 4. Total Investido em Combustível */}
-        <div className="rounded-xl border border-zinc-700/60 bg-zinc-800/40 p-3">
+        {/* 4. Total Investido em Combustível & TCO */}
+        <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/[0.05] p-3">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400">
-              Total em Combustível
+            <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-300">
+              TCO Total / Km
             </span>
-            <Gauge className="h-3.5 w-3.5 text-zinc-400" />
+            <Gauge className="h-3.5 w-3.5 text-indigo-400" />
           </div>
-          <p className="font-num font-display text-lg sm:text-xl font-bold text-zinc-100 mt-1">
-            {stats ? formatBRL(stats.totalFuelSpent) : 'R$ 0,00'}
+          <p className="font-num font-display text-lg sm:text-xl font-bold text-indigo-200 mt-1">
+            {stats?.tcoPerKm ? `R$ ${stats.tcoPerKm.toFixed(2)}` : stats ? formatBRL(stats.totalFuelSpent) : 'R$ 0,00'}
           </p>
-          <span className="text-[10px] text-zinc-500 mt-0.5 block truncate">
-            {fuelRecords.length} abastecimento{fuelRecords.length === 1 ? '' : 's'}
+          <span className="text-[10px] text-zinc-400 mt-0.5 block truncate">
+            {stats && stats.totalServiceSpent > 0
+              ? `Combustível + ${formatBRL(stats.totalServiceSpent)} serviços`
+              : `${fuelRecords.length} abastecimento${fuelRecords.length === 1 ? '' : 's'}`}
           </span>
         </div>
       </div>

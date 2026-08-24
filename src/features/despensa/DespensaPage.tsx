@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChefHat, LayoutGrid, List, Plus, Search, ShoppingBasket, ShoppingCart, X } from 'lucide-react'
+import { Barcode, ChefHat, LayoutGrid, List, Plus, Search, ShoppingBasket, ShoppingCart, X } from 'lucide-react'
 import { MODULE_BY_ID } from '@/lib/modules'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -14,6 +14,7 @@ import { PantryListView } from './PantryListView'
 import { PantryItemForm, type PantryItemDraft } from './PantryItemForm'
 import { SupermarketModeModal } from './SupermarketModeModal'
 import { HermesChefModal } from './HermesChefModal'
+import { PantryBarcodeScannerModal } from './PantryBarcodeScannerModal'
 import { WebhookExport } from './WebhookExport'
 import { categories, isExpired, isExpiringSoon, isLow, sortItems } from './despensaUtils'
 
@@ -60,6 +61,7 @@ export function DespensaPage() {
   const { data, setItems } = useDespensaData()
   const [supermarketOpen, setSupermarketOpen] = useState(false)
   const [chefOpen, setChefOpen] = useState(false)
+  const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false)
   const [form, setForm] = useState<FormState>(null)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [statusTab, setStatusTab] = useState<StatusTab>('all')
@@ -232,6 +234,17 @@ export function DespensaPage() {
                       {neededCount}
                     </span>
                   )}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setBarcodeScannerOpen(true)}
+                  className="h-8 px-2.5 text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/25 hover:bg-indigo-500/20 gap-1.5 font-medium"
+                  title="Escanear código de barras EAN-13 com OpenFoodFacts"
+                >
+                  <Barcode className="h-3.5 w-3.5 text-indigo-400" />
+                  <span className="hidden sm:inline">Escanear</span> EAN
                 </Button>
 
                 <Button variant="primary" size="sm" onClick={() => setForm({ mode: 'new' })}>
@@ -427,6 +440,18 @@ export function DespensaPage() {
           open={chefOpen}
           items={data?.items ?? []}
           onClose={() => setChefOpen(false)}
+        />
+      )}
+
+      {barcodeScannerOpen && (
+        <PantryBarcodeScannerModal
+          open={barcodeScannerOpen}
+          onClose={() => setBarcodeScannerOpen(false)}
+          onAddProduct={async (draft) => {
+            if (!data) return
+            const created = await api.create<PantryItem>('pantry', draft)
+            setItems([created, ...data.items])
+          }}
         />
       )}
     </div>

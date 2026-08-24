@@ -43,7 +43,7 @@ export async function generateFastAIBriefing(data: DashboardData): Promise<strin
     .map((a) => ({ asset: a, stats: calculateVehiclePredictiveStats(a.id, data.maintenance || []) }))
     .filter((v) => v.stats && v.stats.hasEnoughData && (v.stats.urgency === 'critical' || v.stats.urgency === 'warning'))
 
-  // 5. Finanças do mês (somatório das categorias semanais)
+  // 5. Finanças do mês e Safe-to-Spend
   const totalMonthSpent = (data.spending || []).reduce(
     (acc, s) =>
       acc +
@@ -52,6 +52,13 @@ export async function generateFastAIBriefing(data: DashboardData): Promise<strin
       (Number(s.viagens) || 0),
     0,
   )
+
+  const savedBudget = Number(localStorage.getItem('act.financas.monthlyBudget')) || 3500
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const daysRemaining = Math.max(1, daysInMonth - now.getDate() + 1)
+  const remainingBudget = Math.max(0, savedBudget - totalMonthSpent)
+  const safeToSpendPerDay = remainingBudget / daysRemaining
+  const safeToSpendText = `R$ ${safeToSpendPerDay.toFixed(2)}/dia livres (${daysRemaining} dias restantes)`
 
   // Identifica chave de API para geração com IA
   const groqKey =
@@ -124,7 +131,7 @@ NÃO use marcadores com hífen ou tópicos — escreva em texto corrido e elegan
 - Clima: ${weatherText}
 - Agenda Hoje: ${todayText}
 - Agenda Amanhã: ${tomorrowText}
-- Finanças do Mês: R$ ${totalMonthSpent.toFixed(2)} gastos registrados
+- Finanças do Mês: R$ ${totalMonthSpent.toFixed(2)} gastos registrados (Cota Segura: ${safeToSpendText})
 - Despensa: ${pantryText}
 - Manutenção: ${maintenanceText}
 

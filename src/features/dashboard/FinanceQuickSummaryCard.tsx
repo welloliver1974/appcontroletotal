@@ -53,11 +53,14 @@ export function FinanceQuickSummaryCard() {
   // Calculate pending fixed bills for this month
   const pendingBills = fixedBills.filter((b) => !(b.paidMonths || []).includes(currentMonthKey))
   const pendingBillsTotal = pendingBills.reduce((acc, b) => acc + (Number(b.amount) || 0), 0)
-  const paidBills = fixedBills.filter((b) => (b.paidMonths || []).includes(currentMonthKey))
 
-  // Budget progress
+  // Budget progress & Safe-to-Spend
   const budgetUsedPct = Math.min(100, Math.round((totalSpent / monthlyBudget) * 100))
   const remainingBudget = Math.max(0, monthlyBudget - totalSpent)
+  
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const daysRemaining = Math.max(1, daysInMonth - now.getDate() + 1)
+  const safeToSpendPerDay = Math.max(0, remainingBudget / daysRemaining)
 
   if (loading) return null
 
@@ -70,10 +73,10 @@ export function FinanceQuickSummaryCard() {
           </div>
           <div className="min-w-0">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300 truncate">
-              Finanças do Mês
+              Finanças & Safe-to-Spend
             </h4>
             <p className="text-[11px] text-zinc-500 truncate">
-              Controle de gastos e orçamento
+              Cota livre: <strong className="text-indigo-400 font-num">{formatBRL(safeToSpendPerDay)}/dia</strong> ({daysRemaining}d restantes)
             </p>
           </div>
         </div>
@@ -87,8 +90,8 @@ export function FinanceQuickSummaryCard() {
         </Link>
       </div>
 
-      {/* Grid de Métricas Diretas */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-2.5 w-full min-w-0">
+      {/* Grid de Métricas Diretas: Total Gasto, Contas a Pagar e Safe-to-Spend */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5 w-full min-w-0">
         <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-2.5 sm:p-3 space-y-0.5 sm:space-y-1 min-w-0 overflow-hidden">
           <span className="text-[9.5px] sm:text-[10px] font-semibold uppercase tracking-wider text-zinc-500 flex items-center gap-1 truncate">
             <DollarSign className="h-3 w-3 text-emerald-400 shrink-0" />
@@ -111,7 +114,20 @@ export function FinanceQuickSummaryCard() {
             {formatBRL(pendingBillsTotal)}
           </p>
           <p className="text-[9.5px] sm:text-[10px] text-zinc-500 truncate">
-            {pendingBills.length} pendentes · {paidBills.length} pagas
+            {pendingBills.length} pendentes
+          </p>
+        </div>
+
+        <div className="col-span-2 sm:col-span-1 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.06] p-2.5 sm:p-3 space-y-0.5 sm:space-y-1 min-w-0 overflow-hidden">
+          <span className="text-[9.5px] sm:text-[10px] font-semibold uppercase tracking-wider text-indigo-400 flex items-center gap-1 truncate">
+            <Wallet className="h-3 w-3 text-indigo-400 shrink-0" />
+            <span className="truncate">Livre / Dia</span>
+          </span>
+          <p className="text-sm sm:text-base font-bold font-num text-indigo-300 truncate">
+            {formatBRL(safeToSpendPerDay)}
+          </p>
+          <p className="text-[9.5px] sm:text-[10px] text-indigo-400/80 truncate">
+            até fim do mês
           </p>
         </div>
       </div>
