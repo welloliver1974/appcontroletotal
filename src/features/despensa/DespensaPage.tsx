@@ -176,35 +176,35 @@ export function DespensaPage() {
                 </h3>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center flex-wrap sm:flex-nowrap gap-1.5 overflow-x-auto pb-1 sm:pb-0">
                 {/* Alternador Lista / Cards */}
-                <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-1 gap-1">
+                <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 gap-0.5 shrink-0 h-8">
                   <button
                     type="button"
                     onClick={() => handleToggleView('list')}
                     className={cn(
-                      'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
+                      'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors h-7',
                       viewMode === 'list'
                         ? 'bg-zinc-800 text-purple-300 shadow-sm'
                         : 'text-zinc-400 hover:text-zinc-200',
                     )}
                     title="Visualização em Lista Compacta"
                   >
-                    <List className="h-3.5 w-3.5" />
+                    <List className="h-3.5 w-3.5 shrink-0" />
                     <span>Lista</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleToggleView('grid')}
                     className={cn(
-                      'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
+                      'flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors h-7',
                       viewMode === 'grid'
                         ? 'bg-zinc-800 text-purple-300 shadow-sm'
                         : 'text-zinc-400 hover:text-zinc-200',
                     )}
                     title="Visualização em Cards"
                   >
-                    <LayoutGrid className="h-3.5 w-3.5" />
+                    <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
                     <span>Cards</span>
                   </button>
                 </div>
@@ -213,24 +213,24 @@ export function DespensaPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setChefOpen(true)}
-                  className="h-8 px-2.5 text-xs bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 gap-1.5 font-medium"
+                  className="h-8 px-2.5 text-xs bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 gap-1.5 font-medium whitespace-nowrap shrink-0"
                   title="Sugerir receitas inteligentes com itens da despensa"
                 >
-                  <ChefHat className="h-3.5 w-3.5 text-amber-400" />
-                  <span>Hermes Chef</span>
+                  <ChefHat className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                  <span className="hidden sm:inline">Hermes</span> Chef
                 </Button>
 
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSupermarketOpen(true)}
-                  className="h-8 px-2.5 text-xs bg-purple-500/10 text-purple-300 border border-purple-500/20 hover:bg-purple-500/20 gap-1.5 font-medium"
+                  className="h-8 px-2.5 text-xs bg-purple-500/10 text-purple-300 border border-purple-500/20 hover:bg-purple-500/20 gap-1.5 font-medium whitespace-nowrap shrink-0"
                   title="Abrir checklist interativo do supermercado"
                 >
-                  <ShoppingCart className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Modo Mercado</span>
+                  <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
+                  <span className="hidden sm:inline">Modo</span> Mercado
                   {neededCount > 0 && (
-                    <span className="h-4 min-w-4 px-1 rounded-full bg-purple-500 text-zinc-950 font-bold text-[10px] flex items-center justify-center">
+                    <span className="h-4 min-w-4 px-1 rounded-full bg-purple-500 text-zinc-950 font-bold text-[10px] flex items-center justify-center ml-0.5">
                       {neededCount}
                     </span>
                   )}
@@ -240,15 +240,20 @@ export function DespensaPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setBarcodeScannerOpen(true)}
-                  className="h-8 px-2.5 text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/25 hover:bg-indigo-500/20 gap-1.5 font-medium"
+                  className="h-8 px-2.5 text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/25 hover:bg-indigo-500/20 gap-1.5 font-medium whitespace-nowrap shrink-0"
                   title="Escanear código de barras EAN-13 com OpenFoodFacts"
                 >
-                  <Barcode className="h-3.5 w-3.5 text-indigo-400" />
+                  <Barcode className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
                   <span className="hidden sm:inline">Escanear</span> EAN
                 </Button>
 
-                <Button variant="primary" size="sm" onClick={() => setForm({ mode: 'new' })}>
-                  <Plus className="h-3.5 w-3.5" /> Novo item
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setForm({ mode: 'new' })}
+                  className="h-8 px-3 text-xs whitespace-nowrap shrink-0 gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5 shrink-0" /> Novo item
                 </Button>
               </div>
             </div>
