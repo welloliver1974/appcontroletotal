@@ -827,7 +827,26 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 5. **🧘 Lifelog Voice Memo Instantâneo com Análise de Humor por IA:**
    - Botão rápido de gravação de áudio no Dashboard: você fala seus pensamentos ou como foi o dia, o Hermes transcreve, sintetiza as conquistas do dia e classifica seu nível de energia e humor no gráfico de bem-estar.
 
+## 📋 48. Backlog de Refatoração & Limpeza Técnica (Anotado para Próxima Sprint)
+
+*Itens auditados e validados no `error.md` para posterior resolução sem impacto funcional imediato:*
+
+1. **🔴 Correção de Hooks React em `VehicleFuelPerformanceCard.tsx`:**
+   - Mover os 3 hooks `useMemo` (linhas 24, 44 e 49) para antes do `if (!isVehicle) return null;` para cumprir rigorosamente as `rules-of-hooks` do React.
+2. **🟡 Limpeza de Warnings de Regex em `receiptScanner.ts`:**
+   - Remover escapes desnecessários `\/` e `\.` dentro de colchetes nas linhas 46 e 191.
+3. **📁 Limpeza de Arquivos e Funções Órfãs:**
+   - Integrar ou remover `src/lib/safeApi.ts` e `src/components/auth/EmergencyGate.tsx`.
+   - Limpar exports não utilizados (`pendingSyncCount` em `backgroundSync.ts` e `triggerImmediateBriefingDispatch` em `hermesScheduler.ts`).
+4. **📦 Desduplicação de Manifest PWA:**
+   - Remover arquivo duplicado em `public/` mantendo apenas `manifest.webmanifest`.
+5. **🧹 Otimização de Dependências:**
+   - Desinstalar o pacote `canvas` do `package.json` (resíduo sem uso no front-end).
+6. **🔐 Variáveis de Ambiente:**
+   - Atualizar `.env.example` para documentar `VITE_GROQ_API_KEY`, `VITE_LLM_API_KEY`, `VITE_HERMES_WEBHOOK_URL` e `VITE_HERMES_API_KEY`.
+
 ---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 
