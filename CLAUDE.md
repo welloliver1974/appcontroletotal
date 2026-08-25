@@ -82,6 +82,10 @@ api/            # Vercel Serverless Functions
 9. **Sincronização de Combustível/Manutenção com Finanças & Orçamento ([src/lib/maintFinanceSync.ts](file:///e:/Apps/AppControleTotal/src/lib/maintFinanceSync.ts)):**
    - Lançamento automático de abastecimentos e manutenções na tabela de despesas (`spendingEntries`) e desconto imediato no orçamento da Dashboard.
    - Sincronizador retroativo de registros anteriores e flexibilização de ativos (`nextMaintenance` opcional, categorias: carro, moto, casa, outro).
+10. **Índice de Bem-Estar / Humor no Life Insights ([src/features/dashboard/LifeInsights.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/LifeInsights.tsx)):**
+    - 3º card de tendência com curva de humor histórica (1 a 5) baseada no `lifeLog` / Voice Notes e emojis representativos.
+11. **Modo Supermercado com Gestão de Custos & Sincronização com Finanças ([src/features/despensa/SupermarketModeModal.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/SupermarketModeModal.tsx)):**
+    - Cálculo de total previsto vs. subtotal em tempo real do carrinho, ajuste inline de preços e lançamento automático do gasto nas despesas (`spendingEntries`).
 
 ## Validação
 

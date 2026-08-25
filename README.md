@@ -41,7 +41,9 @@ npm run lint         # oxlint
 ## 🌟 Funcionalidades Avançadas & IA
 
 * **💡 Safe-to-Spend & Conselheiro Financeiro Preditivo:** Cálculo diário em tempo real da cota livre disponível até o final do mês, ritmo de gastos (*Burn Rate*) e status (🟢 Confortável, 🟡 Atenção e 🔴 Crítico) no Dashboard e Finanças.
-* **🏷️ Scanner EAN-13 com OpenFoodFacts na Despensa:** Leitura de código de barras de alimentos pela câmera ou busca manual, com autopreenchimento instantâneo de nome, foto, marca, categoria e validade média.
+* **🧘 Life Insights (Índice de Bem-Estar & Humor):** Tendência de 8 semanas cruzando o humor e energia registrados no Life-Log e notas de voz com notas de 1.0 a 5.0 e classificação visual por emojis.
+* **🏷️ Scanner EAN-13 com OpenFoodFacts & Preços na Despensa:** Leitura de código de barras pela câmera ou busca manual, com autopreenchimento instantâneo de nome, foto, marca, categoria, validade e gestão de preços estimados.
+* **🛒 Modo Supermercado com Gestão de Custos & Sincronização com Finanças:** Checklist móvel com cálculo de subtotal no carrinho em tempo real, ajuste de preços pagos na hora e lançamento automático do gasto total nas despesas de Finanças (`spendingEntries`).
 * **✈️ Smart Travel Assistant (Piloto Automático de Viagens):** Checklist inteligente de bagagem e documentos por estilo de viagem com persistência local, cálculo de consumo e combustível baseado no rendimento real (km/L) do carro cadastrado e envio direto para o Telegram Bot.
 * **🚗 TCO Veicular por Km:** Cálculo do Custo Total de Posse (*Total Cost of Ownership*) por km rodado consolidando abastecimentos, peças e manutenções.
 * **Hermes Agent Copilot:** Assistente integrado com suporte a voz, chat flutuante e execução de ações em linguagem natural.
@@ -53,7 +55,6 @@ npm run lint         # oxlint
   - Baixa de compras: *"comprei coca zero"* ➔ dá baixa e atualiza o estoque.
   - Gastos, eventos e notas são categorizados automaticamente.
 * **Lembretes 15 Minutos Antes:** Notificações PWA disparadas antes de compromissos da agenda.
-* **Modo Supermercado Interativo:** Checklist de compras de alta sensibilidade para uso móvel no mercado com 1-click restock.
 
 ---
 

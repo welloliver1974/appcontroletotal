@@ -1,7 +1,7 @@
 import { Minus, PackageOpen, Pencil, Plus, Trash2 } from 'lucide-react'
 import type { PantryItem } from '@/data/types'
 import { Button } from '@/components/ui/Button'
-import { cn, daysUntil } from '@/lib/utils'
+import { cn, daysUntil, formatBRL } from '@/lib/utils'
 import { usePendingDelete } from '@/lib/usePendingDelete'
 import { isExpired, isExpiringSoon, isLow } from './despensaUtils'
 
@@ -24,9 +24,9 @@ export function PantryListView({ items, onEdit, onRemove, onUpdateQty }: PantryL
   const { pendingDelete, request } = usePendingDelete()
 
   return (
-    <div className="card divide-y divide-zinc-800/60 overflow-hidden">
+    <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 backdrop-blur-xl overflow-hidden divide-y divide-zinc-800/60 shadow-xl shadow-black/20">
       {/* Header da Tabela (visível em desktop/tablet) */}
-      <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4 py-2.5 bg-zinc-900/60 text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+      <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4, py-2.5 bg-zinc-900/60 text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
         <div className="col-span-4">Item & Categoria</div>
         <div className="col-span-3 text-center">Quantidade</div>
         <div className="col-span-3">Status</div>
@@ -60,7 +60,7 @@ export function PantryListView({ items, onEdit, onRemove, onUpdateQty }: PantryL
                     <span className="shrink-0 h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
                   )}
                 </p>
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="flex items-center flex-wrap gap-1.5 mt-0.5">
                   <span className="text-[10px] uppercase font-semibold text-zinc-500">
                     {item.category}
                   </span>
@@ -68,6 +68,14 @@ export function PantryListView({ items, onEdit, onRemove, onUpdateQty }: PantryL
                   <span className="text-[11px] text-zinc-500 font-num">
                     mín. {item.lowThreshold} {item.unit}
                   </span>
+                  {item.price !== undefined && item.price > 0 && (
+                    <>
+                      <span className="text-zinc-600 text-xs">·</span>
+                      <span className="text-[11px] font-semibold text-emerald-400/90 font-num">
+                        {formatBRL(item.price)}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/Button'
 import { EmptyState, Skeleton } from '@/components/ui/feedback'
 import { api } from '@/data/api'
 import { cn } from '@/lib/utils'
-import type { PantryItem } from '@/data/types'
+import type { PantryItem, SpendingItem } from '@/data/types'
 import { useDespensaData } from './useDespensaData'
 import { Kpis } from './Kpis'
 import { PantryItemCard } from './PantryItemCard'
 import { PantryListView } from './PantryListView'
 import { PantryItemForm, type PantryItemDraft } from './PantryItemForm'
-import { SupermarketModeModal } from './SupermarketModeModal'
+import { SupermarketModeModal, type ShoppingCompleteResult } from './SupermarketModeModal'
 import { HermesChefModal } from './HermesChefModal'
 import { PantryBarcodeScannerModal } from './PantryBarcodeScannerModal'
 import { WebhookExport } from './WebhookExport'
@@ -139,8 +139,9 @@ export function DespensaPage() {
     await api.update<PantryItem>('pantry', item.id, { qty: newQty })
   }
 
-  const handleCompleteShopping = async (completedItemIds: string[]) => {
+  const handleCompleteShopping = async (result: ShoppingCompleteResult) => {
     if (!data) return
+    const { completedItemIds, totalSpent, syncFinance } = result
     const idSet = new Set(completedItemIds)
     const updated = data.items.map((it) => {
       if (idSet.has(it.id)) {
@@ -149,10 +150,23 @@ export function DespensaPage() {
       return it
     })
     setItems(updated)
+
     for (const id of completedItemIds) {
       const item = data.items.find((i) => i.id === id)
       const targetQty = (item?.lowThreshold ?? 1) + 1
       await api.update<PantryItem>('pantry', id, { qty: targetQty })
+    }
+
+    if (syncFinance && totalSpent > 0) {
+      await api.create<SpendingItem>('spendingEntries', {
+        amount: totalSpent,
+        category: 'Alimentação',
+        note: `Supermercado — ${completedItemIds.length} itens repostos`,
+        date: new Date().toISOString().slice(0, 10),
+        createdAt: new Date().toISOString(),
+      }).catch((err) => {
+        console.warn('Erro ao sincronizar despesa de compras com Finanças:', err)
+      })
     }
   }
 

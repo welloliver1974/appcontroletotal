@@ -875,6 +875,19 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   4. **⚡ Migração Instantânea no Cofre de Fatos ([FactVault.tsx](file:///e:/Apps/AppControleTotal/src/features/life-log/FactVault.tsx) & [LifeLogPage.tsx](file:///e:/Apps/AppControleTotal/src/features/life-log/LifeLogPage.tsx)):**
      - Botão `🎬 Mover p/ Mídias` disponível nos cards do Cofre de Fatos que contenham links para permitir migração imediata com 1 clique.
 
+## 📊 51. Life Insights (Índice de Bem-Estar/Humor) & Modo Supermercado com Gestão de Custos e Sincronização Financeira (25/08/2026)
+
+* **Recursos Implementados e Integrados:**
+  1. **🧘 Gráfico de Tendência de Bem-Estar / Humor ([LifeInsights.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/LifeInsights.tsx)):**
+     - O 3º card do painel de tendências da Dashboard agora cruza os registros históricos do `lifeLog` (incluindo notas de voz e diário) para traçar uma curva de humor/energia ao longo das 8 semanas.
+     - Indicador com pontuação média (1.0 a 5.0) e classificação visual em emojis (`🤩 Excelente`, `🙂 Bom`, `😐 Neutro`, `😕 Baixo`, `😫 Crítico`).
+  2. **🏷️ Preço Unitário Estimado na Despensa ([types.ts](file:///e:/Apps/AppControleTotal/src/data/types.ts), [PantryItemForm.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/PantryItemForm.tsx), [PantryListView.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/PantryListView.tsx) & [PantryItemCard.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/PantryItemCard.tsx)):**
+     - Campo `price?: number` (preço unitário estimado em R$) integrado ao modelo de despensa, formulário de cadastro/edição, badges de lista e cards.
+  3. **🛒 Totalizador Dinâmico & Sincronização Financeira no Modo Supermercado ([SupermarketModeModal.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/SupermarketModeModal.tsx) & [DespensaPage.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/DespensaPage.tsx)):**
+     - Exibição do total previsto da lista vs. subtotal em tempo real do carrinho conforme os itens são marcados.
+     - Input inline para ajustar o preço real do item durante a compra no supermercado.
+     - Checkbox integrada para lançar o valor total gasto diretamente na tabela de despesas (`spendingEntries`) na categoria *Alimentação* ao concluir a compra, atualizando imediatamente o orçamento e o cálculo do *Safe-to-Spend*.
+
 ---
 
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*

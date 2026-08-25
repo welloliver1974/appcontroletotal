@@ -97,12 +97,12 @@ export const SEED: Record<string, unknown[]> = {
   ] satisfies MaintenanceRecord[],
 
   pantry: [
-    { id: 'pan-1', name: 'Arroz integral 5kg', category: 'grãos', qty: 3.2, unit: 'kg', lowThreshold: 1 },
-    { id: 'pan-2', name: 'Feijão preto 1kg', category: 'grãos', qty: 0.4, unit: 'kg', lowThreshold: 1, expiresAt: day(40) },
-    { id: 'pan-3', name: 'Leite desnatado', category: 'laticínios', qty: 2, unit: 'L', lowThreshold: 3, expiresAt: day(6) },
-    { id: 'pan-4', name: 'Ovos', category: 'proteínas', qty: 4, unit: 'dúzia', lowThreshold: 2 },
-    { id: 'pan-5', name: 'Azeite extra virgem', category: 'condimentos', qty: 0.5, unit: 'L', lowThreshold: 0.75 },
-    { id: 'pan-6', name: 'Café torrado 1kg', category: 'bebidas', qty: 0.2, unit: 'kg', lowThreshold: 0.75, expiresAt: day(30) },
+    { id: 'pan-1', name: 'Arroz integral 5kg', category: 'grãos', qty: 3.2, unit: 'kg', lowThreshold: 1, price: 28.5 },
+    { id: 'pan-2', name: 'Feijão preto 1kg', category: 'grãos', qty: 0.4, unit: 'kg', lowThreshold: 1, expiresAt: day(40), price: 8.9 },
+    { id: 'pan-3', name: 'Leite desnatado', category: 'laticínios', qty: 2, unit: 'L', lowThreshold: 3, expiresAt: day(6), price: 5.4 },
+    { id: 'pan-4', name: 'Ovos', category: 'proteínas', qty: 4, unit: 'dúzia', lowThreshold: 2, price: 14.0 },
+    { id: 'pan-5', name: 'Azeite extra virgem', category: 'condimentos', qty: 0.5, unit: 'L', lowThreshold: 0.75, price: 39.9 },
+    { id: 'pan-6', name: 'Café torrado 1kg', category: 'bebidas', qty: 0.2, unit: 'kg', lowThreshold: 0.75, expiresAt: day(30), price: 34.0 },
   ] satisfies PantryItem[],
 
   trips: [

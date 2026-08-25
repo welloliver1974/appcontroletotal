@@ -100,6 +100,7 @@ export interface PantryItem {
   unit: string
   lowThreshold: number
   expiresAt?: string // YYYY-MM-DD
+  price?: number // Preço unitário estimado em R$
 }
 
 export type TripStatus = 'planejado' | 'confirmado' | 'realizado'

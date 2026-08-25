@@ -25,15 +25,18 @@ export function PantryItemForm({
   const [unit, setUnit] = useState(item?.unit ?? '')
   const [lowThreshold, setLowThreshold] = useState(item ? String(item.lowThreshold) : '1')
   const [expiresAt, setExpiresAt] = useState(item?.expiresAt ?? '')
+  const [price, setPrice] = useState(item?.price !== undefined ? String(item.price) : '')
 
   const qtyNum = Number(qty)
   const thresholdNum = Number(lowThreshold)
+  const priceNum = price.trim() !== '' ? Number(price) : undefined
   const invalidName = !name.trim()
   const invalidQty = qty.trim() === '' || Number.isNaN(qtyNum) || qtyNum < 0
   const invalidThreshold = lowThreshold.trim() === '' || Number.isNaN(thresholdNum) || thresholdNum < 0
+  const invalidPrice = priceNum !== undefined && (Number.isNaN(priceNum) || priceNum < 0)
 
   const submit = () => {
-    if (invalidName || invalidQty || invalidThreshold) return
+    if (invalidName || invalidQty || invalidThreshold || invalidPrice) return
     void onSubmit({
       name: name.trim(),
       category: category.trim() || 'Geral',
@@ -41,6 +44,7 @@ export function PantryItemForm({
       unit: unit.trim(),
       lowThreshold: thresholdNum,
       expiresAt: expiresAt || undefined,
+      price: priceNum,
     })
   }
 
@@ -139,11 +143,33 @@ export function PantryItemForm({
           </div>
         </div>
 
+        <div>
+          <label htmlFor="item-price" className="mb-1.5 block text-xs font-medium text-zinc-500">
+            Preço Estimado Unitário (R$) <span className="text-zinc-600">(opcional)</span>
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-zinc-500">
+              R$
+            </span>
+            <input
+              id="item-price"
+              type="number"
+              min={0}
+              step="0.01"
+              className="input-base font-num pl-9"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="0,00"
+            />
+          </div>
+          <p className="mt-1 text-[11px] text-zinc-600">Usado para calcular estimativa de custo no Modo Supermercado.</p>
+        </div>
+
         <div className="flex items-center justify-end gap-2 pt-1">
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button variant="primary" onClick={submit} disabled={invalidName || invalidQty || invalidThreshold}>
+          <Button variant="primary" onClick={submit} disabled={invalidName || invalidQty || invalidThreshold || invalidPrice}>
             Salvar
           </Button>
         </div>

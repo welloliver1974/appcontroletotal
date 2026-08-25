@@ -2,7 +2,7 @@ import { PackageOpen, Pencil, Trash2 } from 'lucide-react'
 import type { PantryItem } from '@/data/types'
 import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/feedback'
-import { cn, daysUntil } from '@/lib/utils'
+import { cn, daysUntil, formatBRL } from '@/lib/utils'
 import { usePendingDelete } from '@/lib/usePendingDelete'
 import { isExpired, isExpiringSoon, isLow, stockRatio } from './despensaUtils'
 
@@ -40,10 +40,17 @@ export function PantryItemCard({
 
       <div>
         <div className="mb-1.5 flex items-baseline justify-between gap-2">
-          <span className="font-display font-num text-3xl leading-none tracking-tight text-zinc-50">
-            {item.qty}
-          </span>
-          <span className="text-xs text-zinc-500">{item.unit}</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display font-num text-3xl leading-none tracking-tight text-zinc-50">
+              {item.qty}
+            </span>
+            <span className="text-xs text-zinc-500">{item.unit}</span>
+          </div>
+          {item.price !== undefined && item.price > 0 && (
+            <span className="text-xs font-semibold font-num text-emerald-400">
+              {formatBRL(item.price)}
+            </span>
+          )}
         </div>
         <ProgressBar value={stockRatio(item)} tone={tone} />
         {low && (
