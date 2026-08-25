@@ -53,10 +53,10 @@ export async function fetchCurrentWeather(): Promise<WeatherData | null> {
     }
   } catch {}
 
-  // 2. Obtain approximate coordinates
-  let lat = -23.5505 // Default São Paulo
-  let lon = -46.6333
-  let cityName = 'Sua Região'
+  // 2. Obtain approximate coordinates (Default: Santo André - SP / Horário de Brasília)
+  let lat = -23.6639
+  let lon = -46.5383
+  let cityName = 'Santo André - SP'
 
   try {
     if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
@@ -75,7 +75,7 @@ export async function fetchCurrentWeather(): Promise<WeatherData | null> {
   } catch {}
 
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=America%2FSao_Paulo`
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 4000)
 
@@ -92,10 +92,12 @@ export async function fetchCurrentWeather(): Promise<WeatherData | null> {
 
     const mapped = WEATHER_CODE_MAP[code] || { desc: 'Tempo estável', icon: '⛅' }
 
-    // Reverse geocode fallback or timezone formatting
-    if (json.timezone) {
+    // Timezone & city formatting
+    if (json.timezone === 'America/Sao_Paulo' && Math.abs(lat - (-23.6639)) < 0.2) {
+      cityName = 'Santo André - SP'
+    } else if (json.timezone) {
       const tzParts = String(json.timezone).split('/')
-      cityName = tzParts[tzParts.length - 1]?.replace(/_/g, ' ') || 'Sua Região'
+      cityName = tzParts[tzParts.length - 1]?.replace(/_/g, ' ') || 'Santo André - SP'
     }
 
     const weatherData: WeatherData = {

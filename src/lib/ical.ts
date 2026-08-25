@@ -40,17 +40,23 @@ function parseIcalDateTime(rawStr: string): { date: string; time: string; fullDa
   const match = clean.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/)
   if (match) {
     const [, y, m, d, hh, mm] = match
-    // If ending with Z (UTC), convert to local time
+    // If ending with Z (UTC), convert to local time (America/Sao_Paulo - Horário de Brasília)
     if (clean.endsWith('Z')) {
       const utcDate = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm)))
-      const localY = utcDate.getFullYear()
-      const localM = String(utcDate.getMonth() + 1).padStart(2, '0')
-      const localD = String(utcDate.getDate()).padStart(2, '0')
-      const localH = String(utcDate.getHours()).padStart(2, '0')
-      const localMin = String(utcDate.getMinutes()).padStart(2, '0')
+      const brFormatter = new Intl.DateTimeFormat('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })
+      const parts = brFormatter.formatToParts(utcDate)
+      const getP = (type: string) => parts.find((p) => p.type === type)?.value || '00'
       return {
-        date: `${localY}-${localM}-${localD}`,
-        time: `${localH}:${localMin}`,
+        date: `${getP('year')}-${getP('month')}-${getP('day')}`,
+        time: `${getP('hour')}:${getP('minute')}`,
         fullDate: utcDate,
       }
     }
