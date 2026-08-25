@@ -162,29 +162,50 @@ export function GoogleTimelineImporterModal({
                 )}
               </div>
 
-              <div>
-                <h3 className="font-display text-base font-bold text-zinc-100 flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-cyan-400" />
-                  {parsed.destination}
-                </h3>
-                <p className="text-xs text-zinc-400 mt-0.5 flex items-center gap-1 font-mono">
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[11px] text-zinc-400 font-medium block mb-1">
+                    Destino / Nome da Viagem:
+                  </label>
+                  <div className="flex items-center gap-2 bg-zinc-950/80 border border-zinc-800 rounded-xl px-3 py-1.5 focus-within:border-cyan-500/50">
+                    <MapPin className="h-4 w-4 text-cyan-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={parsed.destination}
+                      onChange={(e) => setParsed({ ...parsed, destination: e.target.value })}
+                      className="bg-transparent text-sm font-semibold text-zinc-100 focus:outline-none w-full"
+                      placeholder="Nome da Viagem"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-zinc-400 flex items-center gap-1 font-mono">
                   <Calendar className="h-3.5 w-3.5 text-zinc-500" />
-                  {parsed.startDate} ➔ {parsed.endDate} · ({parsed.stops.length} paradas detectadas)
+                  {parsed.startDate} ➔ {parsed.endDate} · ({parsed.stops.length} {parsed.stops.length === 1 ? 'parada' : 'paradas'} detectadas)
                 </p>
               </div>
 
               {/* Prévia das Paradas */}
-              <div className="max-h-28 overflow-y-auto space-y-1 pr-1 border-t border-zinc-800 pt-2">
-                {parsed.stops.slice(0, 5).map((s, i) => (
-                  <div key={i} className="text-xs text-zinc-300 flex items-center justify-between py-0.5">
-                    <span className="truncate">• {s.title}</span>
-                    <span className="font-mono text-[10px] text-zinc-500 shrink-0 ml-2">{s.time}</span>
-                  </div>
-                ))}
-                {parsed.stops.length > 5 && (
-                  <p className="text-[10px] text-zinc-500 italic">+ {parsed.stops.length - 5} outras paradas</p>
-                )}
-              </div>
+              {parsed.stops.length > 0 ? (
+                <div className="max-h-36 overflow-y-auto space-y-1 pr-1 border-t border-zinc-800 pt-2 divide-y divide-zinc-800/40">
+                  {parsed.stops.slice(0, 10).map((s, i) => (
+                    <div key={i} className="text-xs text-zinc-300 flex items-center justify-between py-1">
+                      <div className="truncate min-w-0 pr-2">
+                        <span className="font-semibold text-zinc-200">Dia {s.day} · </span>
+                        <span className="text-zinc-300">{s.title}</span>
+                      </div>
+                      <span className="font-mono text-[10px] text-cyan-400/90 shrink-0">{s.time}</span>
+                    </div>
+                  ))}
+                  {parsed.stops.length > 10 && (
+                    <p className="text-[10px] text-zinc-500 italic pt-1">+ {parsed.stops.length - 10} outras paradas incluídas no itinerário</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-amber-400 border-t border-zinc-800 pt-2">
+                  ⚠️ Nenhuma coordenada ou parada reconhecida neste arquivo.
+                </p>
+              )}
             </div>
 
             {/* Classificação da Viagem (Trabalho vs Família) */}
