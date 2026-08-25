@@ -125,6 +125,7 @@ DIRETRIZES:
 2. Dê uma visão prévia dos compromissos de AMANHÃ para que o usuário se planeje com antecedência.
 3. Se houver itens em falta na despensa ou alerta real de manutenção, mencione de forma construtiva. Se estiver tudo em dia, parabenize pela organização.
 4. Feche com uma frase inspiradora de foco e alta performance para o dia.
+5. REGRA CRÍTICA: NUNCA deixe frases incompletas, parênteses sem fechar ou pensamentos cortados. Sempre conclua todas as frases com pontuação final.
 NÃO use marcadores com hífen ou tópicos — escreva em texto corrido e elegante.`
 
       const userPrompt = `DADOS ATUAIS (${now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}):
@@ -138,7 +139,7 @@ NÃO use marcadores com hífen ou tópicos — escreva em texto corrido e elegan
 Gere o briefing matinal executivo:`
 
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 6000)
+      const timeoutId = setTimeout(() => controller.abort(), 8500)
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -160,7 +161,7 @@ Gere o briefing matinal executivo:`
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.7,
-          max_tokens: 280,
+          max_tokens: 800,
         }),
         signal: controller.signal,
       })
@@ -171,7 +172,7 @@ Gere o briefing matinal executivo:`
         const json = await res.json()
         const text = json.choices?.[0]?.message?.content?.trim()
         if (text) {
-          return text.replace(/^["']|["']$/g, '')
+          return cleanAndCompleteBriefingText(text)
         }
       }
     } catch (err) {
@@ -277,7 +278,8 @@ export async function generateNightDebriefing(data: DashboardData): Promise<stri
 Escreva um fechamento noturno carinhoso, inteligente e relaxante (3 frases) para o usuário descansar a mente.
 1. Parabenize pelo dia e mencione que os compromissos de hoje foram concluídos.
 2. Dê uma visão leve do que espera por ele amanhã.
-3. Lembre com delicadeza de registrar algum gasto que tenha ficado pendente e deseje uma excelente noite de sono reparador.`
+3. Lembre com delicadeza de registrar algum gasto que tenha ficado pendente e deseje uma excelente noite de sono reparador.
+4. REGRA CRÍTICA: NUNCA deixe frases incompletas ou pensamentos cortados. Sempre conclua todas as frases com pontuação final.`
 
       const userPrompt = `DADOS DA NOITE:
 - Compromissos de Hoje: ${todayEvents.length} atividades
@@ -287,7 +289,7 @@ Escreva um fechamento noturno carinhoso, inteligente e relaxante (3 frases) para
 Gere o Debriefing Noturno:`
 
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 4000)
+      const timeoutId = setTimeout(() => controller.abort(), 6000)
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -302,7 +304,7 @@ Gere o Debriefing Noturno:`
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.6,
-          max_tokens: 220,
+          max_tokens: 600,
         }),
         signal: controller.signal,
       })
@@ -312,7 +314,7 @@ Gere o Debriefing Noturno:`
       if (res.ok) {
         const json = await res.json()
         const text = json.choices?.[0]?.message?.content?.trim()
-        if (text) return text.replace(/^["']|["']$/g, '')
+        if (text) return cleanAndCompleteBriefingText(text)
       }
     } catch {}
   }
@@ -324,4 +326,44 @@ Gere o Debriefing Noturno:`
       : 'Sua agenda de amanhã está livre para focar em novos projetos.'
 
   return `Boa noite! Mais um dia de conquistas concluído com sucesso. ${tomorrowPreview} Se realizou alguma compra ou despesa hoje, lembre-se de registrar antes de dormir. Tenha uma excelente noite de descanso!`
+}
+
+/**
+ * Sanitizes briefing text:
+ * - Trims quotes and whitespace
+ * - Balances and repairs unclosed parentheses e.g. "(máx 20"
+ * - Ensures sentence ends with terminal punctuation (. ! ?)
+ */
+export function cleanAndCompleteBriefingText(text: string): string {
+  let cleaned = text.trim().replace(/^["']+|["']+$/g, '').trim()
+  if (!cleaned) return ''
+
+  // 1. Balance unclosed parentheses e.g. "(máx 20" or "(temp 25°C"
+  const openCount = (cleaned.match(/\(/g) || []).length
+  const closeCount = (cleaned.match(/\)/g) || []).length
+
+  if (openCount > closeCount) {
+    const lastOpenIndex = cleaned.lastIndexOf('(')
+    const trailingFragment = cleaned.slice(lastOpenIndex)
+
+    if (!trailingFragment.includes(')')) {
+      // If it's a short incomplete fragment cut at end (e.g. " (máx 20" without closing)
+      if (trailingFragment.length < 25 && !trailingFragment.includes('.')) {
+        // Remove incomplete trailing parenthesis clause cleanly
+        cleaned = cleaned.slice(0, lastOpenIndex).trim()
+      } else {
+        // Otherwise close the parenthesis
+        cleaned = cleaned + ')'
+      }
+    }
+  }
+
+  // 2. Ensure proper terminal punctuation
+  if (!/[.!?]$/.test(cleaned)) {
+    // If ends with comma or hyphen, strip it first
+    cleaned = cleaned.replace(/[,;:\-\s]+$/, '')
+    cleaned = cleaned + '.'
+  }
+
+  return cleaned
 }
