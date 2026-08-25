@@ -1,4 +1,4 @@
-import { Camera, Check, Clock, ExternalLink, RotateCcw, SquarePlay, Trash2 } from 'lucide-react'
+import { Camera, Check, Clock, ExternalLink, Globe, Music2, RotateCcw, Share2, SquarePlay, Trash2 } from 'lucide-react'
 import type { MediaItem, MediaStatus } from '@/data/types'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
@@ -6,7 +6,51 @@ import { EmptyState } from '@/components/ui/feedback'
 import { cn, shortDateTime } from '@/lib/utils'
 import { usePendingDelete } from '@/lib/usePendingDelete'
 
-/** Saved YouTube/Instagram links (PRD "Artigos & Mídias"): cards with mock AI summary. */
+function getPlatformInfo(sourceLabel: string, url: string, kind: string) {
+  const s = (sourceLabel || '').toLowerCase()
+  const u = (url || '').toLowerCase()
+
+  if (s.includes('facebook') || u.includes('facebook.com') || u.includes('fb.watch') || u.includes('fb.me')) {
+    return {
+      name: 'Facebook',
+      badgeClass: 'border-blue-500/30 bg-blue-500/15 text-blue-300',
+      gradient: 'from-blue-950/50 via-zinc-900 to-zinc-950',
+      icon: Share2,
+    }
+  }
+  if (s.includes('instagram') || u.includes('instagram.com') || u.includes('instagr.am')) {
+    return {
+      name: 'Instagram',
+      badgeClass: 'border-purple-500/30 bg-purple-500/15 text-purple-300',
+      gradient: 'from-purple-950/50 via-zinc-900 to-zinc-950',
+      icon: Camera,
+    }
+  }
+  if (s.includes('tiktok') || u.includes('tiktok.com')) {
+    return {
+      name: 'TikTok',
+      badgeClass: 'border-cyan-500/30 bg-cyan-500/15 text-cyan-300',
+      gradient: 'from-cyan-950/50 via-zinc-900 to-zinc-950',
+      icon: Music2,
+    }
+  }
+  if (s.includes('youtube') || u.includes('youtube.com') || u.includes('youtu.be') || kind === 'youtube') {
+    return {
+      name: 'YouTube',
+      badgeClass: 'border-rose-500/30 bg-rose-500/15 text-rose-300',
+      gradient: 'from-rose-950/50 via-zinc-900 to-zinc-950',
+      icon: SquarePlay,
+    }
+  }
+  return {
+    name: sourceLabel || 'Web',
+    badgeClass: 'border-indigo-500/30 bg-indigo-500/15 text-indigo-300',
+    gradient: 'from-indigo-950/50 via-zinc-900 to-zinc-950',
+    icon: Globe,
+  }
+}
+
+/** Saved YouTube/Instagram/Facebook links (PRD "Artigos & Mídias"): cards with mock AI summary. */
 export function MediaSection({
   media,
   onToggle,
@@ -31,7 +75,7 @@ export function MediaSection({
       <CardHeader
         title="Artigos & Mídias"
         subtitle={`${media.length} links · ${salvo} para ver depois`}
-        action={<span className="chip px-2 py-0.5 text-[10px]">YouTube · Instagram</span>}
+        action={<span className="chip px-2 py-0.5 text-[10px]">YouTube · Instagram · Facebook · Web</span>}
       />
 
       {media.length === 0 ? (
@@ -39,13 +83,15 @@ export function MediaSection({
           <EmptyState
             icon={<ExternalLink className="h-5 w-5" />}
             title="Nenhum link salvo"
-            description="Vídeos e posts que você compartilhar aparecem aqui, com resumo de IA e tempo estimado."
+            description="Vídeos, posts do Instagram/Facebook e artigos compartilhados aparecem aqui."
           />
         </div>
       ) : (
         <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
           {sorted.map((m) => {
-            const isYt = m.kind === 'youtube'
+            const platform = getPlatformInfo(m.sourceLabel, m.url, m.kind)
+            const PlatformIcon = platform.icon
+
             return (
               <div key={m.id} className="card card-hover group flex flex-col overflow-hidden">
                 <a
@@ -61,14 +107,10 @@ export function MediaSection({
                     <span
                       className={cn(
                         'flex h-full w-full items-center justify-center bg-gradient-to-br',
-                        isYt ? 'from-zinc-700 to-zinc-900' : 'from-purple-950 to-zinc-900',
+                        platform.gradient,
                       )}
                     >
-                      {isYt ? (
-                        <SquarePlay className="h-8 w-8 text-zinc-500 transition-transform group-hover:scale-110" />
-                      ) : (
-                        <Camera className="h-8 w-8 text-zinc-500 transition-transform group-hover:scale-110" />
-                      )}
+                      <PlatformIcon className="h-8 w-8 text-zinc-500 transition-transform group-hover:scale-110" />
                     </span>
                   )}
                   <span className="pointer-events-none absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
@@ -82,15 +124,8 @@ export function MediaSection({
 
                 <div className="flex flex-1 flex-col gap-1.5 p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <span
-                      className={cn(
-                        'chip px-2 py-0.5 text-[10px]',
-                        isYt
-                          ? 'border-rose-500/30 bg-rose-500/15 text-rose-300'
-                          : 'border-purple-500/30 bg-purple-500/15 text-purple-300',
-                      )}
-                    >
-                      {isYt ? 'YouTube' : 'Instagram'}
+                    <span className={cn('chip px-2 py-0.5 text-[10px]', platform.badgeClass)}>
+                      {platform.name}
                     </span>
                     <a
                       href={m.url}

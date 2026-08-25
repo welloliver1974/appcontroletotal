@@ -129,7 +129,7 @@ export default async function handler(req, res) {
       platform = 'spending';
     } else if (/^(reuni[aã]o|compromisso|consulta|dentista|m[eé]dico|call|agendar)/i.test(lowerText)) {
       platform = 'event';
-    } else if (url && (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('instagram.com') || url.includes('tiktok.com'))) {
+    } else if (url && (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('instagram.com') || url.includes('facebook.com') || url.includes('fb.watch') || url.includes('fb.me') || url.includes('tiktok.com'))) {
       platform = 'media';
     } else if (/^(di[aá]rio|hoje eu|me sinto|gratid[aã]o|pensamento)/i.test(lowerText)) {
       platform = 'life_log';
@@ -233,13 +233,21 @@ export default async function handler(req, res) {
         kind = 'instagram';
       }
 
+      let thumbnail = body.thumbnail || null;
+      if (!thumbnail && kind === 'youtube' && url) {
+        const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/|live\/))([\w-]{11})/i);
+        if (ytMatch) {
+          thumbnail = `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
+        }
+      }
+
       const mediaRow = {
         id: body.id || genId(),
         kind,
         url: url || '',
         title: title || (kind === 'youtube' ? 'Vídeo do YouTube' : 'Post do Instagram'),
         source_label: body.sourceLabel || (kind === 'youtube' ? 'YouTube · Hermes' : 'Instagram · Hermes'),
-        thumbnail: body.thumbnail || null,
+        thumbnail,
         summary: summary || title || 'Capturado via Hermes Telegram',
         minutes: Number(body.minutes || 0),
         status: 'salvo',

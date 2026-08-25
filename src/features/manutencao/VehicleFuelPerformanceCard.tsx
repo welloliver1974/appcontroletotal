@@ -77,7 +77,7 @@ export function VehicleFuelPerformanceCard({
     }
 
     const totalFuelSpent = fuelRecords.reduce((sum, r) => sum + (Number(r.cost) || 0), 0)
-    
+
     // Manutenções gerais deste veículo (peças, revisões, etc)
     const serviceRecords = records.filter(
       (r) => r.assetId === asset.id && !fuelRecords.some((fr) => fr.id === r.id),
@@ -228,13 +228,12 @@ export function VehicleFuelPerformanceCard({
           {/* Barra visual de nível */}
           <div className="h-2 w-full rounded-full bg-zinc-800 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                autonomy.tankPercentRemaining <= 20
+              className={`h-full rounded-full transition-all duration-500 ${autonomy.tankPercentRemaining <= 20
                   ? 'bg-rose-500'
                   : autonomy.tankPercentRemaining <= 45
-                  ? 'bg-amber-500'
-                  : 'bg-emerald-500'
-              }`}
+                    ? 'bg-amber-500'
+                    : 'bg-emerald-500'
+                }`}
               style={{ width: `${Math.max(5, autonomy.tankPercentRemaining)}%` }}
             />
           </div>

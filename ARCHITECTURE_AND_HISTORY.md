@@ -861,6 +861,20 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   4. **🚗 Custo Total de Posse Veicular (TCO por Km) ([VehicleFuelPerformanceCard.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/VehicleFuelPerformanceCard.tsx)):**
      - Cruzamento dinâmico de combustível acumulado + serviços, peças e revisões preventivas para calcular o **TCO Real por Km Rodado (R$/Km)** do veículo.
 
+## 🎬 50. Captura Inteligente de Mídias Multi-Plataforma & Web Share Target (24/08/2026)
+
+* **Problema Identificado:** Ao compartilhar links do YouTube pelo celular via PWA Web Share Target, o aplicativo do YouTube/Android enviava a URL dentro do campo `text` (deixando `url` vazio), fazendo o app classificar o conteúdo incorretamente como texto livre e salvá-lo no **Cofre de Fatos** em vez de **Artigos & Mídias**.
+* **Solução e Melhorias Implementadas:**
+  1. **🔍 Parser Universal de URLs ([ShareTargetHandler.tsx](file:///e:/Apps/AppControleTotal/src/features/life-log/ShareTargetHandler.tsx)):**
+     - Extração profunda de URLs em qualquer parâmetro recebido (`url`, `text`, `title`, `description`, etc.) com suporte a YouTube (vídeos, shorts, lives, `youtu.be`), Instagram, Facebook (`facebook.com`, `fb.watch`, `fb.me`), TikTok, Threads, X/Twitter e artigos Web.
+     - Limpeza automática de prefixos compartilhados para salvar títulos limpos.
+  2. **🖼️ Geração Automática de Thumbnails do YouTube:**
+     - Extração do ID do vídeo do YouTube e geração de miniatura em alta resolução (`img.youtube.com/vi/...`) de forma transparente tanto no Web Share Target quanto no webhook do Hermes (`hermes-capture.js`).
+  3. **🎨 Identidade Visual por Rede Social ([MediaSection.tsx](file:///e:/Apps/AppControleTotal/src/features/life-log/MediaSection.tsx)):**
+     - Badges temáticos e gradientes visuais dedicados para YouTube (Rose), Instagram (Purple/Pink), Facebook (Blue), TikTok (Cyan) e Web (Indigo).
+  4. **⚡ Migração Instantânea no Cofre de Fatos ([FactVault.tsx](file:///e:/Apps/AppControleTotal/src/features/life-log/FactVault.tsx) & [LifeLogPage.tsx](file:///e:/Apps/AppControleTotal/src/features/life-log/LifeLogPage.tsx)):**
+     - Botão `🎬 Mover p/ Mídias` disponível nos cards do Cofre de Fatos que contenham links para permitir migração imediata com 1 clique.
+
 ---
 
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*

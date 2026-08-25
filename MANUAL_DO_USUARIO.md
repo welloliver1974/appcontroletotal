@@ -137,9 +137,10 @@ Acesse pelo menu **Life-Log ➔ Cofre de Documentos (`DocVault`)**:
 
 ## 9. 📲 Instalação no Celular (PWA) & Sincronização
 
-### Como instalar no celular:
-* **No Android (Chrome):** Toque no banner no topo do app ou no menu dos 3 pontinhos ➔ **"Instalar Aplicativo"**.
-* **No iPhone (Safari):** Toque no botão de Compartilhar (`⎋`) ➔ **"Adicionar à Tela de Início (➕)"**.
+### 📲 Compartilhamento Direto do Celular (Web Share Target):
+* Ao navegar no YouTube, Instagram, Facebook ou em qualquer navegador no celular, toque em **Compartilhar** e selecione o **App Controle Total**.
+* Links de vídeos, posts e artigos são enviados diretamente para **Life-Log ➔ Artigos & Mídias** com capas em alta resolução e identificação automática da rede social.
+* Textos puros e notas rápidas vão direto para o **Cofre de Fatos**.
 
 ### ☁️ Sincronização em Nuvem:
 * Suas chaves de IA, configurações e dados ficam salvos com segurança no Supabase e sincronizam instantaneamente entre todos os seus celulares, tablets e computadores.

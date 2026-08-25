@@ -114,6 +114,99 @@ export function LifeLogPage() {
     setFacts(await api.remove<Fact>('facts', id))
   }
 
+  const convertFactToMedia = async (fact: Fact) => {
+    if (!data) return
+    const match = fact.content.match(/https?:\/\/[^\s"'<>()[\]]+/i)
+    const domainMatch = fact.content.match(
+      /(?:www\.)?(?:youtube\.com|youtu\.be|instagram\.com|facebook\.com|fb\.watch|fb\.me|tiktok\.com|threads\.net|x\.com|twitter\.com)\/[^\s"'<>()[\]]+/i,
+    )
+    const detectedUrl = match
+      ? match[0].replace(/[)\].,;!?"']+$/, '')
+      : domainMatch
+        ? `https://${domainMatch[0].replace(/[)\].,;!?"']+$/, '')}`
+        : ''
+
+    if (!detectedUrl) return
+
+    const isYoutube = detectedUrl.includes('youtube.com') || detectedUrl.includes('youtu.be')
+    const isInstagram = detectedUrl.includes('instagram.com') || detectedUrl.includes('instagr.am')
+    const isFacebook =
+      detectedUrl.includes('facebook.com') ||
+      detectedUrl.includes('fb.watch') ||
+      detectedUrl.includes('fb.me')
+    const isTiktok = detectedUrl.includes('tiktok.com')
+
+    let kind: 'youtube' | 'instagram' = isYoutube ? 'youtube' : 'instagram'
+    let sourceLabel = 'Web'
+    let thumbnail: string | undefined = undefined
+
+    if (isYoutube) {
+      kind = 'youtube'
+      sourceLabel = 'YouTube'
+      const ytMatch = detectedUrl.match(
+        /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/|live\/))([\w-]{11})/i,
+      )
+      if (ytMatch) {
+        thumbnail = `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`
+      }
+    } else if (isInstagram) {
+      kind = 'instagram'
+      sourceLabel = 'Instagram'
+    } else if (isFacebook) {
+      kind = 'instagram'
+      sourceLabel = 'Facebook'
+    } else if (isTiktok) {
+      kind = 'instagram'
+      sourceLabel = 'TikTok'
+    } else {
+      try {
+        const parsed = new URL(detectedUrl)
+        sourceLabel = parsed.hostname.replace(/^www\./, '')
+      } catch {
+        sourceLabel = 'Web'
+      }
+    }
+
+    const defaultTitle = isYoutube
+      ? 'Vídeo do YouTube'
+      : isInstagram
+        ? 'Post do Instagram'
+        : isFacebook
+          ? 'Post do Facebook'
+          : isTiktok
+            ? 'Vídeo do TikTok'
+            : 'Link Salvo'
+
+    const cleanTitle = fact.content.replace(detectedUrl, '').trim() || defaultTitle
+
+    const tagPrefix = isYoutube
+      ? 'youtube'
+      : isInstagram
+        ? 'instagram'
+        : isFacebook
+          ? 'facebook'
+          : isTiktok
+            ? 'tiktok'
+            : 'web'
+
+    const newMedia = await api.create<MediaItem>('media', {
+      kind,
+      url: detectedUrl,
+      title: cleanTitle,
+      sourceLabel,
+      thumbnail,
+      summary: cleanTitle,
+      minutes: isYoutube ? 5 : 0,
+      status: 'salvo',
+      tags: [tagPrefix, 'migrado'],
+      createdAt: fact.createdAt || new Date().toISOString(),
+    })
+
+    const updatedFacts = await api.remove<Fact>('facts', fact.id)
+    setFacts(updatedFacts)
+    setMedia([newMedia, ...data.media])
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader module={module} />
@@ -141,7 +234,12 @@ export function LifeLogPage() {
               onRemove={deleteReading}
             />
           </div>
-          <FactVault facts={data.facts} onAdd={saveFact} onRemove={deleteFact} />
+          <FactVault
+            facts={data.facts}
+            onAdd={saveFact}
+            onRemove={deleteFact}
+            onConvertToMedia={convertFactToMedia}
+          />
           <DocVaultSection />
         </>
       )}

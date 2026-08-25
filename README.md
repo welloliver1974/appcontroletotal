@@ -30,7 +30,7 @@ npm run lint         # oxlint
 | Módulo | Ícone | Descrição |
 |--------|-------|-----------|
 | **Dashboard** | 📊 | KPIs, briefing do Hermes com IA, radar de alertas consolidado, agenda, emails e Life Insights |
-| **Life-Log & Leitura** | 📝 | Diário, leitura, cofre de fatos, captura de links YouTube/Instagram e busca neural |
+| **Life-Log & Leitura** | 📝 | Diário, leitura, cofre de fatos, captura multi-plataforma de links (YouTube, Instagram, Facebook, Web) e busca neural |
 | **Manutenção & Ativos** | 🛠️ | Gestão veicular e residencial, barras de vida útil e histórico de manutenções |
 | **Consumo & Despensa** | 🛒 | Lista compacta, steppers de ajuste rápido, Modo Supermercado e envio para o Telegram |
 | **Viagens & Experiências** | ✈️ | Itinerários cronológicos, paradas detalhadas e locais salvos |
