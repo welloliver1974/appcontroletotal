@@ -15,7 +15,7 @@ import { RecordForm, type RecordDraft } from './RecordForm'
 import { FuelLogModal } from './FuelLogModal'
 import { VehicleFuelPerformanceCard } from './VehicleFuelPerformanceCard'
 import { sortAssetsByUrgency } from './maintUtils'
-import { syncMaintenanceRecordToFinance, syncAllUnsyncedMaintenance } from '@/lib/maintFinanceSync'
+import { syncMaintenanceRecordToFinance } from '@/lib/maintFinanceSync'
 
 type AssetFormState = null | { mode: 'new' } | { mode: 'edit'; asset: Asset }
 type RecordFormState = null | { mode: 'new'; defaultAssetId?: string } | { mode: 'edit'; record: MaintenanceRecord }
@@ -56,20 +56,11 @@ function ManutencaoSkeleton() {
 /** Fase 3 — Manutenção & Ativos: CRUD de ativos, vida útil e histórico de registros. */
 export function ManutencaoPage() {
   const module = MODULE_BY_ID['manutencao']
-  const { data, reload, setAssets, setRecords } = useManutencaoData()
+  const { data, setAssets, setRecords } = useManutencaoData()
   const [openAsset, setOpenAsset] = useState<AssetFormState>(null)
   const [openRecord, setOpenRecord] = useState<RecordFormState>(null)
   const [openFuelLog, setOpenFuelLog] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-
-  // Sync initial unsynced records (both directions)
-  useEffect(() => {
-    void syncAllUnsyncedMaintenance().then((synced) => {
-      if (synced > 0) {
-        void reload()
-      }
-    })
-  }, [reload])
 
   // Keep a selection: default = most urgent asset; fall back after deletes.
   useEffect(() => {

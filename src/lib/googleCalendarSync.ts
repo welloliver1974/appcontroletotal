@@ -53,12 +53,16 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
     }
   }
 
+  const cacheBuster = `_cb=${Date.now()}`
+  const separator = icalUrl.includes('?') ? '&' : '?'
+  const freshIcalUrl = `${icalUrl}${separator}${cacheBuster}`
+
   // 1. Try serverless backend proxy first (bypasses CORS and upserts directly to Supabase)
   try {
     const res = await fetch('/api/calendar/sync-ical', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ icalUrl }),
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+      body: JSON.stringify({ icalUrl: freshIcalUrl }),
     })
 
     if (res.ok) {
@@ -86,18 +90,19 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
     // Fallback to client proxy if serverless endpoint is unreachable in dev
   }
 
-  // 2. Direct client fallback (using proxy to bypass browser CORS)
+  // 2. Direct client fallback (using proxy to bypass browser CORS with cache-busting)
   try {
     const proxyUrls = [
-      icalUrl,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(icalUrl)}`,
-      `https://corsproxy.io/?url=${encodeURIComponent(icalUrl)}`,
+      freshIcalUrl,
+      `https://corsproxy.io/?url=${encodeURIComponent(freshIcalUrl)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(freshIcalUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(freshIcalUrl)}&_t=${Date.now()}`,
     ]
 
     let icalText = ''
     for (const url of proxyUrls) {
       try {
-        const res = await fetch(url)
+        const res = await fetch(url, { cache: 'no-store' })
         if (res.ok) {
           const text = await res.text()
           if (text && text.includes('BEGIN:VCALENDAR')) {
