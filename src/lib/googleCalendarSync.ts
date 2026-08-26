@@ -3,6 +3,7 @@ import { parseIcalToEvents } from './ical'
 import type { AgendaEvent } from '@/data/types'
 
 const STORAGE_KEY = 'act.googleCalendarConfig'
+const DOC_VAULT_CONFIG_ID = 'sys-gcal-config'
 
 export interface GoogleCalendarConfig {
   icalUrl: string
@@ -29,6 +30,51 @@ export function getGoogleCalendarConfig(): GoogleCalendarConfig {
 
 export function saveGoogleCalendarConfig(config: GoogleCalendarConfig): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+  
+  // Persiste de forma definitiva no banco de dados (docVault / Supabase)
+  void db.upsert('docVault', {
+    id: DOC_VAULT_CONFIG_ID,
+    title: 'Google Calendar Config',
+    category: 'outro',
+    url: config.icalUrl,
+    notes: JSON.stringify(config),
+    tags: ['system', 'config'],
+    createdAt: new Date().toISOString(),
+  }).catch(() => {})
+}
+
+export async function restoreGoogleCalendarConfigFromDb(): Promise<GoogleCalendarConfig> {
+  const current = getGoogleCalendarConfig()
+  if (current.icalUrl) {
+    // Garante que o banco também tenha a cópia
+    saveGoogleCalendarConfig(current)
+    return current
+  }
+
+  try {
+    const docs = await db.get<{ id: string; url?: string; notes?: string }>('docVault')
+    const found = Array.isArray(docs) ? docs.find((d) => d.id === DOC_VAULT_CONFIG_ID) : null
+    if (found) {
+      let parsedConfig: GoogleCalendarConfig | null = null
+      if (found.notes) {
+        try {
+          parsedConfig = JSON.parse(found.notes)
+        } catch {}
+      }
+      const restored: GoogleCalendarConfig = {
+        icalUrl: (found.url || parsedConfig?.icalUrl || '').trim(),
+        autoSync: parsedConfig?.autoSync ?? true,
+        lastSyncAt: parsedConfig?.lastSyncAt ?? null,
+        lastEventsCount: parsedConfig?.lastEventsCount ?? 0,
+      }
+      if (restored.icalUrl) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(restored))
+        return restored
+      }
+    }
+  } catch {}
+
+  return current
 }
 
 export interface SyncResult {
@@ -42,7 +88,10 @@ export interface SyncResult {
  * Synchronizes events from Google Calendar iCal feed into Supabase/Local Database.
  */
 export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult> {
-  const config = getGoogleCalendarConfig()
+  let config = getGoogleCalendarConfig()
+  if (!config.icalUrl) {
+    config = await restoreGoogleCalendarConfigFromDb()
+  }
   const icalUrl = (customUrl || config.icalUrl || '').trim()
 
   if (!icalUrl) {

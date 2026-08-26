@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Calendar,
   RefreshCw,
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button'
 import {
   getGoogleCalendarConfig,
   saveGoogleCalendarConfig,
+  restoreGoogleCalendarConfigFromDb,
   syncGoogleCalendar,
   type GoogleCalendarConfig,
 } from '@/lib/googleCalendarSync'
@@ -23,6 +24,16 @@ export function SettingsGoogleCalendar({ onSyncSuccess }: { onSyncSuccess?: () =
   const [config, setConfig] = useState<GoogleCalendarConfig>(() => getGoogleCalendarConfig())
   const [syncing, setSyncing] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; count?: number; error?: string } | null>(null)
+
+  useEffect(() => {
+    if (!config.icalUrl) {
+      void restoreGoogleCalendarConfigFromDb().then((restored) => {
+        if (restored.icalUrl) {
+          setConfig(restored)
+        }
+      })
+    }
+  }, [config.icalUrl])
 
   const handleSaveUrl = (url: string) => {
     const next = { ...config, icalUrl: url.trim() }
