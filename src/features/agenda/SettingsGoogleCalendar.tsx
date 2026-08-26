@@ -126,25 +126,30 @@ export function SettingsGoogleCalendar({ onSyncSuccess }: { onSyncSuccess?: () =
         </ol>
       </div>
 
-      {/* Input de URL */}
+      {/* Input de URLs */}
       <div className="space-y-2">
-        <label className="text-xs font-medium text-zinc-300 flex items-center justify-between">
-          <span>Endereço secreto no formato iCal (.ics)</span>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium text-zinc-300">
+            Endereço(s) secreto(s) no formato iCal (.ics)
+          </label>
           {config.icalUrl && (
             <span className="text-[10px] text-emerald-400 flex items-center gap-1">
               <Check className="h-3 w-3" /> Configurado
             </span>
           )}
-        </label>
+        </div>
         <div className="relative">
-          <input
-            type="url"
+          <textarea
+            rows={3}
             value={config.icalUrl}
             onChange={(e) => handleSaveUrl(e.target.value)}
-            placeholder="https://calendar.google.com/calendar/ical/seu-email%40gmail.com/private-xxxx/basic.ics"
-            className="input-base w-full pr-10 text-xs font-mono"
+            placeholder="https://calendar.google.com/calendar/ical/seu-email%40gmail.com/private-xxxx/basic.ics&#10;https://calendar.google.com/calendar/ical/esposa%40gmail.com/private-yyyy/basic.ics"
+            className="input-base w-full p-2.5 text-xs font-mono resize-y"
           />
         </div>
+        <p className="text-[11px] text-zinc-500 leading-tight">
+          💡 <strong>Dica Multi-Agendas:</strong> Você pode colar mais de um link (um por linha). Assim o app sincroniza sua agenda e também as agendas compartilhadas (ex: esposa, trabalho, família) ao mesmo tempo!
+        </p>
       </div>
 
       {/* Auto Sync Toggle & Botão Sincronizar */}

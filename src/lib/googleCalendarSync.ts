@@ -85,28 +85,14 @@ export interface SyncResult {
 }
 
 /**
- * Synchronizes events from Google Calendar iCal feed into Supabase/Local Database.
+ * Helper to fetch and parse a single iCal URL (with proxies & cache buster)
  */
-export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult> {
-  let config = getGoogleCalendarConfig()
-  if (!config.icalUrl) {
-    config = await restoreGoogleCalendarConfigFromDb()
-  }
-  const icalUrl = (customUrl || config.icalUrl || '').trim()
-
-  if (!icalUrl) {
-    return {
-      ok: false,
-      count: 0,
-      error: 'URL secreta do Google Calendar (iCal) não configurada.',
-    }
-  }
-
+async function fetchAndParseSingleIcal(icalUrl: string): Promise<AgendaEvent[]> {
   const cacheBuster = `_cb=${Date.now()}`
   const separator = icalUrl.includes('?') ? '&' : '?'
   const freshIcalUrl = `${icalUrl}${separator}${cacheBuster}`
 
-  // 1. Try serverless backend proxy first (bypasses CORS and upserts directly to Supabase)
+  // 1. Try serverless backend proxy first
   try {
     const res = await fetch('/api/calendar/sync-ical', {
       method: 'POST',
@@ -117,74 +103,112 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
     if (res.ok) {
       const data = await res.json()
       if (data.success && Array.isArray(data.events)) {
-        // Save batch to database adapter
-        await db.upsertMany('events', data.events)
+        return data.events
+      }
+    }
+  } catch {}
 
-        const now = new Date().toISOString()
-        saveGoogleCalendarConfig({
-          ...config,
-          icalUrl,
-          lastSyncAt: now,
-          lastEventsCount: data.events.length,
-        })
+  // 2. Direct client fallback with proxies
+  const proxyUrls = [
+    freshIcalUrl,
+    `https://corsproxy.io/?url=${encodeURIComponent(freshIcalUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(freshIcalUrl)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(freshIcalUrl)}&_t=${Date.now()}`,
+  ]
 
-        return {
-          ok: true,
-          count: data.events.length,
-          events: data.events,
+  let icalText = ''
+  for (const url of proxyUrls) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' })
+      if (res.ok) {
+        const text = await res.text()
+        if (text && text.includes('BEGIN:VCALENDAR')) {
+          icalText = text
+          break
+        }
+      }
+    } catch {}
+  }
+
+  if (icalText) {
+    return parseIcalToEvents(icalText)
+  }
+
+  return []
+}
+
+/**
+ * Synchronizes events from Google Calendar iCal feed(s) into Supabase/Local Database.
+ * Supports multiple URLs separated by newlines or commas (e.g. personal + spouse shared calendar).
+ */
+export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult> {
+  let config = getGoogleCalendarConfig()
+  if (!config.icalUrl) {
+    config = await restoreGoogleCalendarConfigFromDb()
+  }
+  const rawUrl = (customUrl || config.icalUrl || '').trim()
+
+  if (!rawUrl) {
+    return {
+      ok: false,
+      count: 0,
+      error: 'URL secreta do Google Calendar (iCal) não configurada.',
+    }
+  }
+
+  // Extrai todas as URLs válidas fornecidas (separadas por vírgula, ponto-e-vírgula ou quebra de linha)
+  const urlList = rawUrl
+    .split(/[\n,;]+/)
+    .map((u) => u.trim())
+    .filter((u) => u.startsWith('http'))
+
+  if (urlList.length === 0) {
+    return {
+      ok: false,
+      count: 0,
+      error: 'Nenhuma URL de calendário válida informada.',
+    }
+  }
+
+  try {
+    const allEvents: AgendaEvent[] = []
+    const seenMap = new Map<string, AgendaEvent>()
+
+    // Baixa e processa cada URL em paralelo
+    const results = await Promise.all(urlList.map((url) => fetchAndParseSingleIcal(url)))
+
+    for (const eventList of results) {
+      for (const ev of eventList) {
+        if (!seenMap.has(ev.id)) {
+          seenMap.set(ev.id, ev)
+          allEvents.push(ev)
         }
       }
     }
-  } catch {
-    // Fallback to client proxy if serverless endpoint is unreachable in dev
-  }
 
-  // 2. Direct client fallback (using proxy to bypass browser CORS with cache-busting)
-  try {
-    const proxyUrls = [
-      freshIcalUrl,
-      `https://corsproxy.io/?url=${encodeURIComponent(freshIcalUrl)}`,
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(freshIcalUrl)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(freshIcalUrl)}&_t=${Date.now()}`,
-    ]
-
-    let icalText = ''
-    for (const url of proxyUrls) {
-      try {
-        const res = await fetch(url, { cache: 'no-store' })
-        if (res.ok) {
-          const text = await res.text()
-          if (text && text.includes('BEGIN:VCALENDAR')) {
-            icalText = text
-            break
-          }
-        }
-      } catch {}
-    }
-
-    if (!icalText) {
+    if (allEvents.length === 0 && urlList.length > 0) {
       return {
         ok: false,
         count: 0,
-        error: 'Não foi possível baixar o calendário do Google. Verifique se o endereço iCal secreto está correto.',
+        error: 'Não foi possível baixar os eventos. Verifique se os endereços iCal secretos estão corretos.',
       }
     }
 
-    const parsedEvents = parseIcalToEvents(icalText)
-    await db.upsertMany('events', parsedEvents)
+    // Salva em lote no banco de dados
+    await db.upsertMany('events', allEvents)
 
     const now = new Date().toISOString()
     saveGoogleCalendarConfig({
       ...config,
-      icalUrl,
+      icalUrl: rawUrl,
       lastSyncAt: now,
-      lastEventsCount: parsedEvents.length,
+      lastEventsCount: allEvents.length,
     })
 
     return {
       ok: true,
-      count: parsedEvents.length,
-      events: parsedEvents,
+      count: allEvents.length,
+      events: allEvents,
     }
   } catch (err) {
     return {
