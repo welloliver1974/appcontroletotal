@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { HelpCircle, Plus, Search, Settings, Smartphone } from 'lucide-react'
 import { MODULE_BY_PATH } from '@/lib/modules'
@@ -19,10 +18,11 @@ export function Header() {
   const setQuickAddOpen = useUiStore((s) => s.setQuickAddOpen)
   const manualOpen = useUiStore((s) => s.manualOpen)
   const setManualOpen = useUiStore((s) => s.setManualOpen)
+  const settingsOpen = useUiStore((s) => s.settingsOpen)
+  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen)
   const isOnline = useOfflineQueueStore((s) => s.isOnline)
   const isSyncing = useOfflineQueueStore((s) => s.isSyncing)
   const module = MODULE_BY_PATH[location.pathname]
-  const [settingsOpen, setSettingsOpen] = useState(false)
 
   return (
     <>
@@ -30,7 +30,7 @@ export function Header() {
         <div className="flex h-14 items-center justify-between gap-2 px-3 sm:px-4 md:px-6 w-full">
           {/* Current module chip (context) */}
           <div className="flex min-w-0 items-center gap-2">
-            <span className={cn('h-2 w-2 shrink-0 rounded-full', module?.solid ?? 'bg-zinc-500')} />
+            <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', module?.solid ?? 'bg-zinc-500')} />
             <span className="truncate text-xs sm:text-sm font-semibold text-zinc-200">
               {module?.label ?? 'Life OS Hub'}
             </span>
@@ -41,13 +41,15 @@ export function Header() {
             <Omnibox />
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+            {/* Busca Neural (Mobile) */}
             <button
               onClick={() => setCommandOpen(true)}
-              className="btn-ghost p-1.5 sm:p-2 md:hidden text-zinc-400 hover:text-zinc-200"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border border-zinc-800/80 bg-zinc-900/60 text-zinc-300 hover:text-white hover:bg-zinc-800/80 hover:border-zinc-700 active:scale-95 transition-all md:hidden"
               aria-label="Busca neural"
+              title="Busca neural (Cmd+K)"
             >
-              <Search className="h-4 w-4 sm:h-5 sm:w-5" />
+              <Search className="h-5 w-5 text-zinc-300" />
             </button>
 
             {/* Cloud / Sync Status Badge */}
@@ -87,7 +89,7 @@ export function Header() {
                 className="chip hidden sm:inline-flex items-center gap-1 border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 transition-colors"
                 title="Instalar App no Celular ou PC"
               >
-                <Smartphone className="h-3 w-3 text-indigo-400" />
+                <Smartphone className="h-3.5 w-3.5 text-indigo-400" />
                 <span>Instalar App</span>
               </button>
             )}
@@ -95,29 +97,31 @@ export function Header() {
             {/* Manual / Ajuda */}
             <button
               onClick={() => setManualOpen(true)}
-              className="btn-ghost p-1.5 sm:p-2 text-zinc-400 hover:text-cyan-300"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border border-zinc-800/80 bg-zinc-900/60 text-zinc-300 hover:text-cyan-300 hover:bg-zinc-800/80 hover:border-cyan-500/30 active:scale-95 transition-all"
               title="Manual & Guia de Uso"
               aria-label="Manual de Instruções"
             >
-              <HelpCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+              <HelpCircle className="h-5 w-5" />
             </button>
 
             {/* Settings */}
             <button
               onClick={() => setSettingsOpen(true)}
-              className="btn-ghost p-1.5 sm:p-2 text-zinc-400 hover:text-zinc-200"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border border-zinc-800/80 bg-zinc-900/60 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/80 hover:border-zinc-700 active:scale-95 transition-all"
+              title="Configurações do Sistema"
               aria-label="Configurações"
             >
-              <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
+              <Settings className="h-5 w-5" />
             </button>
 
             {/* Quick add */}
             <button
               onClick={() => setQuickAddOpen(true)}
-              className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 transition-colors hover:bg-indigo-400 active:scale-95 ml-0.5 sm:ml-1"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 transition-all hover:bg-indigo-400 active:scale-95 ml-0.5 sm:ml-1"
+              title="Novo lançamento rápido (Cmd+N)"
               aria-label="Adição rápida (Cmd+N)"
             >
-              <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+              <Plus className="h-5 w-5" />
             </button>
           </div>
         </div>
