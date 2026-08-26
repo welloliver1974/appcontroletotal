@@ -8,19 +8,20 @@
 
 O **AppControleTotal (Life OS Hub)** é um Sistema Operacional Pessoal moderno no formato **PWA (Progressive Web App)** com interface *Dark Mode Premium* (estilo Linear.app, Vercel e Apple Human Interface Guidelines).
 
-O app centraliza a gestão de 6 áreas da vida:
+O app centraliza a gestão de 7 áreas da vida:
 1. **📊 Dashboard:** KPIs consolidados, radar de alertas, próximos compromissos, emails urgentes, Life Insights (gráficos Recharts) e Briefing Matinal com IA.
 2. **📝 Life-Log & Leitura:** Diário pessoal, rastreador de livros, cofre de anotações/fatos (*Fact Vault*), captura de mídias (YouTube & Instagram) e consulta semântica ao Hermes AI.
 3. **🛠️ Manutenção & Ativos:** Gestão de patrimônio (veículos, residência, eletrônicos), barras de vida útil, odômetro e histórico de manutenções.
 4. **🛒 Consumo & Despensa:** Controle de estoque de mantimentos, alertas de vencimento (≤ 3 dias), limite mínimo e exportação da lista de compras via Webhook direto para o Hermes / WhatsApp.
-5. **✈️ Viagens & Experiências:** Roteiros cronológicos dia a dia e lista de locais salvos (*bucket list*).
-6. **📅 Agenda & Inbox (Hermes Bridge):** Calendário mensal/semanal integrado com emails filtrados pelo Hermes e central de configurações avançadas.
+5. **💵 Finanças:** Extrato diário, contas fixas, orçamento mensal, Safe-to-Spend, scanner de cupom e relatórios.
+6. **✈️ Viagens & Experiências:** Roteiros cronológicos dia a dia e lista de locais salvos (*bucket list*).
+7. **📅 Agenda & Inbox (Hermes Bridge):** Calendário mensal/semanal integrado com emails filtrados pelo Hermes e central de configurações avançadas.
 
 ---
 
 ## 🛠️ 2. Stack Tecnológica
 
-* **Core & Build:** React 19, TypeScript 5 (strict mode), Vite 8 (`@tailwindcss/vite`).
+* **Core & Build:** React 19, TypeScript 6 (strict mode), Vite 8 (`@tailwindcss/vite`).
 * **Estilização:** Tailwind CSS v4 + Vanilla CSS moderno com tokens HSL, gradientes dinâmicos e *glassmorphism* em `src/styles/index.css`.
 * **Roteamento:** React Router v7 (SPA) com *code splitting* via `React.lazy` e `Suspense`.
 * **Gerenciamento de Estado:** Zustand (persistência local com `persist` middleware).
@@ -47,9 +48,9 @@ e:/Apps/AppControleTotal/
 │   └── config.toml        # Configurações do Supabase CLI
 ├── src/
 │   ├── app/
-│   │   └── App.tsx        # Router principal, lazy routes e Emergency Gate
+│   │   └── App.tsx        # Router principal, lazy routes e AuthGate
 │   ├── components/
-│   │   ├── auth/          # EmergencyGate (autenticação por código)
+│   │   ├── auth/          # AuthGate (email/senha, dispositivo confiável e biometria)
 │   │   ├── hermes/        # HermesChatDrawer.tsx (Chat flutuante com IA e voz)
 │   │   ├── layout/        # AppShell, Header, Sidebar, NavRail, BottomNav, Omnibox, QuickAdd
 │   │   └── ui/            # Primitivas: Button, Card, Modal, KpiCard, Skeleton, Toast, etc.
@@ -63,6 +64,7 @@ e:/Apps/AppControleTotal/
 │   │   ├── agenda/        # AgendaPage, CalendarView, SettingsHermes, SettingsTheme, etc.
 │   │   ├── dashboard/     # DashboardPage, HermesBriefingCard, KpiRow, LifeInsights, etc.
 │   │   ├── despensa/      # DespensaPage, PantryItemCard, WebhookExport, etc.
+│   │   ├── financas/      # FinancasPage, scanner de cupom, contas fixas e relatórios
 │   │   ├── life-log/      # LifeLogPage, HermesAsk, LogsSection, ReadingSection, etc.
 │   │   ├── manutencao/    # ManutencaoPage, AssetCard, RecordsSection, etc.
 │   │   └── viagens/       # ViagensPage, TripCard, PlacesSection, etc.
@@ -73,10 +75,9 @@ e:/Apps/AppControleTotal/
 │   │   ├── hermes.ts           # Cliente central do Hermes Agent & LLMs
 │   │   ├── hermesActions.ts    # Interpretador de ações automáticas no banco
 │   │   ├── llmProviders.ts     # Configurações de provedores e busca de modelos
-│   │   ├── modules.ts          # Registro e metadados dos 6 módulos
+│   │   ├── modules.ts          # Registro e metadados dos 7 módulos
 │   │   ├── notifications.ts    # Serviço de notificações nativas e PWA
 │   │   ├── pwa.ts              # Utilitários de registro do Service Worker
-│   │   ├── safeApi.ts          # Wrapper tolerante a falhas
 │   │   ├── supabase.ts         # Inicialização do cliente Supabase
 │   │   ├── usePendingDelete.ts # Hook com suporte a "desfazer" exclusões
 │   │   ├── useRealtimeSync.ts  # Hook de escuta de canais Realtime do Supabase
@@ -106,18 +107,23 @@ O Supabase está configurado com as seguintes tabelas principais:
 | Tabela | Descrição | Campos Chave |
 |---|---|---|
 | `events` | Compromissos e reuniões | `id`, `title`, `date`, `time_start`, `time_end`, `category`, `location` |
-| `emails` | Caixa de entrada inteligente | `id`, `from_address`, `subject`, `preview`, `importance`, `sent_at`, `tags`, `read` |
+| `emails` | Caixa de entrada inteligente | `id`, `from_name`, `subject`, `preview`, `importance`, `sent_at`, `tags`, `read` |
 | `life_log` | Diário pessoal | `id`, `title`, `body`, `tags`, `mood`, `created_at` |
-| `books` | Leituras e progresso | `id`, `title`, `author`, `status`, `current_page`, `total_pages`, `cover` |
+| `reading` | Leituras e progresso | `id`, `title`, `author`, `status`, `current_page`, `total_pages`, `cover` |
 | `facts` | Cofre de fatos e notas rápidas | `id`, `content`, `source`, `tags`, `created_at` |
 | `media` | Mídias capturadas (YouTube/Insta) | `id`, `kind`, `url`, `title`, `source_label`, `summary`, `minutes`, `status`, `tags` |
 | `assets` | Ativos (Carro/Casa/Equipamentos) | `id`, `name`, `type`, `total_life_months`, `used_months`, `icon` |
-| `maintenance_records` | Histórico de serviços | `id`, `asset_id`, `description`, `cost`, `date`, `odometer_km` |
+| `maintenance` | Histórico de serviços | `id`, `asset_id`, `description`, `cost`, `date`, `odometer_km` |
 | `pantry` | Itens da despensa | `id`, `name`, `category`, `qty`, `unit`, `low_threshold`, `expires_at` |
 | `trips` | Viagens planejadas | `id`, `destination`, `start_date`, `end_date`, `status` |
 | `trip_stops` | Paradas do itinerário | `id`, `trip_id`, `day`, `time`, `title`, `note` |
 | `places` | Locais salvos (Bucket list) | `id`, `name`, `where_location`, `visited`, `note` |
-| `spending` | Registro de despesas | `id`, `amount`, `category`, `note`, `date` |
+| `spending` | Registro legado de despesas semanais | `id`, `amount`, `category`, `note`, `date` |
+| `spending_entries` | Extrato diário do módulo Finanças | `id`, `date`, `description`, `category`, `amount`, `source` |
+| `fixed_bills` | Contas fixas e assinaturas | `id`, `name`, `category`, `amount`, `due_day`, `paid` |
+| `habits` | Checklist diário de hábitos | `id`, `title`, `category`, `done`, `streak` |
+| `doc_vault` | Cofre de documentos, seguros e notas sensíveis | `id`, `title`, `kind`, `value`, `note`, `expires_at` |
+| `app_settings` | Configurações persistidas do Hermes/IA e preferências | `key`, `value`, `updated_at` |
 
 ### Tratamento de Tipos e Nomenclatura:
 O adapter [`src/lib/db.ts`](file:///e:/Apps/AppControleTotal/src/lib/db.ts) faz o mapeamento transparente entre `snake_case` do Postgres e `camelCase` do TypeScript:
@@ -125,13 +131,16 @@ O adapter [`src/lib/db.ts`](file:///e:/Apps/AppControleTotal/src/lib/db.ts) faz 
 - `low_threshold` ↔ `lowThreshold`
 - `created_at` ↔ `createdAt`
 - `odometer_km` ↔ `odometerKm`
+- `spending_entries` ↔ `spendingEntries`
+- `fixed_bills` ↔ `fixedBills`
+- `doc_vault` ↔ `docVault`
 
 ### 📋 Exemplos de Inserção SQL (Hermes Agent ➔ Supabase):
 
-#### 1. Inserir Gasto / Despesa (`spending`):
+#### 1. Inserir Gasto / Despesa (`spending_entries`):
 ```sql
-INSERT INTO spending (id, amount, category, note, date)
-VALUES (gen_random_uuid()::text, 45.50, 'Alimentação', 'Almoço com a equipe', '2026-08-17');
+INSERT INTO spending_entries (id, date, description, category, amount, source)
+VALUES (gen_random_uuid()::text, '2026-08-17', 'Almoço com a equipe', 'Alimentação', 45.50, 'hermes');
 ```
 
 #### 2. Inserir Item na Despensa (`pantry`):
@@ -161,7 +170,7 @@ VALUES (gen_random_uuid()::text, 'Reflexão do dia', 'Dia produtivo com ótimos 
    - URL do túnel: `https://hermes.seu-dominio.com`
    - Autenticação via `X-Hermes-Signature` e `Authorization: Bearer <token>`.
 2. **Provedores Diretos de LLM:**
-   - **Groq:** `https://api.groq.com/openai/v1` (Modelo recomendado: `llama-3.3-70b-versatile`).
+   - **Groq:** `https://api.groq.com/openai/v1` (Modelo recomendado atual: `openai/gpt-oss-120b`).
    - **OpenRouter:** `https://openrouter.ai/api/v1` (Acesso a Llama, Claude, DeepSeek, Qwen).
    - **NVIDIA AI Foundation:** `https://integrate.api.nvidia.com/v1`.
    - **Endpoint Customizado:** Qualquer backend compatível com OpenAI.
@@ -255,7 +264,7 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - Suporte completo a todas as entidades enviadas pelo Bot do Telegram e Hermes Agent:
     - 🛒 **Despensa / Compras (`pantry`)**: Adiciona itens únicos ou listas completas (`pantry_add`, `pantry_shopping_list`).
     - 🎬 **Mídias & Links (`media`)**: Salva links do YouTube, Instagram e artigos no Life-Log.
-    - 💸 **Gastos (`spending`)**: Registra despesas semanais.
+    - 💸 **Gastos (`spending_entries`)**: Registra despesas diárias do módulo Finanças.
     - 📅 **Compromissos (`events`)**: Registra reuniões e eventos na Agenda.
     - 📝 **Diário (`life_log`)** e **Cofre de Fatos (`facts`)**.
   - Autenticação segura via `Authorization: Bearer` ou `X-Hermes-Signature`.
@@ -402,7 +411,7 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   - Botão de acesso `📋 Relatório do Mês` no topo do módulo de Finanças ([`FinancasPage.tsx`](file:///e:/Apps/AppControleTotal/src/features/financas/FinancasPage.tsx)).
 
 * **💾 Backup & Restauração Completa de Todas as Coleções (.json) ([src/features/agenda/SettingsBackup.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsBackup.tsx)):**
-  - Exportação e importação integral cobrindo todas as 15 coleções do sistema (`events`, `emails`, `lifeLog`, `facts`, `reading`, `media`, `assets`, `maintenance`, `pantry`, `trips`, `places`, `spending`, `maintMonths`, `spendingEntries`, `fixedBills`, `habits`, `docVault`).
+  - Exportação e importação integral cobrindo todas as coleções do sistema (`events`, `emails`, `lifeLog`, `facts`, `reading`, `media`, `assets`, `maintenance`, `pantry`, `trips`, `places`, `spending`, `maintMonths`, `spendingEntries`, `fixedBills`, `habits`, `docVault`).
   - Sincronização garantida tanto no storage local (`localStorageDb`) quanto no Supabase remoto.
 
 * **⛽ Calculadora de Abastecimento & Consumo Real (km/L) ([src/features/manutencao/FuelLogModal.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/FuelLogModal.tsx)):**
@@ -908,11 +917,6 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 ---
 
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
-
-
-
-
-
 
 
 

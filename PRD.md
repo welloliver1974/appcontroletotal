@@ -9,7 +9,7 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
 ======================================================================
 - ESTÉTICA: Dark mode nativo "Premium SaaS" (estilo Linear.app/Vercel).
 - CORES BASE: Zinc 950 (Fundo), Zinc 900 (Cards), Zinc 800 (Bordas).
-- ACCENTS: Dashboard (Roxo), Life-Log (Verde), Manutenção (Laranja), Despensa (Violeta), Viagens (Ciano), Agenda/Email (Rose).
+- ACCENTS: Dashboard (Roxo), Life-Log (Verde), Manutenção (Laranja), Despensa (Violeta), Finanças (Verde), Viagens (Ciano), Agenda/Email (Rose).
 - RESPONSIVIDADE:
   - Mobile: Bottom Navigation Bar (Glassmorphism).
   - Tablet: Navigation Rail lateral + Grids 2 colunas.
@@ -18,8 +18,8 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
 ======================================================================
 2. ESTRUTURA DE NAVEGAÇÃO E HEADER
 ======================================================================
-- Sidebar/Bottombar (6 rotas): 
-  1. 📊 Dashboard | 2. 📝 Life-Log | 3. 🛠️ Manutenção | 4. 🛒 Despensa | 5. ✈️ Viagens | 6. 📅 Agenda & Inbox
+- Sidebar/Bottombar (7 rotas): 
+  1. 📊 Dashboard | 2. 📝 Life-Log | 3. 🛠️ Manutenção | 4. 🛒 Despensa | 5. 💵 Finanças | 6. ✈️ Viagens | 7. 📅 Agenda & Inbox
 - Header Global:
   - Neural Omnibox (Cmd+K): Busca semântica inteligente e campo para colar links diretos (YouTube, Instagram, Artigos).
   - Badge Status: "Hermes Sync Active".
@@ -43,6 +43,9 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
   - Estoque visual e exportação de lista via Webhook para Hermes Agent/WhatsApp.
   - SCANNER EAN-13: Leitor de código de barras com integração direta à API pública do OpenFoodFacts para autocompletar produtos.
   - HERMES CHEF: Geração de receitas personalizadas com IA e narração em áudio.
+- FINANÇAS:
+  - Extrato diário pragmático, contas fixas, teto mensal, scanner de cupom, relatórios e cálculo Safe-to-Spend.
+  - Integração bidirecional com abastecimentos/manutenções e Modo Supermercado para manter o orçamento atualizado.
 - VIAGENS & EXPERIÊNCIAS:
   - Itinerário cronológico, paradas e locais salvos.
   - SMART TRAVEL ASSISTANT: Checklist inteligente de malas/documentos por IA e estimativa de combustível baseada no Km/L do veículo cadastrado.
@@ -63,7 +66,7 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
 5. ARQUITETURA TÉCNICA
 ======================================================================
 - PWA/OFFLINE: Service Worker (vite-plugin-pwa) com pré-cache de assets + runtime caching (Google Fonts, `/api/*`); registro via `main.tsx` e utilitários em `pwa.ts`.
-- API/WEBHOOKS: Estrutura `safeApi.ts` envolve o mock async com fallback automático para fila offline; webhook mock POST (JSON + HMAC) configurável via UI de agenda (SettingsWebhook).
+- API/WEBHOOKS: O adapter unificado `src/lib/db.ts` combina Supabase e fallback local, com fila offline (`offlineQueueStore`) e webhook mock POST (JSON + HMAC) configurável via UI de agenda (`SettingsWebhook`).
 
 ======================================================================
 6. COMPARTILHAMENTO MOBILE & INTEGRACÃO YOUTUBE / INSTAGRAM
@@ -80,7 +83,7 @@ Você é um Engenheiro de Software Full-Stack Senior especialista em UX/UI moder
 ======================================================================
 - Mock Data para links do YOUTUBE e INSTAGRAM salvos com resumos de IA no Life-Log.
 - Dados para 3 ativos, 8 itens de despensa, 1 viagem, 3 compromissos de agenda.
-- Atalhos (Cmd/Ctrl+K, Cmd/Ctrl+N, Alt+1..6).
+- Atalhos (Cmd/Ctrl+K, Cmd/Ctrl+N, Alt+1..7).
 - Skeleton Loaders (animate-pulse) e Empty States em todas as telas.
 
 ======================================================================
@@ -90,7 +93,7 @@ Status: **concluída** (persistência local resiliente, PWA offline, notificaç�
 
 Entregáveis (todos concluídos):
 - **Persistência local resiliente:** `offlineQueueStore` enfileira ações offline e replays quando a conexão retorna; `backgroundSync.ts` detecta o estado de rede (`navigator.onLine`) e aciona o flush.
-- **API segura:** `safeApi.ts` envolve o mock async com fallback automático para a fila offline em caso de erro.
+- **Persistência híbrida segura:** `src/lib/db.ts` usa Supabase quando configurado e fallback automático para `localStorage`/fila offline em caso de erro.
 - **Backup & restore:** `backupStore` (persistência de schedule) + `backupScheduler.ts` (export/import JSON + backup automático semanal periódico via `visibilitychange` + `focus`).
 - **Webhook mock:** payload JSON POST para endpoint configurado, com assinatura HMAC opcional (`X-Hermes-Signature`).
 - **PWA offline:** service worker (vite-plugin-pwa) pré-cacheia assets + shell + runtime caching (fonts, `/api/*`); `pwa.ts` utilitários para registro e lifecycle; `registerServiceWorker()` chamado em `main.tsx` em produção.

@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/feedback'
 import { syncAllUnsyncedMaintenance } from '@/lib/maintFinanceSync'
 
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
+const HojePage = lazy(() => import('@/features/hoje/HojePage').then((m) => ({ default: m.HojePage })))
 const LifeLogPage = lazy(() => import('@/features/life-log/LifeLogPage').then((m) => ({ default: m.LifeLogPage })))
 const ManutencaoPage = lazy(() => import('@/features/manutencao/ManutencaoPage').then((m) => ({ default: m.ManutencaoPage })))
 const DespensaPage = lazy(() => import('@/features/despensa/DespensaPage').then((m) => ({ default: m.DespensaPage })))
@@ -57,6 +58,7 @@ export default function App() {
               <Route element={<AppShell />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/hoje" element={<HojePage />} />
                 <Route path="/life-log" element={<LifeLogPage />} />
                 <Route path="/manutencao" element={<ManutencaoPage />} />
                 <Route path="/despensa" element={<DespensaPage />} />

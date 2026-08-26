@@ -6,11 +6,13 @@ import {
   NotebookPen,
   Plane,
   ShoppingBasket,
+  SunMedium,
   Wrench,
 } from 'lucide-react'
 
 export type ModuleId =
   | 'dashboard'
+  | 'hoje'
   | 'life-log'
   | 'manutencao'
   | 'despensa'
@@ -18,7 +20,7 @@ export type ModuleId =
   | 'viagens'
   | 'agenda'
 
-export type ModuleAccent = 'violet' | 'emerald' | 'orange' | 'purple' | 'cyan' | 'blue' | 'rose'
+export type ModuleAccent = 'violet' | 'emerald' | 'orange' | 'purple' | 'cyan' | 'blue' | 'rose' | 'sky'
 
 export interface ModuleDef {
   id: ModuleId
@@ -59,6 +61,22 @@ export const MODULES: ModuleDef[] = [
     gradient: 'from-violet-500 to-purple-500',
     tag: 'Visão geral',
     description: 'KPIs, alertas e insights do seu universo pessoal.',
+  },
+  {
+    id: 'hoje',
+    label: 'Hoje',
+    navLabel: 'Hoje',
+    emoji: '☀️',
+    path: '/hoje',
+    icon: SunMedium,
+    accent: 'sky',
+    text: 'text-sky-400',
+    solid: 'bg-sky-500',
+    soft: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+    glow: 'bg-sky-500/10',
+    gradient: 'from-sky-500 to-blue-600',
+    tag: 'Plano Diário',
+    description: 'Prioridades, compromissos e ações rápidas para o seu dia.',
   },
   {
     id: 'life-log',

@@ -1,12 +1,12 @@
 # Life OS Hub — Sistema Operacional Pessoal & Hermes Agent
 
-Sistema Operacional Pessoal em PWA (dark mode premium, estilo Linear.app/Vercel) com **6 módulos integrados com IA**. Frontend React 19 + Tailwind v4 com **backend híbrido** (Supabase/PostgreSQL em nuvem + fallback automático para `localStorage` offline).
+Sistema Operacional Pessoal em PWA (dark mode premium, estilo Linear.app/Vercel) com **7 módulos integrados com IA**. Frontend React 19 + Tailwind v4 com **backend híbrido** (Supabase/PostgreSQL em nuvem + fallback automático para `localStorage` offline).
 
 O PRD completo está em [PRD.md](PRD.md) e o histórico detalhado de arquitetura está em [ARCHITECTURE_AND_HISTORY.md](ARCHITECTURE_AND_HISTORY.md).
 
 ## Stack
 
-- Vite 8 · React 19 · TypeScript (strict) · alias `@/` → `src/`
+- Vite 8 · React 19 · TypeScript 6 (strict) · alias `@/` → `src/`
 - Tailwind CSS v4 (plugin `@tailwindcss/vite`)
 - React Router v7 (SPA) · Zustand (estado global + persistência) · Recharts (Life Insights) · lucide-react (ícones)
 - Supabase (PostgreSQL, Realtime sync, REST)
@@ -31,12 +31,12 @@ src/
   components/
     layout/     # AppShell, Sidebar (desktop), NavRail (tablet), BottomNav (mobile), Header, Omnibox, QuickAdd
     ui/         # primitivas: Card, Modal, Button, KpiCard, Skeleton/EmptyState, PageHeader, Badge, ToastContainer, ProgressBar
-    auth/       # EmergencyGate
+    auth/       # AuthGate
     hermes/     # HermesChatDrawer (copiloto flutuante com suporte a voz)
-  features/     # módulos: dashboard, life-log, manutencao, despensa, viagens, agenda
+  features/     # módulos: dashboard, life-log, manutencao, despensa, financas, viagens, agenda
   data/         # "backend mock": db.ts (localStorage), api.ts (async fake), seed.ts, neural.ts (busca), types.ts
   stores/       # zustand: uiStore, authStore, toastStore, backupStore, offlineQueueStore, themeStore
-  lib/          # modules.ts, utils.ts, pwa.ts, db.ts (adapter Supabase), ical.ts (parser RFC 5545), notifications.ts, llmProviders.ts, hermes.ts, hermesActions.ts, useRealtimeSync.ts
+  lib/          # modules.ts, utils.ts, pwa.ts, db.ts (adapter Supabase), ical.ts (parser RFC 5545), notifications.ts, llmProviders.ts, hermes.ts, hermesActions.ts, maintFinanceSync.ts, useRealtimeSync.ts
   styles/       # index.css (Tailwind v4 + design tokens + glassmorphism)
 api/            # Vercel Serverless Functions
   webhook/      # hermes-capture.js (webhook de ingestão multi-entidade Telegram/Hermes)
@@ -49,7 +49,7 @@ api/            # Vercel Serverless Functions
 - **Tipografia**: `--font-display` = **Space Grotesk** (títulos `h1–h5` e números em destaque) · `--font-sans` = **Inter** (corpo/UI) · `--font-mono` = mono de sistema + `.font-num` (dados, datas, preços, tabular).
 - **Dark nativo com vida**: fundo `zinc-950` + glows ambientes fixos (indigo topo / cyan direita / rose canto) no `body`; cards `zinc-900` com inset top-highlight (`inset 0 1px 0 white/0.04`).
 - **Primária = indigo-500**: botões primários (`Button` variant `primary`), botão "+" do header, foco do omnibox/inputs, destaques da command palette. Marca em gradiente **indigo→violet**.
-- **Accents por módulo**: Dashboard → violet · Life-Log → emerald · Manutenção → orange · Despensa → purple · Viagens → cyan · Agenda → rose.
+- **Accents por módulo**: Dashboard → violet · Life-Log → emerald · Manutenção → orange · Despensa → purple · Finanças → emerald · Viagens → cyan · Agenda → rose.
 - **Responsivo em 3 níveis**:
   - **Mobile (<768px):** BottomNav glass + `env(safe-area-inset-bottom)` + layout em coluna única.
   - **Tablet (768–1024px):** NavRail compacto de 64px + grids de 2 colunas.

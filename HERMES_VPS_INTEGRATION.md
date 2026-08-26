@@ -103,7 +103,7 @@ Authorization: Bearer <SEU_TOKEN_SECRETO>
     { "role": "system", "content": "Você é o HERMES AGENT..." },
     { "role": "user", "content": "O que tenho agendado para hoje?" }
   ],
-  "model": "llama-3.3-70b-versatile"
+  "model": "openai/gpt-oss-120b"
 }
 ```
 
@@ -128,10 +128,10 @@ Authorization: Bearer <SEU_TOKEN_SECRETO>
 
 O Hermes pode inserir dados em qualquer uma das tabelas do Supabase. O app receberá o evento em tempo real automaticamente:
 
-### 1. Inserir Gasto / Despesa (`spending`):
+### 1. Inserir Gasto / Despesa (`spending_entries`):
 ```sql
-INSERT INTO spending (id, amount, category, note, date)
-VALUES (gen_random_uuid()::text, 45.50, 'Alimentação', 'Almoço com a equipe', '2026-08-17');
+INSERT INTO spending_entries (id, date, description, category, amount, source)
+VALUES (gen_random_uuid()::text, '2026-08-17', 'Almoço com a equipe', 'Alimentação', 45.50, 'hermes');
 ```
 
 ### 2. Inserir Item na Despensa (`pantry`):
@@ -232,7 +232,7 @@ Você pode utilizar o seu bot do Hermes (que já lê e-mails via MCP/IMAP/Gmail)
 | Campo | Tipo | Descrição |
 | :--- | :--- | :--- |
 | `id` | `TEXT` / `UUID` | Identificador único (ex: `gen_random_uuid()`) |
-| `from` | `TEXT` | Remetente (ex: `banco@notificacoes.com.br` ou `Diretoria`) |
+| `from_name` | `TEXT` | Remetente (ex: `banco@notificacoes.com.br` ou `Diretoria`) |
 | `subject` | `TEXT` | Assunto ou Título Sintetizado pela IA |
 | `preview` | `TEXT` | Resumo executivo de 2 a 3 linhas gerado pelo bot |
 | `importance` | `TEXT` | `'critico'` (destaque vermelho) ou `'normal'` |
@@ -270,7 +270,7 @@ def send_email_to_life_os(
         tags = ["hermes", "email-triado"]
     
     payload = {
-        "from": sender,
+        "from_name": sender,
         "subject": subject,
         "preview": ai_summary_preview,
         "importance": importance,  # 'critico' ou 'normal'
@@ -302,4 +302,3 @@ if __name__ == "__main__":
 2. [ ] **Token Secreto:** Definir a mesma chave secreta na VPS (`HERMES_SECRET`) e no AppControleTotal (**Configurações ➔ Hermes & IA ➔ Token Secreto**).
 3. [ ] **Teste no App:** Ir na aba **Configurações ➔ Hermes & IA** e clicar no botão **"Testar Webhook VPS"** para confirmar a resposta `HTTP 200 OK`.
 4. [ ] **Triagem de E-mails:** Executar o script ou função do bot do Hermes que lê os e-mails via MCP e faz o `insert` na tabela `emails`.
-

@@ -1,6 +1,6 @@
 # Life OS Hub — Sistema Operacional Pessoal & Hermes Agent
 
-> **Sistema Operacional Pessoal** — PWA dark mode premium (estilo Linear.app/Vercel) com 6 módulos integrados com IA. Frontend React 19 + Tailwind CSS v4, backend híbrido com Supabase/PostgreSQL em nuvem e fallback automático offline via `localStorage`.
+> **Sistema Operacional Pessoal** — PWA dark mode premium (estilo Linear.app/Vercel) com 7 módulos integrados com IA. Frontend React 19 + Tailwind CSS v4, backend híbrido com Supabase/PostgreSQL em nuvem e fallback automático offline via `localStorage`.
 
 ---
 
@@ -30,9 +30,11 @@ npm run lint         # oxlint
 | Módulo | Ícone | Descrição |
 |--------|-------|-----------|
 | **Dashboard** | 📊 | KPIs, briefing do Hermes com IA, radar de alertas consolidado, agenda, emails e Life Insights |
+| **Hoje** | ☀️ | Central operacional diária: foco de agora, prioridades, síntese Hermes e ações rápidas |
 | **Life-Log & Leitura** | 📝 | Diário, leitura, cofre de fatos, captura multi-plataforma de links (YouTube, Instagram, Facebook, Web) e busca neural |
 | **Manutenção & Ativos** | 🛠️ | Gestão veicular e residencial, barras de vida útil e histórico de manutenções |
 | **Consumo & Despensa** | 🛒 | Lista compacta, steppers de ajuste rápido, Modo Supermercado e envio para o Telegram |
+| **Finanças** | 💵 | Extrato diário, contas fixas, orçamento mensal, Safe-to-Spend e relatórios |
 | **Viagens & Experiências** | ✈️ | Itinerários cronológicos, paradas detalhadas e locais salvos |
 | **Agenda & Inbox** | 📅 | Google Calendar sync automático (.ics com recorrência RRULE), eventos e emails prioritários |
 
@@ -63,7 +65,7 @@ npm run lint         # oxlint
 - **Tipografia:** Space Grotesk (títulos/números) + Inter (corpo/UI) + mono (dados tabulares)
 - **Cores base:** Fundo `zinc-950` · Cards `zinc-900` com inset highlight (`white/0.04`) · Bordas `zinc-800`
 - **Primária:** `indigo-500` (ações, foco, marca em gradiente `indigo→violet`)
-- **Accents por módulo:** Dashboard → `violet` · Life-Log → `emerald` · Manutenção → `orange` · Despensa → `purple` · Viagens → `cyan` · Agenda → `rose`
+- **Accents por módulo:** Dashboard → `violet` · Life-Log → `emerald` · Manutenção → `orange` · Despensa → `purple` · Finanças → `emerald` · Viagens → `cyan` · Agenda → `rose`
 - **Responsivo nativo:**
   - Mobile < 768px: BottomNav glass + `env(safe-area-inset)`
   - Tablet 768–1024px: NavRail + grids 2 col
@@ -77,7 +79,7 @@ npm run lint         # oxlint
 |--------|------|
 | `Cmd/Ctrl + K` | Foca Omnibox (busca neural) |
 | `Cmd/Ctrl + N` | Modal de adição rápida global |
-| `Alt + 1..6` | Navegação instantânea entre módulos |
+| `Alt + 1..7` | Navegação instantânea entre módulos |
 
 ---
 
@@ -94,5 +96,5 @@ VITE_SUPABASE_ANON_KEY=sua-chave-anon
 ## 📚 Documentação Adicional
 
 - [PRD.md](PRD.md) — Product Requirements Document.
-- [ARCHITECTURE_AND_HISTORY.md](ARCHITECTURE_AND_HISTORY.md) — Histórico técnico completo com todas as 16 seções de evolução do projeto.
+- [ARCHITECTURE_AND_HISTORY.md](ARCHITECTURE_AND_HISTORY.md) — Histórico técnico completo com a evolução do projeto.
 - [CLAUDE.md](CLAUDE.md) — Guia do desenvolvedor e regras de governança.
