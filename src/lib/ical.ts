@@ -172,7 +172,10 @@ export function parseIcalToEvents(icalText: string): AgendaEvent[] {
 
   for (const item of rawEvents) {
     const category = inferCategory(item.title, item.location)
-    const baseId = item.uid.startsWith('gcal-') ? item.uid : `gcal-${item.uid.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40)}`
+    const sanitizedUid = item.uid.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const baseId = item.uid.startsWith('gcal-')
+      ? item.uid
+      : `gcal-${sanitizedUid}-${item.start.date}-${item.start.time.replace(':', '')}`
 
     // Single non-recurring event
     if (!item.rrule) {
