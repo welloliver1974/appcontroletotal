@@ -934,6 +934,21 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
      - Botão de recarregar no cabeçalho com feedback visual de rotação (`animate-spin`) que sincroniza diretamente o iCal e recarrega os dados.
      - Formatação precisa da data no mobile (`Qua, 26 Ago`).
 
+## ⚡ 54. Persistência em Nuvem do Google Calendar, Cache-Busting iCal e Ergonomia Mobile (26/08/2026)
+
+* **Recursos Implementados e Integrados:**
+  1. **🛡️ Persistência Definitiva de Configurações do Google Calendar ([googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts) & [SettingsGoogleCalendar.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsGoogleCalendar.tsx)):**
+     - O link iCal secreto do Google Calendar agora é gravado tanto no `localStorage` quanto de forma permanente no banco de dados na nuvem (`doc_vault` / Supabase).
+     - Mecanismo de restauração automática (`restoreGoogleCalendarConfigFromDb`): mesmo se o usuário limpar os dados do navegador, atualizar o PWA ou trocar de aparelho, a URL é resgatada e restaurada automaticamente da nuvem.
+  2. **🚀 Cache-Busting e Resolução de Conflitos iCal ([googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts), [ical.ts](file:///e:/Apps/AppControleTotal/src/lib/ical.ts) & [sync-ical.js](file:///e:/Apps/AppControleTotal/api/calendar/sync-ical.js)):**
+     - Injeção de timestamp dinâmico `_cb=${Date.now()}` e cabeçalhos `no-cache` / `no-store` para furar caches intermediários de proxies (como allorigins/corsproxy).
+     - Eliminação de colisão de IDs de eventos (`UID` longo sanitizado + data + hora de início), garantindo que 100% dos eventos sejam importados sem perdas.
+  3. **🚗 Estabilização da Aba Manutenção ([ManutencaoPage.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/ManutencaoPage.tsx)):**
+     - Remoção da rotina agressiva que tentava criar registros de manutenção automaticamente no `mount`, evitando duplicações indesejadas e garantindo integridade dos dados de combustível.
+  4. **📱 Ergonomia Mobile de Alto Padrão ([Header.tsx](file:///e:/Apps/AppControleTotal/src/components/layout/Header.tsx), [BottomNav.tsx](file:///e:/Apps/AppControleTotal/src/components/layout/BottomNav.tsx) & [uiStore.ts](file:///e:/Apps/AppControleTotal/src/stores/uiStore.ts)):**
+     - Ícones do cabeçalho superior aumentados para área de toque confortável (`h-9 w-9` a `h-10 w-10` com ícones `20px` e bordas suaves) para Busca Neural, Manual de Ajuda, Configurações e Novo Lançamento (+).
+     - Adição dos atalhos rápidos **"Manual"** e **"Ajustes" (Configurações)** diretamente no final da barra deslizável inferior (`BottomNav`), permitindo acesso imediato com o polegar.
+
 ---
 
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
