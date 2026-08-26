@@ -88,7 +88,7 @@ O **Safe-to-Spend** é o seu termômetro financeiro diário para garantir que o 
   * Use o botão **`⛽ Abastecer`** informando a quilometragem atual do painel, litros e valor pago.
   * Sincronização bidirecional instantânea entre **Finanças** e o **Histórico do Veículo**.
 * **⚡ Painel Executivo de Consumo & TCO:**
-  * **Consumo Médio ($\text{km/L}$):** Rendimento real do veículo calculado entre abastecimentos.
+  * **Consumo Médio ($\text{km/L}$ Acumulado):** Rendimento real do veículo calculado pela soma de quilômetros e litros de todos os abastecimentos (perfeito para quem faz abastecimentos parciais de R$ 50/R$ 70, eliminando variações e distorções de tanque).
   * **Custo por Km de Combustível ($\text{R\$/km}$):** Gasto específico de combustível a cada quilômetro rodado.
   * **TCO Total / Km ($\text{R\$/km}$):** *Total Cost of Ownership* consolidando combustível + revisões preventivas, trocas de óleo e peças amortizadas pela quilometragem.
   * **Autonomia e Nível do Tanque:** Barra visual com porcentagem e estimativa de km restantes até a reserva.

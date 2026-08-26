@@ -136,6 +136,144 @@ export interface FuelAutonomyStats {
   statusMessage: string
 }
 
+export interface VehicleFuelSummary {
+  hasData: boolean
+  totalKmTracked: number
+  totalLitersTracked: number
+  cumulativeAvgKmPerLiter: number | null
+  recentAvgKmPerLiter: number | null
+  displayAvgKmPerLiter: number | null
+  isCumulative: boolean
+  lastFuelCost: number
+  lastFuelLiters: number
+  pricePerLiter: number
+  costPerKm: number | null
+  fuelCount: number
+  fuelRecords: MaintenanceRecord[]
+}
+
+/**
+ * Calculates cumulative fuel economy (km/L) across all fuel logs.
+ * Perfect for users who frequently do partial refuels (e.g. R$ 50, R$ 70).
+ */
+export function calculateVehicleFuelSummary(
+  assetId: string,
+  records: MaintenanceRecord[],
+): VehicleFuelSummary {
+  const fuelRecords = records
+    .filter((r) => {
+      const lower = r.title.toLowerCase()
+      return (
+        r.assetId === assetId &&
+        (r.title.includes('⛽') ||
+          lower.includes('abastecimento') ||
+          lower.includes('gasolina') ||
+          lower.includes('etanol') ||
+          lower.includes('diesel') ||
+          lower.includes('litros') ||
+          lower.includes('gnv') ||
+          lower.includes('combustível'))
+      )
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.date).getTime()
+      const timeB = new Date(b.date).getTime()
+      if (timeA !== timeB) return timeA - timeB
+      return (a.odometerKm || 0) - (b.odometerKm || 0)
+    })
+
+  if (fuelRecords.length === 0) {
+    return {
+      hasData: false,
+      totalKmTracked: 0,
+      totalLitersTracked: 0,
+      cumulativeAvgKmPerLiter: null,
+      recentAvgKmPerLiter: null,
+      displayAvgKmPerLiter: null,
+      isCumulative: false,
+      lastFuelCost: 0,
+      lastFuelLiters: 0,
+      pricePerLiter: 0,
+      costPerKm: null,
+      fuelCount: 0,
+      fuelRecords: [],
+    }
+  }
+
+  const latest = fuelRecords[fuelRecords.length - 1]
+  const latestCost = Number(latest.cost) || 0
+  const latestLitersMatch = latest.title.match(/(\d+[.,]?\d*)\s*l/i)
+  const latestLiters = latestLitersMatch ? parseFloat(latestLitersMatch[1].replace(',', '.')) : 0
+  const pricePerLiter = latestLiters > 0 && latestCost > 0 ? latestCost / latestLiters : 0
+
+  // Registros válidos com odômetro e litros
+  const validLogs = fuelRecords.filter(
+    (r) => typeof r.odometerKm === 'number' && r.odometerKm > 0,
+  )
+
+  let cumulativeAvgKmPerLiter: number | null = null
+  let recentAvgKmPerLiter: number | null = null
+  let totalKmTracked = 0
+  let totalLitersTracked = 0
+
+  if (validLogs.length >= 2) {
+    const firstLog = validLogs[0]
+    const lastLog = validLogs[validLogs.length - 1]
+    const diffKm = (lastLog.odometerKm || 0) - (firstLog.odometerKm || 0)
+
+    // Litros consumidos entre o primeiro e o último odômetro (todos a partir do segundo abastecimento)
+    let sumLiters = 0
+    for (let i = 1; i < validLogs.length; i++) {
+      const match = validLogs[i].title.match(/(\d+[.,]?\d*)\s*l/i)
+      const l = match ? parseFloat(match[1].replace(',', '.')) : 0
+      sumLiters += l
+    }
+
+    if (diffKm > 0 && sumLiters > 0) {
+      totalKmTracked = diffKm
+      totalLitersTracked = Math.round(sumLiters * 10) / 10
+      cumulativeAvgKmPerLiter = Math.round((diffKm / sumLiters) * 10) / 10
+    }
+
+    // Cálculo isolado mais recente (entre os 2 últimos)
+    const prevLog = validLogs[validLogs.length - 2]
+    const recentDiffKm = (lastLog.odometerKm || 0) - (prevLog.odometerKm || 0)
+    if (recentDiffKm > 0 && latestLiters > 0) {
+      recentAvgKmPerLiter = Math.round((recentDiffKm / latestLiters) * 10) / 10
+    }
+  }
+
+  // Tenta extrair do título explícito se houver
+  const kmlMatch = latest.title.match(/(\d+[.,]?\d*)\s*km\/l/i)
+  if (kmlMatch && !cumulativeAvgKmPerLiter) {
+    cumulativeAvgKmPerLiter = parseFloat(kmlMatch[1].replace(',', '.'))
+  }
+
+  const displayAvgKmPerLiter = cumulativeAvgKmPerLiter ?? recentAvgKmPerLiter
+  const isCumulative = validLogs.length >= 2 && cumulativeAvgKmPerLiter !== null
+
+  let costPerKm: number | null = null
+  if (displayAvgKmPerLiter && displayAvgKmPerLiter > 0 && pricePerLiter > 0) {
+    costPerKm = pricePerLiter / displayAvgKmPerLiter
+  }
+
+  return {
+    hasData: true,
+    totalKmTracked,
+    totalLitersTracked,
+    cumulativeAvgKmPerLiter,
+    recentAvgKmPerLiter,
+    displayAvgKmPerLiter,
+    isCumulative,
+    lastFuelCost: latestCost,
+    lastFuelLiters: latestLiters,
+    pricePerLiter,
+    costPerKm,
+    fuelCount: fuelRecords.length,
+    fuelRecords: [...fuelRecords].reverse(), // mais novos primeiro
+  }
+}
+
 /**
  * Calculates estimated remaining fuel autonomy based on fuel logs and odometer.
  */
@@ -144,19 +282,7 @@ export function calculateFuelAutonomy(
   records: MaintenanceRecord[],
   defaultTankLiters = 50,
 ): FuelAutonomyStats {
-  const fuelLogs = records
-    .filter(
-      (r) =>
-        r.assetId === assetId &&
-        typeof r.odometerKm === 'number' &&
-        r.odometerKm > 0 &&
-        (r.title.includes('⛽') ||
-          r.title.toLowerCase().includes('litros') ||
-          r.title.toLowerCase().includes('gasolina') ||
-          r.title.toLowerCase().includes('etanol') ||
-          r.title.toLowerCase().includes('abastecimento')),
-    )
-    .sort((a, b) => (b.odometerKm || 0) - (a.odometerKm || 0))
+  const summary = calculateVehicleFuelSummary(assetId, records)
 
   const allOdoRecords = records
     .filter((r) => r.assetId === assetId && typeof r.odometerKm === 'number' && r.odometerKm > 0)
@@ -164,7 +290,7 @@ export function calculateFuelAutonomy(
 
   const currentKm = allOdoRecords[0]?.odometerKm || 0
 
-  if (fuelLogs.length === 0 || currentKm === 0) {
+  if (!summary.hasData || currentKm === 0 || summary.fuelRecords.length === 0) {
     return {
       hasData: false,
       lastFuelKm: 0,
@@ -179,28 +305,17 @@ export function calculateFuelAutonomy(
     }
   }
 
-  const latestFuel = fuelLogs[0]
+  const latestFuel = summary.fuelRecords[0]
   const lastFuelKm = latestFuel.odometerKm || currentKm
   const kmSinceLastFuel = Math.max(0, currentKm - lastFuelKm)
-
-  // Extrair litros do título se existir (ex: "⛽ Gasolina (42.5 L)")
-  const litersMatch = latestFuel.title.match(/(\d+[.,]?\d*)\s*l/i)
-  const litersLastFuel = litersMatch ? parseFloat(litersMatch[1].replace(',', '.')) : defaultTankLiters
-
-  // Consumo médio (tenta extrair dos logs ou usa 11.5 km/L de média)
-  let avgKmPerLiter = 11.5
-  if (fuelLogs.length >= 2) {
-    const diffKm = (fuelLogs[0].odometerKm || 0) - (fuelLogs[1].odometerKm || 0)
-    if (diffKm > 50 && diffKm < 1000) {
-      avgKmPerLiter = Math.round((diffKm / litersLastFuel) * 10) / 10
-    }
-  }
+  const litersLastFuel = summary.lastFuelLiters > 0 ? summary.lastFuelLiters : defaultTankLiters
+  const avgKmPerLiter = summary.displayAvgKmPerLiter || 11.5
 
   const totalRangeKm = litersLastFuel * avgKmPerLiter
   const estimatedKmRemaining = Math.max(0, Math.round(totalRangeKm - kmSinceLastFuel))
   const tankPercentRemaining = Math.max(
     0,
-    Math.min(100, Math.round((estimatedKmRemaining / totalRangeKm) * 100)),
+    Math.min(100, Math.round((estimatedKmRemaining / Math.max(1, totalRangeKm)) * 100)),
   )
 
   let fuelStatus: 'full' | 'half' | 'low' | 'reserve' = 'full'
@@ -230,3 +345,4 @@ export function calculateFuelAutonomy(
     statusMessage,
   }
 }
+

@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
-import { Fuel, Gauge, Sparkles, TrendingUp, Zap } from 'lucide-react'
+import { Fuel, Gauge, Info, Sparkles, TrendingUp, Zap } from 'lucide-react'
 import type { Asset, MaintenanceRecord } from '@/data/types'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { formatBRL } from '@/lib/utils'
-import { calculateFuelAutonomy } from './predictiveMaint'
+import { calculateFuelAutonomy, calculateVehicleFuelSummary } from './predictiveMaint'
 
 interface VehicleFuelPerformanceCardProps {
   asset: Asset
@@ -19,26 +19,13 @@ export function VehicleFuelPerformanceCard({
 }: VehicleFuelPerformanceCardProps) {
   const isVehicle = asset.category === 'carro' || asset.category === 'moto'
 
-  // Filtra registros de combustível deste veículo
-  const fuelRecords = useMemo(() => {
-    if (!isVehicle) return []
-    return records
-      .filter((r) => {
-        const lower = r.title.toLowerCase()
-        return (
-          r.assetId === asset.id &&
-          (r.title.includes('⛽') ||
-            lower.includes('abastecimento') ||
-            lower.includes('gasolina') ||
-            lower.includes('etanol') ||
-            lower.includes('diesel') ||
-            lower.includes('litros') ||
-            lower.includes('gnv') ||
-            lower.includes('combustível'))
-        )
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [records, asset.id, isVehicle])
+  // Resumo de combustível acumulado e histórico
+  const fuelSummary = useMemo(() => {
+    if (!isVehicle) return null
+    return calculateVehicleFuelSummary(asset.id, records)
+  }, [asset.id, records, isVehicle])
+
+  const fuelRecords = fuelSummary?.fuelRecords || []
 
   // Autonomia e tanque
   const autonomy = useMemo(() => {
@@ -47,34 +34,14 @@ export function VehicleFuelPerformanceCard({
 
   // Cálculos consolidados (Combustível + TCO Total)
   const stats = useMemo(() => {
-    if (!isVehicle || fuelRecords.length === 0) return null
+    if (!isVehicle || !fuelSummary || !fuelSummary.hasData) return null
 
     const latest = fuelRecords[0]
-    const latestCost = Number(latest.cost) || 0
-
-    // Extrair litros do título (ex: 42.5 L)
-    const litersMatch = latest.title.match(/(\d+[.,]?\d*)\s*l/i)
-    const latestLiters = litersMatch ? parseFloat(litersMatch[1].replace(',', '.')) : 0
-    const pricePerLiter = latestLiters > 0 && latestCost > 0 ? latestCost / latestLiters : 0
-
-    // Média de km/L
-    let avgKmPerLiter: number | null = null
-    let costPerKm: number | null = null
-
-    // Tentar extrair do título do registro mais recente primeiro
-    const kmlMatch = latest.title.match(/(\d+[.,]?\d*)\s*km\/l/i)
-    if (kmlMatch) {
-      avgKmPerLiter = parseFloat(kmlMatch[1].replace(',', '.'))
-    } else if (fuelRecords.length >= 2) {
-      const odoDiff = (fuelRecords[0].odometerKm || 0) - (fuelRecords[1].odometerKm || 0)
-      if (odoDiff > 0 && latestLiters > 0) {
-        avgKmPerLiter = Math.round((odoDiff / latestLiters) * 10) / 10
-      }
-    }
-
-    if (avgKmPerLiter && pricePerLiter > 0) {
-      costPerKm = pricePerLiter / avgKmPerLiter
-    }
+    const latestCost = fuelSummary.lastFuelCost
+    const latestLiters = fuelSummary.lastFuelLiters
+    const pricePerLiter = fuelSummary.pricePerLiter
+    const avgKmPerLiter = fuelSummary.displayAvgKmPerLiter
+    const costPerKm = fuelSummary.costPerKm
 
     const totalFuelSpent = fuelRecords.reduce((sum, r) => sum + (Number(r.cost) || 0), 0)
 
@@ -99,6 +66,9 @@ export function VehicleFuelPerformanceCard({
       latestLiters,
       pricePerLiter,
       avgKmPerLiter,
+      isCumulative: fuelSummary.isCumulative,
+      totalKmTracked: fuelSummary.totalKmTracked,
+      totalLitersTracked: fuelSummary.totalLitersTracked,
       costPerKm,
       tcoPerKm,
       totalFuelSpent,
@@ -106,7 +76,7 @@ export function VehicleFuelPerformanceCard({
       totalInvested,
       serviceCount: serviceRecords.length,
     }
-  }, [fuelRecords, records, asset.id, isVehicle])
+  }, [fuelSummary, fuelRecords, records, asset.id, isVehicle])
 
   if (!isVehicle) return null
 
@@ -146,16 +116,25 @@ export function VehicleFuelPerformanceCard({
         {/* 1. Média de Consumo */}
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-3">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400">
-              Consumo Médio
+            <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400 flex items-center gap-1">
+              <span>Consumo Médio</span>
+              {stats?.isCumulative && (
+                <span className="px-1 py-0 rounded text-[9px] bg-amber-500/20 text-amber-300 font-normal">
+                  Acumulado
+                </span>
+              )}
             </span>
             <Sparkles className="h-3.5 w-3.5 text-amber-400/70" />
           </div>
           <p className="font-num font-display text-lg sm:text-xl font-bold text-amber-200 mt-1">
             {stats?.avgKmPerLiter ? `${stats.avgKmPerLiter.toFixed(1)} km/L` : 'Em cálculo'}
           </p>
-          <span className="text-[10px] text-zinc-400 mt-0.5 block truncate">
-            {stats?.avgKmPerLiter ? 'Rendimento estimado' : 'Requer 2 abastecimentos'}
+          <span className="text-[10px] text-zinc-400 mt-0.5 block truncate" title={stats?.isCumulative ? `Baseado em ${stats.totalKmTracked} km percorridos e ${stats.totalLitersTracked} L colocados` : undefined}>
+            {stats?.isCumulative
+              ? `${stats.totalKmTracked} km rodados · ${stats.totalLitersTracked} L`
+              : stats?.avgKmPerLiter
+                ? 'Rendimento estimado'
+                : 'Requer 2 abastecimentos'}
           </span>
         </div>
 
@@ -211,6 +190,16 @@ export function VehicleFuelPerformanceCard({
           </span>
         </div>
       </div>
+
+      {/* Dica de Média Acumulada para Abastecimentos Parciais */}
+      {stats?.isCumulative && (
+        <div className="mt-3 px-3 py-2 rounded-lg bg-amber-500/[0.07] border border-amber-500/20 text-[11px] text-amber-300/90 flex items-center gap-2">
+          <Info className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+          <span>
+            <strong>Média Acumulada ativa:</strong> calcula o rendimento total somando todos os seus abastecimentos ({stats.totalKmTracked} km percorridos), suavizando variações de abastecimentos parciais.
+          </span>
+        </div>
+      )}
 
       {/* Barra de Autonomia Estimada */}
       {autonomy.hasData && (

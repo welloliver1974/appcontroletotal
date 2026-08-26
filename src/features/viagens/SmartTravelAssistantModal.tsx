@@ -16,6 +16,7 @@ import { api } from '@/data/api'
 import { formatBRL } from '@/lib/utils'
 import { sendDirectTelegramMessage } from '@/lib/hermes'
 import { toast } from '@/stores/toastStore'
+import { calculateVehicleFuelSummary } from '@/features/manutencao/predictiveMaint'
 import type { Asset, MaintenanceRecord, Trip } from '@/data/types'
 
 interface SmartTravelAssistantModalProps {
@@ -120,30 +121,13 @@ export function SmartTravelAssistantModal({
     })
   }, [open, selectedVehicleId])
 
-  // Calculate vehicle fuel stats
+  // Calculate vehicle fuel stats using cumulative summary
   const vehicleStats = useMemo(() => {
     if (!selectedVehicleId) return { avgKmPerLiter: 11.5, pricePerLiter: 5.89 }
-    const vehRecords = records
-      .filter((r) => r.assetId === selectedVehicleId && (r.title.includes('⛽') || r.title.toLowerCase().includes('abastecimento')))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    const summary = calculateVehicleFuelSummary(selectedVehicleId, records)
 
-    let avgKmPerLiter = 11.5
-    let pricePerLiter = fuelPrice
-
-    if (vehRecords.length >= 2) {
-      const latest = vehRecords[0]
-      const litersMatch = latest.title.match(/(\d+[.,]?\d*)\s*l/i)
-      const liters = litersMatch ? parseFloat(litersMatch[1].replace(',', '.')) : 0
-      const cost = Number(latest.cost) || 0
-      if (liters > 0 && cost > 0) {
-        pricePerLiter = cost / liters
-      }
-
-      const odoDiff = (vehRecords[0].odometerKm || 0) - (vehRecords[1].odometerKm || 0)
-      if (odoDiff > 0 && liters > 0) {
-        avgKmPerLiter = Math.round((odoDiff / liters) * 10) / 10
-      }
-    }
+    const avgKmPerLiter = summary.displayAvgKmPerLiter || 11.5
+    const pricePerLiter = summary.pricePerLiter > 0 ? summary.pricePerLiter : fuelPrice
 
     return { avgKmPerLiter, pricePerLiter }
   }, [selectedVehicleId, records, fuelPrice])

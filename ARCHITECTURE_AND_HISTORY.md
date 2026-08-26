@@ -888,6 +888,23 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
      - Input inline para ajustar o preço real do item durante a compra no supermercado.
      - Checkbox integrada para lançar o valor total gasto diretamente na tabela de despesas (`spendingEntries`) na categoria *Alimentação* ao concluir a compra, atualizando imediatamente o orçamento e o cálculo do *Safe-to-Spend*.
 
+## ⛽ 52. Consumo Médio Acumulado & Estabilização para Abastecimentos Parciais (26/08/2026)
+
+* **Contexto & Problema Identificado:**
+  * Em veículos de uso cotidiano onde o condutor costuma realizar **abastecimentos parciais** (ex: R$ 50, R$ 70) em vez de encher o tanque até o desarme automático da bomba, a fórmula isolada de dois abastecimentos consecutivos ($\frac{\Delta \text{Km}}{\text{Litros da vez}}$) gerava oscilações artificiais drásticas (ex: 4,1 km/L num registro e 15 km/L no seguinte), devido ao volume residual de combustível acumulado no tanque.
+* **Solução e Melhorias Implementadas:**
+  1. **📈 Motor de Cálculo Acumulado Centralizado ([predictiveMaint.ts](file:///e:/Apps/AppControleTotal/src/features/manutencao/predictiveMaint.ts)):**
+     - Criada a função unificada `calculateVehicleFuelSummary(assetId, records)` que ordena cronologicamente todos os registros válidos com odômetro e litros.
+     - Calcula a média ponderada acumulada:
+       $$\text{Média Acumulada (km/L)} = \frac{\text{Odômetro Mais Recente} - \text{Odômetro Inicial}}{\sum_{i=1}^{n-1} \text{Litros Abastecidos}}$$
+     - A fórmula neutraliza perfeitamente a variação de nível do tanque e converge para a média real do computador de bordo do veículo conforme novos abastecimentos são registrados.
+  2. **🏷️ Interface Aprimorada no Painel de Consumo ([VehicleFuelPerformanceCard.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/VehicleFuelPerformanceCard.tsx)):**
+     - Indicador visual `(Acumulado)` integrado ao card de **Consumo Médio**.
+     - Subtítulo com quilometragem total monitorada e litros somados (ex: `78 km rodados · 19.0 L`).
+     - Banner explicativo orientando o usuário sobre a suavização de médias em abastecimentos parciais.
+  3. **✈️ Integração com Viagens ([SmartTravelAssistantModal.tsx](file:///e:/Apps/AppControleTotal/src/features/viagens/SmartTravelAssistantModal.tsx)):**
+     - O assistente de viagens agora consome a `calculateVehicleFuelSummary` do veículo selecionado, garantindo estimativas de litros e custo de viagem precisas.
+
 ---
 
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
