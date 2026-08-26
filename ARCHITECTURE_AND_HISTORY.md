@@ -929,6 +929,10 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   4. **🔔 Notificações Nativas Web Push (PWA) ([notifications.ts](file:///e:/Apps/AppControleTotal/src/lib/notifications.ts) & [HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx)):**
      - Banner amigável para ativação de notificações nativas em 1 clique na aba Hoje.
      - Verificador em tempo real que envia alertas no celular 15 minutos antes dos compromissos e monitora a validade de itens da despensa.
+  5. **🔄 Sincronização em Background do Google Calendar & Badge de Data ([hojeUtils.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/hojeUtils.ts), [useHojeData.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/useHojeData.ts) & [HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx)):**
+     - Sincronização automática com o Google Calendar ao abrir a aba Hoje (sem necessidade de entrar na Agenda primeiro).
+     - Botão de recarregar no cabeçalho com feedback visual de rotação (`animate-spin`) que sincroniza diretamente o iCal e recarrega os dados.
+     - Formatação precisa da data no mobile (`Qua, 26 Ago`).
 
 ---
 
