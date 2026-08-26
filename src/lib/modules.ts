@@ -48,21 +48,6 @@ export interface ModuleDef {
 /** Module identity palette. Keep classes literal — Tailwind can't compile dynamic names. */
 export const MODULES: ModuleDef[] = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
-    emoji: '📊',
-    path: '/dashboard',
-    icon: LayoutDashboard,
-    accent: 'violet',
-    text: 'text-violet-400',
-    solid: 'bg-violet-500',
-    soft: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
-    glow: 'bg-violet-500/10',
-    gradient: 'from-violet-500 to-purple-500',
-    tag: 'Visão geral',
-    description: 'KPIs, alertas e insights do seu universo pessoal.',
-  },
-  {
     id: 'hoje',
     label: 'Hoje',
     navLabel: 'Hoje',
@@ -77,6 +62,21 @@ export const MODULES: ModuleDef[] = [
     gradient: 'from-sky-500 to-blue-600',
     tag: 'Plano Diário',
     description: 'Prioridades, compromissos e ações rápidas para o seu dia.',
+  },
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    emoji: '📊',
+    path: '/dashboard',
+    icon: LayoutDashboard,
+    accent: 'violet',
+    text: 'text-violet-400',
+    solid: 'bg-violet-500',
+    soft: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
+    glow: 'bg-violet-500/10',
+    gradient: 'from-violet-500 to-purple-500',
+    tag: 'Visão geral',
+    description: 'KPIs, alertas e insights do seu universo pessoal.',
   },
   {
     id: 'life-log',
