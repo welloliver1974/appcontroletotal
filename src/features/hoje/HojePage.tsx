@@ -279,10 +279,10 @@ export function HojePage() {
       {/* Header com Data Responsiva e Saudação */}
       <PageHeader module={module}>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Data compacta no mobile */}
-          <span className="chip inline-flex sm:hidden items-center gap-1 text-[11px] text-sky-300 bg-sky-500/10 border-sky-500/30 whitespace-nowrap py-1 px-2">
+          {/* Data compacta no mobile: ex: 'Qua, 26 Ago' */}
+          <span className="chip inline-flex sm:hidden items-center gap-1 text-[11px] font-medium text-sky-300 bg-sky-500/10 border-sky-500/30 whitespace-nowrap py-1 px-2">
             <SunMedium className="h-3 w-3 text-sky-400 shrink-0" />
-            <span className="capitalize">{plan.fullDateLabel.split(',')[0] || 'Hoje'}</span>
+            <span>{plan.shortDateLabel}</span>
           </span>
           {/* Data completa no desktop */}
           <span className="chip capitalize hidden sm:inline-flex items-center gap-1.5 text-xs text-sky-300 bg-sky-500/10 border-sky-500/30 whitespace-nowrap">

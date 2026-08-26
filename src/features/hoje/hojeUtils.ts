@@ -34,6 +34,7 @@ export interface TodayPriority {
 
 export interface TodayPlan {
   dateLabel: string
+  shortDateLabel: string
   fullDateLabel: string
   greeting: string
   summary: string
@@ -93,6 +94,11 @@ export function buildTodayPlan(data: Partial<RawTodayData>, nowRef = new Date())
     day: '2-digit',
     month: 'long',
   })
+
+  const weekdayShort = nowRef.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').trim()
+  const dayNum = nowRef.getDate()
+  const monthShort = nowRef.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').trim()
+  const shortDateLabel = `${weekdayShort.charAt(0).toUpperCase() + weekdayShort.slice(1)}, ${dayNum} ${monthShort.charAt(0).toUpperCase() + monthShort.slice(1)}`
 
   const fullDateLabel = nowRef.toLocaleDateString('pt-BR', {
     weekday: 'short',
@@ -365,6 +371,7 @@ export function buildTodayPlan(data: Partial<RawTodayData>, nowRef = new Date())
 
   return {
     dateLabel,
+    shortDateLabel,
     fullDateLabel,
     greeting,
     summary,
