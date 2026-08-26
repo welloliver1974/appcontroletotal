@@ -948,6 +948,9 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   4. **📱 Ergonomia Mobile de Alto Padrão ([Header.tsx](file:///e:/Apps/AppControleTotal/src/components/layout/Header.tsx), [BottomNav.tsx](file:///e:/Apps/AppControleTotal/src/components/layout/BottomNav.tsx) & [uiStore.ts](file:///e:/Apps/AppControleTotal/src/stores/uiStore.ts)):**
      - Ícones do cabeçalho superior aumentados para área de toque confortável (`h-9 w-9` a `h-10 w-10` com ícones `20px` e bordas suaves) para Busca Neural, Manual de Ajuda, Configurações e Novo Lançamento (+).
      - Adição dos atalhos rápidos **"Manual"** e **"Ajustes" (Configurações)** diretamente no final da barra deslizável inferior (`BottomNav`), permitindo acesso imediato com o polegar.
+  5. **👨‍👩‍👧 Suporte Multi-Feeds iCal (Agendas Compartilhadas / Esposa / Família) ([googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts) & [SettingsGoogleCalendar.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsGoogleCalendar.tsx)):**
+     - Suporte a múltiplos links iCal simultâneos (um por linha no textarea de configurações).
+     - Processamento paralelo e unificação dos calendários no banco sem duplicatas.
 
 ---
 
