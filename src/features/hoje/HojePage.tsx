@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
   ArrowUpRight,
+  Bell,
   Calendar,
   CalendarClock,
   CheckCircle2,
@@ -37,6 +38,14 @@ import { EventModal } from '@/features/agenda/EventModal'
 import { api } from '@/data/api'
 import { toast } from '@/stores/toastStore'
 import { syncMaintenanceRecordToFinance } from '@/lib/maintFinanceSync'
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  sendLocalNotification,
+  checkUpcomingEventsReminders,
+  checkTodayEventsNotifications,
+  type NotificationPermissionStatus,
+} from '@/lib/notifications'
 import type { AgendaEvent, Asset, LifeLogEntry, MaintenanceRecord, SpendingItem } from '@/data/types'
 import type { ParsedReceiptData } from '@/lib/receiptScanner'
 
@@ -118,7 +127,7 @@ function HojeSkeleton() {
 
 export function HojePage() {
   const navigate = useNavigate()
-  const { rawData, plan, loading, reload, toggleHabit } = useHojeData()
+  const { rawData, plan, loading, reload, toggleHabit, toggleEventCompleted } = useHojeData()
   const module = MODULE_BY_ID.hoje
 
   // Modais de Ações Rápidas
@@ -130,6 +139,7 @@ export function HojePage() {
 
   const [assets, setAssets] = useState<Asset[]>([])
   const [maintRecords, setMaintRecords] = useState<MaintenanceRecord[]>([])
+  const [notifPerm, setNotifPerm] = useState<NotificationPermissionStatus>(() => getNotificationPermission())
 
   useEffect(() => {
     Promise.all([
@@ -140,6 +150,33 @@ export function HojePage() {
       setMaintRecords(Array.isArray(m) ? m : [])
     })
   }, [])
+
+  // Verificador em tempo real de compromissos para Web Push (15 min antes e diário)
+  useEffect(() => {
+    if (!rawData?.events || rawData.events.length === 0) return
+
+    checkTodayEventsNotifications(rawData.events)
+    checkUpcomingEventsReminders(rawData.events)
+
+    const interval = setInterval(() => {
+      checkUpcomingEventsReminders(rawData.events)
+    }, 60000)
+
+    return () => clearInterval(interval)
+  }, [rawData?.events])
+
+  const handleEnablePush = async () => {
+    const res = await requestNotificationPermission()
+    setNotifPerm(res)
+    if (res === 'granted') {
+      sendLocalNotification('🔔 Notificações Ativadas no Life OS', {
+        body: 'Você receberá avisos automáticos 15 minutos antes de seus compromissos e alertas de despensa!',
+      })
+      toast.success('Notificações Web Push ativadas com sucesso! 🔔✨')
+    } else {
+      toast.error('Permissão para notificações não foi concedida.')
+    }
+  }
 
   const handleSaveSpending = async (draft: Omit<SpendingItem, 'id' | 'createdAt'>) => {
     try {
@@ -239,34 +276,62 @@ export function HojePage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4 sm:space-y-6 pb-20 md:pb-10 min-w-0">
-      {/* Header com Data e Saudação */}
+      {/* Header com Data Responsiva e Saudação */}
       <PageHeader module={module}>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="chip capitalize inline-flex items-center gap-1.5 text-xs text-sky-300 bg-sky-500/10 border-sky-500/30">
-            <SunMedium className="h-3.5 w-3.5 text-sky-400" />
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Data compacta no mobile */}
+          <span className="chip inline-flex sm:hidden items-center gap-1 text-[11px] text-sky-300 bg-sky-500/10 border-sky-500/30 whitespace-nowrap py-1 px-2">
+            <SunMedium className="h-3 w-3 text-sky-400 shrink-0" />
+            <span className="capitalize">{plan.fullDateLabel.split(',')[0] || 'Hoje'}</span>
+          </span>
+          {/* Data completa no desktop */}
+          <span className="chip capitalize hidden sm:inline-flex items-center gap-1.5 text-xs text-sky-300 bg-sky-500/10 border-sky-500/30 whitespace-nowrap">
+            <SunMedium className="h-3.5 w-3.5 text-sky-400 shrink-0" />
             {plan.dateLabel}
           </span>
           <button
             type="button"
             onClick={() => void reload()}
             title="Atualizar dados"
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 active:scale-95 transition-all"
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </button>
         </div>
       </PageHeader>
 
+      {/* Banner discreto para ativar Web Push se ainda não ativado */}
+      {notifPerm === 'default' && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3 sm:px-4 sm:py-3 text-xs text-cyan-200 shadow-md">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+              <Bell className="h-4 w-4 animate-pulse" />
+            </div>
+            <p className="min-w-0 text-xs">
+              <strong className="text-cyan-300">Lembretes 15 min antes:</strong> Ative as notificações Web Push para receber alertas automáticos no celular.
+            </p>
+          </div>
+          <Button
+            variant="soft"
+            size="sm"
+            className="shrink-0 text-xs font-semibold text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/20 self-end sm:self-center"
+            onClick={handleEnablePush}
+          >
+            Ativar Notificações 🔔
+          </Button>
+        </div>
+      )}
+
       {/* Resumo Matinal / Síntese Hermes */}
       <div className="relative overflow-hidden rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-950/40 via-zinc-900/80 to-zinc-950/90 p-4 sm:p-5 backdrop-blur-xl shadow-lg shadow-sky-950/20">
         <div className="absolute right-0 top-0 -mr-12 -mt-12 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30 shrink-0">
                 <Sparkles className="h-3.5 w-3.5" />
               </span>
-              <p className="text-xs font-bold uppercase tracking-wider text-sky-400">
+              <p className="text-xs font-bold uppercase tracking-wider text-sky-400 truncate">
                 {plan.greeting} · Hermes Cockpit
               </p>
             </div>
@@ -311,20 +376,40 @@ export function HojePage() {
               </div>
             </div>
 
-            {plan.now.actionLabel && (
-              <Button
-                variant="soft"
-                size="sm"
-                className="shrink-0 self-start sm:self-center border border-sky-500/30 text-sky-300 hover:bg-sky-500/10 gap-1.5"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (plan.now?.path) navigate(plan.now.path)
-                }}
-              >
-                <span>{plan.now.actionLabel}</span>
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </Button>
-            )}
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+              {plan.now.source === 'agenda' && plan.now.rawId && (
+                <Button
+                  variant="soft"
+                  size="sm"
+                  className="border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 gap-1.5"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (plan.now?.rawId) {
+                      void toggleEventCompleted(plan.now.rawId)
+                      toast.success('Compromisso marcado como concluído! 🎉')
+                    }
+                  }}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Check-in</span>
+                </Button>
+              )}
+
+              {plan.now.actionLabel && (
+                <Button
+                  variant="soft"
+                  size="sm"
+                  className="border border-sky-500/30 text-sky-300 hover:bg-sky-500/10 gap-1.5"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (plan.now?.path) navigate(plan.now.path)
+                  }}
+                >
+                  <span>{plan.now.actionLabel}</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
         </Card>
       ) : (
@@ -436,6 +521,8 @@ export function HojePage() {
               {plan.priorities.map((item: TodayPriority) => {
                 const Icon = sourceIcon(item.source)
                 const colorCls = sourceColor(item.source)
+                const isEvent = item.source === 'agenda' && item.rawId
+                const isDone = Boolean(item.completed)
 
                 return (
                   <div
@@ -444,6 +531,7 @@ export function HojePage() {
                     className={cn(
                       'group flex items-center justify-between gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-3.5 transition-all backdrop-blur-sm hover:border-zinc-700 hover:bg-zinc-900/60 active:scale-[0.99]',
                       item.path ? 'cursor-pointer' : '',
+                      isDone ? 'opacity-65 bg-zinc-950/40 border-zinc-800/50' : '',
                     )}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -452,7 +540,12 @@ export function HojePage() {
                       </div>
                       <div className="min-w-0 space-y-0.5">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-zinc-100 truncate group-hover:text-sky-300 transition-colors">
+                          <p
+                            className={cn(
+                              'text-sm font-semibold text-zinc-100 truncate group-hover:text-sky-300 transition-colors',
+                              isDone ? 'line-through text-zinc-400' : '',
+                            )}
+                          >
                             {item.title}
                           </p>
                           {severityBadge(item.severity)}
@@ -461,11 +554,35 @@ export function HojePage() {
                       </div>
                     </div>
 
-                    {item.path && (
-                      <div className="shrink-0 flex items-center text-zinc-500 group-hover:text-zinc-300 transition-colors">
-                        <ChevronRight className="h-4 w-4" />
-                      </div>
-                    )}
+                    <div className="shrink-0 flex items-center gap-2">
+                      {isEvent && (
+                        <button
+                          type="button"
+                          title={isDone ? 'Reabrir compromisso' : 'Concluir compromisso'}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (item.rawId) {
+                              void toggleEventCompleted(item.rawId)
+                              toast.success(isDone ? 'Compromisso reaberto.' : 'Compromisso concluído! 🎉')
+                            }
+                          }}
+                          className={cn(
+                            'flex h-8 w-8 items-center justify-center rounded-lg border transition-all',
+                            isDone
+                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                              : 'bg-zinc-900/80 text-zinc-400 border-zinc-800 hover:text-emerald-400 hover:border-emerald-500/40 hover:bg-emerald-500/10',
+                          )}
+                        >
+                          {isDone ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                        </button>
+                      )}
+
+                      {item.path && !isEvent && (
+                        <div className="flex items-center text-zinc-500 group-hover:text-zinc-300 transition-colors">
+                          <ChevronRight className="h-4 w-4" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               })}

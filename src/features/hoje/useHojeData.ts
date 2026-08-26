@@ -28,6 +28,7 @@ export interface UseHojeDataResult {
   loading: boolean
   reload: () => Promise<void>
   toggleHabit: (habitId: string) => Promise<void>
+  toggleEventCompleted: (eventId: string) => Promise<void>
 }
 
 export function useHojeData(): UseHojeDataResult {
@@ -121,6 +122,30 @@ export function useHojeData(): UseHojeDataResult {
     [rawData, now, reload],
   )
 
+  const toggleEventCompleted = useCallback(
+    async (eventId: string) => {
+      if (!rawData) return
+      const target = rawData.events.find((e) => e.id === eventId)
+      if (!target) return
+
+      const nextCompleted = !target.completed
+
+      // Atualização otimista imediata
+      setRawData((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          events: prev.events.map((e) => (e.id === eventId ? { ...e, completed: nextCompleted } : e)),
+        }
+      })
+
+      await api.update<AgendaEvent>('events', eventId, { completed: nextCompleted }).catch(() => {
+        void reload()
+      })
+    },
+    [rawData, reload],
+  )
+
   const plan = useMemo(() => {
     return buildTodayPlan(rawData || {}, now)
   }, [rawData, now])
@@ -131,5 +156,6 @@ export function useHojeData(): UseHojeDataResult {
     loading,
     reload,
     toggleHabit,
+    toggleEventCompleted,
   }
 }

@@ -361,7 +361,14 @@ function ListView({
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="font-semibold text-xs text-zinc-100 truncate">{event.title}</h4>
+                  <h4 className={cn('font-semibold text-xs truncate', event.completed ? 'line-through text-zinc-400' : 'text-zinc-100')}>
+                    {event.title}
+                  </h4>
+                  {event.completed && (
+                    <span className="chip text-[9px] py-0 px-1.5 rounded-md uppercase font-semibold bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+                      Concluído
+                    </span>
+                  )}
                   <span
                     className={cn(
                       'chip text-[9px] py-0 px-1.5 rounded-md uppercase font-semibold',

@@ -8,6 +8,7 @@ export interface AgendaEvent {
   timeEnd?: string
   category: 'reuniao' | 'pessoal' | 'habit' | 'viagem'
   location?: string
+  completed?: boolean
 }
 
 export type EmailImportance = 'critico' | 'normal'

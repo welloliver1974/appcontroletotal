@@ -238,16 +238,24 @@ A implementação está concluída quando:
 
 ## ✅ Status da Implementação
 
-- **Status:** Concluído e Validado 🚀
+- **Status:** Concluído, Polido para Mobile e Validado 🚀
 - **Data:** 26/08/2026
 - **Arquivos Criados:**
   - `src/features/hoje/HojePage.tsx`
   - `src/features/hoje/hojeUtils.ts`
   - `src/features/hoje/useHojeData.ts`
-- **Arquivos Integrados:**
+- **Arquivos Integrados & Atualizados:**
   - `src/lib/modules.ts`
   - `src/app/App.tsx`
   - `src/components/layout/BottomNav.tsx`
   - `src/components/layout/QuickAddModal.tsx`
-- **Validação:** `npm run lint` (0 erros) e `npm run build` (sucesso).
+  - `src/components/ui/PageHeader.tsx` (responsividade aprimorada para mobile)
+  - `src/data/types.ts` (`AgendaEvent.completed`)
+  - `src/features/agenda/EventModal.tsx` & `CalendarView.tsx`
+  - `src/features/dashboard/Widgets.tsx`
+- **Recursos Adicionais Entregues:**
+  - ✅ **Check-in de Compromissos:** Botão interativo de conclusão em 1 toque nas prioridades e no foco do dia.
+  - ✅ **Responsividade Mobile Fina:** Correção de quebras de linha em tags e formatação de datas adaptativa.
+  - ✅ **Notificações Nativas Web Push:** Banner de ativação em 1 toque e lembretes automáticos 15 minutos antes.
+- **Validação:** `npm run build` (sucesso, PWA gerado sem erros) e `npm run lint` (0 erros).
 

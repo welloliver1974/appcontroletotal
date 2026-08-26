@@ -64,7 +64,16 @@ export function UpcomingCard({ data }: { data: DashboardData }) {
                   </span>
                 </div>
                 <div className="min-w-0 flex-1 overflow-hidden">
-                  <p className="truncate text-xs sm:text-sm font-medium text-zinc-100">{e.title}</p>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className={cn('truncate text-xs sm:text-sm font-medium', e.completed ? 'line-through text-zinc-400' : 'text-zinc-100')}>
+                      {e.title}
+                    </p>
+                    {e.completed && (
+                      <span className="shrink-0 text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20 font-medium">
+                        Feito
+                      </span>
+                    )}
+                  </div>
                   <p className="truncate text-[11px] sm:text-xs text-zinc-500 mt-0.5">
                     <span className="font-num">{e.timeStart}</span>
                     {e.location ? ` · ${e.location}` : ''} · {relativeDayLabel(e.date)}

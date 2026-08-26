@@ -151,18 +151,20 @@ export function buildTodayPlan(data: Partial<RawTodayData>, nowRef = new Date())
     const [evH, evM] = (ev.timeStart || '12:00').split(':').map(Number)
     const evMinutes = (evH || 0) * 60 + (evM || 0)
     const isPast = evMinutes + 45 < currentTimeMinutes
+    const isDone = Boolean(ev.completed)
 
     priorityPool.push({
       id: `event-${ev.id}`,
       rawId: ev.id,
       source: 'agenda',
-      severity: isPast ? 'normal' : 'critical',
+      severity: isDone ? 'normal' : isPast ? 'normal' : 'critical',
       title: ev.title,
-      description: `${ev.timeStart}${ev.location ? ` · ${ev.location}` : ''}`,
+      description: `${ev.timeStart}${ev.location ? ` · ${ev.location}` : ''}${isDone ? ' (Concluído)' : ''}`,
       timeLabel: ev.timeStart,
+      completed: isDone,
       actionLabel: 'Ver Agenda',
       path: '/agenda',
-      score: isPast ? 30 : 100 - Math.max(0, Math.min(60, (evMinutes - currentTimeMinutes) / 10)),
+      score: isDone ? 15 : isPast ? 30 : 100 - Math.max(0, Math.min(60, (evMinutes - currentTimeMinutes) / 10)),
     })
   })
 
@@ -278,8 +280,9 @@ export function buildTodayPlan(data: Partial<RawTodayData>, nowRef = new Date())
   // Determinar o card "Agora"
   let nowItem: TodayPriority | undefined
 
-  // Primeiro tenta achar o próximo evento de hoje que ainda não passou
+  // Primeiro tenta achar o próximo evento de hoje que ainda não passou e não foi concluído
   const upcomingEvent = todayEvents.find((ev) => {
+    if (ev.completed) return false
     const [evH, evM] = (ev.timeStart || '00:00').split(':').map(Number)
     const evMinutes = (evH || 0) * 60 + (evM || 0)
     return evMinutes + 30 >= currentTimeMinutes

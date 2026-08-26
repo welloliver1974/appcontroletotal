@@ -914,6 +914,22 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   3. **✈️ Integração com Viagens ([SmartTravelAssistantModal.tsx](file:///e:/Apps/AppControleTotal/src/features/viagens/SmartTravelAssistantModal.tsx)):**
      - O assistente de viagens agora consome a `calculateVehicleFuelSummary` do veículo selecionado, garantindo estimativas de litros e custo de viagem precisas.
 
+## ☀️ 53. Central de Hoje, Layout Mobile Responsivo, Check-in de Compromissos e Notificações Web Push (26/08/2026)
+
+* **Recursos Implementados e Integrados:**
+  1. **📱 Central Operacional Diária — Aba Hoje ([HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx), [hojeUtils.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/hojeUtils.ts) & [useHojeData.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/useHojeData.ts)):**
+     - Rota `/hoje` dedicada como central do dia: briefing do Hermes Cockpit, card "Agora", barra de 5 ações rápidas em 1 toque, top 5 prioridades ordenadas por urgência, checklist de hábitos e 4 cartões de status integrados.
+  2. **📐 Correção de Responsividade em Telas Mobile ([PageHeader.tsx](file:///e:/Apps/AppControleTotal/src/components/ui/PageHeader.tsx) & [HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx)):**
+     - Proteção contra quebra indesejada de tags (`whitespace-nowrap shrink-0`) e truncamento elegante da descrição.
+     - Formatação adaptativa de datas no topo (formato compacto `Qua, 26 Ago` em smartphones e completo em computadores).
+  3. **✅ Check-in e Conclusão de Compromissos ([types.ts](file:///e:/Apps/AppControleTotal/src/data/types.ts), [hojeUtils.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/hojeUtils.ts), [EventModal.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/EventModal.tsx), [CalendarView.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/CalendarView.tsx) & [Widgets.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/Widgets.tsx)):**
+     - Campo `completed?: boolean` integrado ao modelo `AgendaEvent`.
+     - Botão interativo de check-in em 1 toque diretamente nos cards de prioridades e no foco de agora da Aba Hoje com atualização otimista instantânea e persistência no banco.
+     - Eventos concluídos recebem efeito tachado, badge verde e redução de prioridade para focar nas próximas pendências.
+  4. **🔔 Notificações Nativas Web Push (PWA) ([notifications.ts](file:///e:/Apps/AppControleTotal/src/lib/notifications.ts) & [HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx)):**
+     - Banner amigável para ativação de notificações nativas em 1 clique na aba Hoje.
+     - Verificador em tempo real que envia alertas no celular 15 minutos antes dos compromissos e monitora a validade de itens da despensa.
+
 ---
 
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*

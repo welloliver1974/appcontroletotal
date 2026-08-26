@@ -27,6 +27,7 @@ function EventForm({ event, onSubmit }: {
   const [timeEnd, setTimeEnd] = useState('')
   const [category, setCategory] = useState<AgendaEvent['category']>('pessoal')
   const [location, setLocation] = useState('')
+  const [completed, setCompleted] = useState(false)
 
   useEffect(() => {
     if (event) {
@@ -36,6 +37,7 @@ function EventForm({ event, onSubmit }: {
       setTimeEnd(event.timeEnd ?? '')
       setCategory(event.category)
       setLocation(event.location ?? '')
+      setCompleted(Boolean(event.completed))
     } else {
       // Default to today
       const today = new Date()
@@ -43,6 +45,7 @@ function EventForm({ event, onSubmit }: {
       setDate(today.toISOString().slice(0, 10))
       setTimeStart('09:00')
       setTimeEnd('10:00')
+      setCompleted(false)
     }
   }, [event])
 
@@ -57,6 +60,7 @@ function EventForm({ event, onSubmit }: {
       timeEnd: timeEnd || undefined,
       category,
       location: location.trim() || undefined,
+      completed,
     })
   }
 
@@ -142,6 +146,19 @@ function EventForm({ event, onSubmit }: {
           onChange={(e) => setLocation(e.target.value)}
           placeholder="Ex: Online (Meet), Clínica São Lucas, Casa"
         />
+      </div>
+
+      <div className="flex items-center gap-2.5 pt-2">
+        <input
+          type="checkbox"
+          id="event-completed-checkbox"
+          checked={completed}
+          onChange={(e) => setCompleted(e.target.checked)}
+          className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-emerald-500 focus:ring-emerald-500/20"
+        />
+        <label htmlFor="event-completed-checkbox" className="text-xs font-medium text-zinc-300 cursor-pointer select-none">
+          Marcar como compromisso concluído / realizado
+        </label>
       </div>
 
       <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
