@@ -38,6 +38,7 @@ import { EventModal } from '@/features/agenda/EventModal'
 import { api } from '@/data/api'
 import { toast } from '@/stores/toastStore'
 import { syncMaintenanceRecordToFinance } from '@/lib/maintFinanceSync'
+import { getGoogleCalendarConfig, syncGoogleCalendar } from '@/lib/googleCalendarSync'
 import {
   getNotificationPermission,
   requestNotificationPermission,
@@ -266,6 +267,23 @@ export function HojePage() {
     }
   }
 
+  const [syncing, setSyncing] = useState(false)
+
+  const handleRefreshAll = async () => {
+    setSyncing(true)
+    const config = getGoogleCalendarConfig()
+    if (config.icalUrl) {
+      try {
+        const res = await syncGoogleCalendar()
+        if (res.ok && res.count > 0) {
+          toast.success(`${res.count} eventos atualizados do Google Calendar! 📅✨`)
+        }
+      } catch {}
+    }
+    await reload()
+    setSyncing(false)
+  }
+
   if (loading) {
     return <HojeSkeleton />
   }
@@ -291,11 +309,12 @@ export function HojePage() {
           </span>
           <button
             type="button"
-            onClick={() => void reload()}
-            title="Atualizar dados"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 active:scale-95 transition-all"
+            onClick={() => void handleRefreshAll()}
+            disabled={syncing}
+            title="Atualizar dados e sincronizar com Google Calendar"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 active:scale-95 transition-all disabled:opacity-60"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <RotateCcw className={cn('h-3.5 w-3.5', syncing ? 'animate-spin text-sky-400' : '')} />
           </button>
         </div>
       </PageHeader>

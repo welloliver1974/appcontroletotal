@@ -11,6 +11,7 @@ import type {
   Trip,
 } from '@/data/types'
 import { buildTodayPlan, type RawTodayData, type TodayPlan, todayIsoString } from './hojeUtils'
+import { getGoogleCalendarConfig, syncGoogleCalendar } from '@/lib/googleCalendarSync'
 
 const HOJE_COLLECTIONS = [
   'events',
@@ -87,6 +88,19 @@ export function useHojeData(): UseHojeDataResult {
   useEffect(() => {
     aliveRef.current = true
     void reload()
+
+    // Auto-sync com Google Calendar em background se configurado
+    const config = getGoogleCalendarConfig()
+    if (config.autoSync && config.icalUrl) {
+      syncGoogleCalendar()
+        .then((res) => {
+          if (res.ok && res.count > 0 && aliveRef.current) {
+            void reload()
+          }
+        })
+        .catch(() => {})
+    }
+
     return () => {
       aliveRef.current = false
     }
