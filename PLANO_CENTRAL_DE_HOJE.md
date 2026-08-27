@@ -258,6 +258,6 @@ A implementação está concluída quando:
   - ✅ **Responsividade Mobile Fina:** Correção de quebras de linha em tags e formatação de datas adaptativa.
   - ✅ **Quebra de Linha Completa (Mobile):** Remoção de `truncate` rígido nos títulos e descrições, permitindo leitura integral sem cortes em qualquer celular.
   - ✅ **Expansão de Prioridades:** Botão "Ver todas (X)" / "Mostrar menos (Top 5)" para visualização total sem limites no mobile.
-  - ✅ **Notificações Nativas Web Push:** Banner de ativação em 1 toque e lembretes automáticos 15 minutos antes.
+  - ✅ **Notificações Nativas Web Push Inteligentes:** Banner de ativação em 1 toque, filtro estrito para apenas compromissos futuros e não concluídos, persistência diária em localStorage e lembretes automáticos 15 minutos antes.
 - **Validação:** `npm run build` (sucesso, PWA gerado sem erros) e `npm run lint` (0 erros).
 

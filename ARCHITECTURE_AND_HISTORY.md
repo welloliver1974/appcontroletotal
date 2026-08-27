@@ -972,11 +972,21 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   5. **🧠 Síntese Dinâmica no Hermes Cockpit ([HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx) & [hojeUtils.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/hojeUtils.ts)):**
      - O briefing e os badges do Hermes Cockpit agora recalculam em tempo real conforme os compromissos são marcados como concluídos: exibem a quantidade exata de compromissos pendentes (ex: `1 compromisso pendente (3 já concluídos)`) e celebram quando 100% dos eventos do dia forem finalizados (`✓ 4 concluídos 🎉`).
 
+## 🔔 56. Filtro Inteligente de Notificações Diárias e Lembretes PWA (27/08/2026)
+
+* **Contexto & Problema Identificado:**
+  - Ao abrir o aplicativo no smartphone (especialmente após períodos de inatividade ou nova sessão no PWA), o sistema frequentemente emitia alertas de compromissos que já haviam passado há várias horas (ex: alertar às 16h sobre um evento das 08h como sendo o "Próximo").
+  - O uso de `sessionStorage` causava o disparo desnecessário de notificações repetidas toda vez que a sessão móvel era reiniciada pelo sistema operacional.
+  - Alertas de lembrete de 15 minutos e resumo diário não respeitavam eventos já marcados como concluídos (`completed`).
+  - Alertas de despensa disparavam mesmo para itens já consumidos/zerados (`qty <= 0`).
+
+* **Soluções Implementadas ([notifications.ts](file:///e:/Apps/AppControleTotal/src/lib/notifications.ts)):**
+  1. **🕒 Filtro de Eventos Futuros e Pendentes:** `checkTodayEventsNotifications` agora filtra estritamente eventos de hoje que **não estão concluídos** e cujo horário de início ainda não passou. Caso todos os compromissos do dia já tenham sido concluídos ou passados, o resumo não emite alertas fantasmas.
+  2. **🎯 Próximo Evento Real:** O card de notificação diária seleciona o compromisso pendente mais próximo cronologicamente no futuro imediato.
+  3. **💾 Persistência Diária no `localStorage`:** Migração das chaves de sessão para chaves persistentes diárias (`act.notif.events_summary.YYYY-MM-DD` e `act.notif.pantry.YYYY-MM-DD`), garantindo que o alerta de resumo diário ocorra no máximo 1 vez por dia, sem spam ao abrir o aplicativo no celular.
+  4. **✅ Integração com Eventos Concluídos:** Lembretes de 15 minutos (`checkUpcomingEventsReminders`) consultam o `isEventCompleted` e ignoram itens concluídos.
+  5. **🛒 Despensa Precisa:** Apenas itens com quantidade em estoque positiva (`qty > 0`) e cálculo de datas locais são elegíveis para alertas de validade de 3 dias.
+
 ---
 
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
-
-
-
-
-

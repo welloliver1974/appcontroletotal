@@ -1,4 +1,5 @@
 import type { AgendaEvent, PantryItem } from '@/data/types'
+import { isEventCompleted } from '@/lib/eventCompletionStore'
 
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'default' | 'unsupported'
 
@@ -47,28 +48,45 @@ export function sendLocalNotification(title: string, options?: NotificationOptio
   }
 }
 
+function parseLocalDate(dateStr: string): Date | null {
+  const parts = dateStr.split('-').map(Number)
+  if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) return null
+  return new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0)
+}
+
+function getEventMinutes(timeStr?: string): number | null {
+  if (!timeStr) return null
+  const [h, min] = timeStr.split(':').map(Number)
+  if (isNaN(h) || isNaN(min)) return null
+  return h * 60 + min
+}
+
 /**
- * Checks for pantry items expiring in ≤ 3 days and alerts the user.
+ * Checks for pantry items expiring in ≤ 3 days and alerts the user (once per day).
  */
 export function checkPantryExpiringNotifications(items: PantryItem[]): void {
   if (getNotificationPermission() !== 'granted') return
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const todayStr = today.toISOString().slice(0, 10)
+  const y = today.getFullYear()
+  const m = String(today.getMonth() + 1).padStart(2, '0')
+  const d = String(today.getDate()).padStart(2, '0')
+  const todayStr = `${y}-${m}-${d}`
 
   const expiring = items.filter((item) => {
-    if (!item.expiresAt) return false
-    const exp = new Date(item.expiresAt)
-    const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    if (!item.expiresAt || item.qty <= 0) return false
+    const expDate = parseLocalDate(item.expiresAt)
+    if (!expDate) return false
+    const diffDays = Math.round((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
     return diffDays >= 0 && diffDays <= 3
   })
 
   if (expiring.length > 0) {
     try {
-      const sessionKey = `act.notif.pantry.${todayStr}.${expiring.length}`
-      if (sessionStorage.getItem(sessionKey)) return
-      sessionStorage.setItem(sessionKey, '1')
+      const storageKey = `act.notif.pantry.${todayStr}`
+      if (localStorage.getItem(storageKey)) return
+      localStorage.setItem(storageKey, '1')
     } catch {}
 
     const names = expiring.slice(0, 3).map((i) => i.name).join(', ')
@@ -81,7 +99,8 @@ export function checkPantryExpiringNotifications(items: PantryItem[]): void {
 }
 
 /**
- * Checks for events scheduled for today and alerts the user.
+ * Checks for upcoming events scheduled for today and alerts the user once per day with the actual next event.
+ * Never alerts for past or completed events.
  */
 export function checkTodayEventsNotifications(events: AgendaEvent[]): void {
   if (getNotificationPermission() !== 'granted') return
@@ -91,22 +110,35 @@ export function checkTodayEventsNotifications(events: AgendaEvent[]): void {
   const m = String(now.getMonth() + 1).padStart(2, '0')
   const d = String(now.getDate()).padStart(2, '0')
   const localToday = `${y}-${m}-${d}`
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
 
-  const todayEvents = events
-    .filter((e) => e.date === localToday)
-    .sort((a, b) => a.timeStart.localeCompare(b.timeStart))
+  // Filter only today's events that are NOT completed and NOT in the past
+  const pendingUpcomingEvents = events
+    .filter((e) => {
+      if (e.date !== localToday) return false
+      const isDone = Boolean(e.completed) || isEventCompleted(e.id)
+      if (isDone) return false
 
-  if (todayEvents.length > 0) {
+      const startMin = getEventMinutes(e.timeStart)
+      // If event had a start time and it passed more than 10 minutes ago, skip it
+      if (startMin !== null && startMin < currentMinutes - 10) {
+        return false
+      }
+      return true
+    })
+    .sort((a, b) => (a.timeStart || '').localeCompare(b.timeStart || ''))
+
+  if (pendingUpcomingEvents.length > 0) {
     try {
-      const sessionKey = `act.notif.events.${localToday}.${todayEvents.length}`
-      if (sessionStorage.getItem(sessionKey)) return
-      sessionStorage.setItem(sessionKey, '1')
+      const storageKey = `act.notif.events_summary.${localToday}`
+      if (localStorage.getItem(storageKey)) return
+      localStorage.setItem(storageKey, '1')
     } catch {}
 
-    const count = todayEvents.length
-    const first = todayEvents[0]
-    sendLocalNotification(`📅 Agenda de Hoje (${count} compromisso${count > 1 ? 's' : ''})`, {
-      body: `Próximo: ${first.title}${first.timeStart ? ` às ${first.timeStart}` : ''}${first.location ? ` (${first.location})` : ''}`,
+    const count = pendingUpcomingEvents.length
+    const next = pendingUpcomingEvents[0]
+    sendLocalNotification(`📅 Agenda de Hoje (${count} compromisso${count > 1 ? 's' : ''} restante${count > 1 ? 's' : ''})`, {
+      body: `Próximo: ${next.title}${next.timeStart ? ` às ${next.timeStart}` : ''}${next.location ? ` (${next.location})` : ''}`,
       tag: 'today-events',
     })
   }
@@ -114,6 +146,7 @@ export function checkTodayEventsNotifications(events: AgendaEvent[]): void {
 
 /**
  * Checks if an event is starting within 15 minutes from now and triggers an alert.
+ * Skips completed events and events that have already started.
  */
 export function checkUpcomingEventsReminders(events: AgendaEvent[]): void {
   if (getNotificationPermission() !== 'granted') return
@@ -123,19 +156,20 @@ export function checkUpcomingEventsReminders(events: AgendaEvent[]): void {
   const m = String(now.getMonth() + 1).padStart(2, '0')
   const d = String(now.getDate()).padStart(2, '0')
   const localToday = `${y}-${m}-${d}`
-
   const currentMinutes = now.getHours() * 60 + now.getMinutes()
 
   const todayEvents = events.filter((e) => e.date === localToday && e.timeStart)
 
   for (const event of todayEvents) {
-    const parts = event.timeStart.split(':').map(Number)
-    if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) continue
+    // If event is marked as completed, don't notify
+    if (event.completed || isEventCompleted(event.id)) continue
 
-    const eventMinutes = parts[0] * 60 + parts[1]
-    const diffMinutes = eventMinutes - currentMinutes
+    const startMin = getEventMinutes(event.timeStart)
+    if (startMin === null) continue
 
-    // Alerta se faltar entre 0 e 15 minutos
+    const diffMinutes = startMin - currentMinutes
+
+    // Alerta somente se faltar entre 0 e 15 minutos para começar
     if (diffMinutes >= 0 && diffMinutes <= 15) {
       const notifKey = `act.notif.15min.${event.id}.${localToday}`
       try {
@@ -151,4 +185,5 @@ export function checkUpcomingEventsReminders(events: AgendaEvent[]): void {
     }
   }
 }
+
 
