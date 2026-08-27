@@ -951,6 +951,9 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   5. **👨‍👩‍👧 Suporte Multi-Feeds iCal (Agendas Compartilhadas / Esposa / Família) ([googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts) & [SettingsGoogleCalendar.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsGoogleCalendar.tsx)):**
      - Suporte a múltiplos links iCal simultâneos (um por linha no textarea de configurações).
      - Processamento paralelo e unificação dos calendários no banco sem duplicatas.
+  6. **🗑️ Exclusão e Limpeza Automática de Eventos Apagados no Google ([googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts)):**
+     - Detecção inteligente de eventos `gcal-*` que deixaram de existir no feed do Google (cancelados/apagados).
+     - Remoção automática desses eventos no banco de dados local e nuvem no momento da sincronização, mantendo a agenda perfeitamente espelhada.
 
 ---
 
