@@ -194,7 +194,30 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
       }
     }
 
-    // Salva em lote no banco de dados
+    // Identifica e remove eventos do Google Calendar que foram apagados no Google
+    try {
+      const existingEvents = await db.get<AgendaEvent>('events')
+      const incomingGcalIds = new Set(allEvents.map((e) => e.id))
+
+      const now = new Date()
+      const windowStart = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().slice(0, 10)
+      const windowEnd = new Date(now.getFullYear(), now.getMonth() + 6, 0).toISOString().slice(0, 10)
+
+      const orphanedGcalEvents = (Array.isArray(existingEvents) ? existingEvents : []).filter(
+        (e) =>
+          typeof e.id === 'string' &&
+          e.id.startsWith('gcal-') &&
+          e.date >= windowStart &&
+          e.date <= windowEnd &&
+          !incomingGcalIds.has(e.id),
+      )
+
+      for (const orphan of orphanedGcalEvents) {
+        await db.remove('events', orphan.id)
+      }
+    } catch {}
+
+    // Salva os eventos ativos em lote no banco de dados
     await db.upsertMany('events', allEvents)
 
     const now = new Date().toISOString()
