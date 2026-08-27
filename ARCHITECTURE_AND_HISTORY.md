@@ -969,6 +969,8 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   4. **✅ Persistência Resiliente de Check-in de Compromissos da Agenda ([eventCompletionStore.ts](file:///e:/Apps/AppControleTotal/src/lib/eventCompletionStore.ts), [useHojeData.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/useHojeData.ts), [db.ts](file:///e:/Apps/AppControleTotal/src/lib/db.ts) & [googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts)):**
      - Criado o store dedicado `eventCompletionStore` que mantém os IDs de eventos concluídos no `localStorage` e sincronizados na nuvem (`doc_vault`), blindando o status contra recarregamento de página (F5) e sincronização automática do Google Calendar.
      - Nova migração SQL ([20260827000100_events_completed_column.sql](file:///e:/Apps/AppControleTotal/supabase/migrations/20260827000100_events_completed_column.sql)) para adicionar nativamente a coluna `completed BOOLEAN DEFAULT FALSE` na tabela `events` do Supabase.
+  5. **🧠 Síntese Dinâmica no Hermes Cockpit ([HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx) & [hojeUtils.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/hojeUtils.ts)):**
+     - O briefing e os badges do Hermes Cockpit agora recalculam em tempo real conforme os compromissos são marcados como concluídos: exibem a quantidade exata de compromissos pendentes (ex: `1 compromisso pendente (3 já concluídos)`) e celebram quando 100% dos eventos do dia forem finalizados (`✓ 4 concluídos 🎉`).
 
 ---
 

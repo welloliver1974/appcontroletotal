@@ -44,6 +44,8 @@ export interface TodayPlan {
   alerts: TodayPriority[]
   counts: {
     events: number
+    pendingEvents: number
+    completedEvents: number
     bills: number
     pantryLow: number
     habitsPending: number
@@ -329,25 +331,40 @@ export function buildTodayPlan(data: Partial<RawTodayData>, nowRef = new Date())
       actionLabel: 'Pagar Conta',
       path: '/financas',
     }
-  } else if (todayEvents.length > 0) {
-    const lastEvent = todayEvents[todayEvents.length - 1]
-    nowItem = {
-      id: `now-event-done-${lastEvent.id}`,
-      source: 'agenda',
-      severity: 'normal',
-      title: 'Compromissos do dia concluídos',
-      description: `Último evento foi ${lastEvent.title} (${lastEvent.timeStart}).`,
-      actionLabel: 'Ver Agenda',
-      path: '/agenda',
+  }
+
+  const pendingEvents = todayEvents.filter((e) => !e.completed)
+  const completedEventsCount = todayEvents.length - pendingEvents.length
+
+  if (!nowItem) {
+    if (todayEvents.length > 0 && pendingEvents.length === 0) {
+      nowItem = {
+        id: 'now-events-all-done',
+        source: 'agenda',
+        severity: 'normal',
+        title: 'Todos os compromissos concluídos! 🎉',
+        description: `Parabéns! Você já concluiu todos os ${todayEvents.length} compromissos agendados para hoje.`,
+        actionLabel: 'Ver Agenda',
+        path: '/agenda',
+      }
     }
   }
 
   // Síntese local inteligente do Hermes
   const summaryParts: string[] = []
 
-  if (todayEvents.length > 0) {
-    summaryParts.push(`${todayEvents.length} ${todayEvents.length === 1 ? 'compromisso' : 'compromissos'}`)
+  if (pendingEvents.length > 0) {
+    if (completedEventsCount > 0) {
+      summaryParts.push(
+        `${pendingEvents.length} ${pendingEvents.length === 1 ? 'compromisso pendente' : 'compromissos pendentes'} (${completedEventsCount} já ${completedEventsCount === 1 ? 'concluído' : 'concluídos'})`,
+      )
+    } else {
+      summaryParts.push(`${pendingEvents.length} ${pendingEvents.length === 1 ? 'compromisso' : 'compromissos'}`)
+    }
+  } else if (todayEvents.length > 0) {
+    summaryParts.push(`todos os ${todayEvents.length} compromissos de hoje já concluídos 🎉`)
   }
+
   if (dueBills.length > 0) {
     summaryParts.push(`${dueBills.length} ${dueBills.length === 1 ? 'conta para pagar' : 'contas para pagar'}`)
   }
@@ -382,6 +399,8 @@ export function buildTodayPlan(data: Partial<RawTodayData>, nowRef = new Date())
     alerts: alertPool,
     counts: {
       events: todayEvents.length,
+      pendingEvents: pendingEvents.length,
+      completedEvents: completedEventsCount,
       bills: dueBills.length,
       pantryLow: expiredPantry.length + lowStockPantry.length,
       habitsPending: pendingHabits.length,

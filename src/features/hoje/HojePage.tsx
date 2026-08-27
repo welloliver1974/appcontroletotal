@@ -363,7 +363,15 @@ export function HojePage() {
           <div className="flex items-center gap-2 pt-1 sm:pt-0 shrink-0">
             <div className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-950/60 px-3 py-1.5 text-xs text-zinc-300">
               <span className="pulse-dot" />
-              <span>{plan.counts.events} eventos</span>
+              {plan.counts.pendingEvents === 0 && plan.counts.events > 0 ? (
+                <span className="text-emerald-400 font-medium">✓ {plan.counts.events} concluídos</span>
+              ) : plan.counts.completedEvents > 0 ? (
+                <span>
+                  <strong className="text-sky-300">{plan.counts.pendingEvents}</strong> pendente{plan.counts.pendingEvents === 1 ? '' : 's'} <span className="text-zinc-500">({plan.counts.completedEvents}/{plan.counts.events})</span>
+                </span>
+              ) : (
+                <span>{plan.counts.events} eventos</span>
+              )}
               <span className="text-zinc-600">·</span>
               <span className={cn(plan.counts.bills > 0 ? 'text-amber-400 font-semibold' : 'text-zinc-400')}>
                 {plan.counts.bills} contas
