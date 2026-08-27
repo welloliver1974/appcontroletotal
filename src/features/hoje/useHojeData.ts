@@ -12,6 +12,11 @@ import type {
 } from '@/data/types'
 import { buildTodayPlan, type RawTodayData, type TodayPlan, todayIsoString } from './hojeUtils'
 import { getGoogleCalendarConfig, syncGoogleCalendar } from '@/lib/googleCalendarSync'
+import {
+  enrichEventsWithCompletion,
+  restoreCompletedEventsFromDb,
+  setEventCompleted,
+} from '@/lib/eventCompletionStore'
 
 const HOJE_COLLECTIONS = [
   'events',
@@ -69,7 +74,7 @@ export function useHojeData(): UseHojeDataResult {
 
       if (aliveRef.current) {
         setRawData({
-          events: Array.isArray(events) ? events : [],
+          events: enrichEventsWithCompletion(Array.isArray(events) ? events : []),
           fixedBills: Array.isArray(fixedBills) ? fixedBills : [],
           pantry: Array.isArray(pantry) ? pantry : [],
           assets: Array.isArray(assets) ? assets : [],
@@ -87,7 +92,9 @@ export function useHojeData(): UseHojeDataResult {
 
   useEffect(() => {
     aliveRef.current = true
-    void reload()
+    void restoreCompletedEventsFromDb().then(() => {
+      if (aliveRef.current) void reload()
+    })
 
     // Auto-sync com Google Calendar em background se configurado
     const config = getGoogleCalendarConfig()
@@ -144,7 +151,10 @@ export function useHojeData(): UseHojeDataResult {
 
       const nextCompleted = !target.completed
 
-      // Atualização otimista imediata
+      // Salva imediatamente no store persistente dedicado
+      await setEventCompleted(eventId, nextCompleted)
+
+      // Atualização otimista imediata no estado da UI
       setRawData((prev) => {
         if (!prev) return prev
         return {
@@ -153,11 +163,10 @@ export function useHojeData(): UseHojeDataResult {
         }
       })
 
-      await api.update<AgendaEvent>('events', eventId, { completed: nextCompleted }).catch(() => {
-        void reload()
-      })
+      // Tenta persistir no banco / Supabase
+      await api.update<AgendaEvent>('events', eventId, { completed: nextCompleted }).catch(() => {})
     },
-    [rawData, reload],
+    [rawData],
   )
 
   const plan = useMemo(() => {

@@ -1,5 +1,6 @@
 import { db } from './db'
 import { parseIcalToEvents } from './ical'
+import { enrichEventsWithCompletion } from './eventCompletionStore'
 import type { AgendaEvent } from '@/data/types'
 
 const STORAGE_KEY = 'act.googleCalendarConfig'
@@ -217,21 +218,22 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
       }
     } catch {}
 
-    // Salva os eventos ativos em lote no banco de dados
-    await db.upsertMany('events', allEvents)
+    // Enriquece com status concluído persistido e salva em lote
+    const enrichedEvents = enrichEventsWithCompletion(allEvents)
+    await db.upsertMany('events', enrichedEvents)
 
     const now = new Date().toISOString()
     saveGoogleCalendarConfig({
       ...config,
       icalUrl: rawUrl,
       lastSyncAt: now,
-      lastEventsCount: allEvents.length,
+      lastEventsCount: enrichedEvents.length,
     })
 
     return {
       ok: true,
-      count: allEvents.length,
-      events: allEvents,
+      count: enrichedEvents.length,
+      events: enrichedEvents,
     }
   } catch (err) {
     return {

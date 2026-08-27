@@ -966,6 +966,9 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   3. **📱 Quebra de Linha Fluida e Visualização Completa na Central de Hoje ([HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx) & [hojeUtils.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/hojeUtils.ts)):**
      - Removido `truncate` de linha única; adicionado `break-words leading-snug` e `flex-wrap` nos badges e títulos dos cards de prioridade, avisos operacionais e card "Agora".
      - Adicionada a propriedade `allPriorities` e botão interativo **"Ver todas (X)" / "Mostrar menos (Top 5)"** na aba Hoje para visualização sem limites em smartphones.
+  4. **✅ Persistência Resiliente de Check-in de Compromissos da Agenda ([eventCompletionStore.ts](file:///e:/Apps/AppControleTotal/src/lib/eventCompletionStore.ts), [useHojeData.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/useHojeData.ts), [db.ts](file:///e:/Apps/AppControleTotal/src/lib/db.ts) & [googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts)):**
+     - Criado o store dedicado `eventCompletionStore` que mantém os IDs de eventos concluídos no `localStorage` e sincronizados na nuvem (`doc_vault`), blindando o status contra recarregamento de página (F5) e sincronização automática do Google Calendar.
+     - Nova migração SQL ([20260827000100_events_completed_column.sql](file:///e:/Apps/AppControleTotal/supabase/migrations/20260827000100_events_completed_column.sql)) para adicionar nativamente a coluna `completed BOOLEAN DEFAULT FALSE` na tabela `events` do Supabase.
 
 ---
 

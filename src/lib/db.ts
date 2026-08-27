@@ -1,5 +1,7 @@
 import { createClient, PostgrestError } from '@supabase/supabase-js'
 import { db as localStorageDb } from '@/data/db'
+import { enrichEventsWithCompletion, setEventCompleted } from './eventCompletionStore'
+import type { AgendaEvent } from '@/data/types'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -135,7 +137,13 @@ export const db = {
   /** Lista todas as linhas de uma coleção. */
   async get<T = Row>(collection: string): Promise<T[]> {
     assertSupabaseConfig()
-    if (!supabase) return localStorageDb.get<T>(collection)
+    if (!supabase) {
+      const localRows = localStorageDb.get<T>(collection)
+      if (collection === 'events') {
+        return enrichEventsWithCompletion(localRows as unknown as AgendaEvent[]) as unknown as T[]
+      }
+      return localRows
+    }
     try {
       if (collection === 'trips') {
         const { data, error } = await supabase
@@ -155,9 +163,17 @@ export const db = {
 
       const { data, error } = await supabase.from(tableName(collection)).select('*')
       if (error) throw error
-      return fromSupabaseRow<T[]>(data ?? [])
+      const parsed = fromSupabaseRow<T[]>(data ?? [])
+      if (collection === 'events') {
+        return enrichEventsWithCompletion(parsed as unknown as AgendaEvent[]) as unknown as T[]
+      }
+      return parsed
     } catch (err) {
-      return fallbackOrThrow<T>(collection, err)
+      const fallbackRows = fallbackOrThrow<T>(collection, err)
+      if (collection === 'events') {
+        return enrichEventsWithCompletion(fallbackRows as unknown as AgendaEvent[]) as unknown as T[]
+      }
+      return fallbackRows
     }
   },
 
@@ -301,9 +317,14 @@ export const db = {
   /** Atualiza uma linha pelo `id`. */
   async update<T = Row>(collection: string, id: string, patch: Partial<T>): Promise<T[]> {
     assertSupabaseConfig()
+
+    if (collection === 'events' && 'completed' in (patch as Record<string, unknown>)) {
+      void setEventCompleted(id, Boolean((patch as Record<string, unknown>).completed))
+    }
+
     if (!supabase) {
       localStorageDb.update<T & { id: string }>(collection, id, patch as Partial<T & { id: string }>)
-      return localStorageDb.get<T>(collection)
+      return this.get<T>(collection)
     }
     try {
       if (collection === 'trips') {
@@ -328,7 +349,7 @@ export const db = {
     } catch (err) {
       if (localFallbackAllowed()) {
         localStorageDb.update<T & { id: string }>(collection, id, patch as Partial<T & { id: string }>)
-        return localStorageDb.get<T>(collection)
+        return this.get<T>(collection)
       }
       throw mapSupabaseError(err)
     }
