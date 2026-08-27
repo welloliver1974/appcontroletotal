@@ -45,25 +45,38 @@ function toSupabaseRow(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(toSupabaseRow)
   if (!value || typeof value !== 'object') return value
 
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>).map(([key, val]) => [
-      key === 'from' ? 'from_name' : key === 'where' ? 'where_text' : toSnake(key),
-      toSupabaseRow(val),
-    ]),
-  )
+  const entries = Object.entries(value as Record<string, unknown>).map(([key, val]) => [
+    key === 'from' ? 'from_name' : key === 'where' ? 'where_text' : toSnake(key),
+    toSupabaseRow(val),
+  ])
+
+  const row = Object.fromEntries(entries)
+
+  // Compatibilidade com coluna next_maintenance (se schema original contiver NOT NULL)
+  if ('next_maintenance' in row && (row.next_maintenance === null || row.next_maintenance === undefined || row.next_maintenance === '')) {
+    row.next_maintenance = '2099-12-31'
+  }
+
+  return row
 }
 
 function fromSupabaseRow<T>(value: unknown): T {
   if (Array.isArray(value)) return value.map(fromSupabaseRow) as T
   if (!value || typeof value !== 'object') return value as T
 
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
-      .map(([key, val]) => [
-        key === 'from_name' ? 'from' : key === 'where_text' ? 'where' : toCamel(key),
-        fromSupabaseRow(val),
-      ]),
-  ) as T
+  const entries = Object.entries(value as Record<string, unknown>).map(([key, val]) => {
+    const camelKey = key === 'from_name' ? 'from' : key === 'where_text' ? 'where' : toCamel(key)
+    let parsedVal = fromSupabaseRow(val)
+
+    // Se o valor de nextMaintenance for o sentinela 2099-12-31, converter de volta para null
+    if (camelKey === 'nextMaintenance' && parsedVal === '2099-12-31') {
+      parsedVal = null
+    }
+
+    return [camelKey, parsedVal]
+  })
+
+  return Object.fromEntries(entries) as T
 }
 
 function localFallbackAllowed(): boolean {

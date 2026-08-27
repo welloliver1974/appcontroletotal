@@ -40,6 +40,7 @@ export interface TodayPlan {
   summary: string
   now?: TodayPriority
   priorities: TodayPriority[]
+  allPriorities: TodayPriority[]
   alerts: TodayPriority[]
   counts: {
     events: number
@@ -377,6 +378,7 @@ export function buildTodayPlan(data: Partial<RawTodayData>, nowRef = new Date())
     summary,
     now: nowItem,
     priorities,
+    allPriorities: priorityPool.map(({ ...rest }) => rest),
     alerts: alertPool,
     counts: {
       events: todayEvents.length,

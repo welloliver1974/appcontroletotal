@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { EmptyState, Skeleton } from '@/components/ui/feedback'
 import { api } from '@/data/api'
 import type { Asset, MaintenanceRecord } from '@/data/types'
+import { toast } from '@/stores/toastStore'
 import { useManutencaoData } from './useManutencaoData'
 import { Kpis } from './Kpis'
 import { AssetCard } from './AssetCard'
@@ -73,21 +74,35 @@ export function ManutencaoPage() {
 
   const saveAsset = async (draft: AssetDraft) => {
     if (!data) return
-    if (openAsset?.mode === 'edit') {
-      setAssets(await api.update<Asset>('assets', openAsset.asset.id, draft))
-    } else {
-      const created = await api.create<Asset>('assets', draft)
-      setAssets([created, ...data.assets])
+    try {
+      if (openAsset?.mode === 'edit') {
+        const updated = await api.update<Asset>('assets', openAsset.asset.id, draft)
+        setAssets(updated)
+        toast.success('Veículo / Ativo atualizado com sucesso!')
+      } else {
+        const created = await api.create<Asset>('assets', draft)
+        setAssets([created, ...data.assets])
+        toast.success('Veículo / Ativo cadastrado com sucesso!')
+      }
+      setOpenAsset(null)
+    } catch (err) {
+      console.error('Erro ao salvar veículo / ativo:', err)
+      toast.error('Erro ao salvar veículo / ativo no banco de dados.')
     }
-    setOpenAsset(null)
   }
 
   const deleteAsset = async (id: string) => {
     if (!data) return
-    const orphans = data.records.filter((r) => r.assetId === id)
-    setAssets(await api.remove<Asset>('assets', id))
-    for (const r of orphans) {
-      setRecords(await api.remove<MaintenanceRecord>('maintenance', r.id))
+    try {
+      const orphans = data.records.filter((r) => r.assetId === id)
+      setAssets(await api.remove<Asset>('assets', id))
+      for (const r of orphans) {
+        setRecords(await api.remove<MaintenanceRecord>('maintenance', r.id))
+      }
+      toast.success('Veículo / Ativo removido com sucesso!')
+    } catch (err) {
+      console.error('Erro ao remover ativo:', err)
+      toast.error('Erro ao remover veículo / ativo.')
     }
   }
 

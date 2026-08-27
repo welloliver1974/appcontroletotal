@@ -137,6 +137,7 @@ export function HojePage() {
   const [showVoice, setShowVoice] = useState(false)
   const [showFuel, setShowFuel] = useState(false)
   const [showEvent, setShowEvent] = useState(false)
+  const [showAllPriorities, setShowAllPriorities] = useState(false)
 
   const [assets, setAssets] = useState<Asset[]>([])
   const [maintRecords, setMaintRecords] = useState<MaintenanceRecord[]>([])
@@ -384,14 +385,14 @@ export function HojePage() {
                 <Clock className="h-5 w-5 animate-pulse" />
               </div>
               <div className="min-w-0 space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400">
                     Foco de Agora
                   </span>
                   {severityBadge(plan.now.severity)}
                 </div>
-                <h3 className="text-base font-bold text-zinc-50 truncate">{plan.now.title}</h3>
-                <p className="text-xs sm:text-sm text-zinc-400">{plan.now.description}</p>
+                <h3 className="text-sm sm:text-base font-bold text-zinc-50 break-words leading-snug">{plan.now.title}</h3>
+                <p className="text-xs sm:text-sm text-zinc-400 break-words leading-relaxed">{plan.now.description}</p>
               </div>
             </div>
 
@@ -517,96 +518,117 @@ export function HojePage() {
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-12 items-start">
         {/* Coluna Principal: Top 5 Prioridades do Dia (7 Colunas em Desktop) */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-2">
-              <span>🎯 Prioridades de Hoje</span>
-              <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[11px] font-semibold text-zinc-400">
-                {plan.priorities.length}
-              </span>
-            </h2>
-            <span className="text-[11px] text-zinc-500">Máx. 5 focos</span>
-          </div>
+          {(() => {
+            const allList = plan.allPriorities && plan.allPriorities.length > 0 ? plan.allPriorities : plan.priorities
+            const displayed = showAllPriorities ? allList : plan.priorities
+            const totalCount = allList.length
 
-          {plan.priorities.length === 0 ? (
-            <Card className="p-6 text-center text-zinc-400 border-zinc-800/80 bg-zinc-950/40">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-500 mb-3">
-                <CheckCircle2 className="h-6 w-6 text-emerald-400" />
-              </div>
-              <p className="text-sm font-semibold text-zinc-200">Nada pendente para hoje!</p>
-              <p className="text-xs text-zinc-500 mt-1">Aproveite seu tempo livre ou registre novos planos.</p>
-            </Card>
-          ) : (
-            <div className="space-y-2.5">
-              {plan.priorities.map((item: TodayPriority) => {
-                const Icon = sourceIcon(item.source)
-                const colorCls = sourceColor(item.source)
-                const isEvent = item.source === 'agenda' && item.rawId
-                const isDone = Boolean(item.completed)
+            return (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-2">
+                    <span>🎯 Prioridades de Hoje</span>
+                    <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[11px] font-semibold text-zinc-400">
+                      {displayed.length}{totalCount > displayed.length ? ` de ${totalCount}` : ''}
+                    </span>
+                  </h2>
+                  {totalCount > 5 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllPriorities(!showAllPriorities)}
+                      className="text-xs font-semibold text-sky-400 hover:text-sky-300 transition-colors py-1 px-2 rounded-lg hover:bg-sky-500/10"
+                    >
+                      {showAllPriorities ? 'Mostrar menos (Top 5)' : `Ver todas (${totalCount})`}
+                    </button>
+                  )}
+                  {totalCount <= 5 && (
+                    <span className="text-[11px] text-zinc-500 hidden sm:inline">Prioridade inteligente</span>
+                  )}
+                </div>
 
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => item.path && navigate(item.path)}
-                    className={cn(
-                      'group flex items-center justify-between gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-3.5 transition-all backdrop-blur-sm hover:border-zinc-700 hover:bg-zinc-900/60 active:scale-[0.99]',
-                      item.path ? 'cursor-pointer' : '',
-                      isDone ? 'opacity-65 bg-zinc-950/40 border-zinc-800/50' : '',
-                    )}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-sm', colorCls)}>
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <p
-                            className={cn(
-                              'text-sm font-semibold text-zinc-100 truncate group-hover:text-sky-300 transition-colors',
-                              isDone ? 'line-through text-zinc-400' : '',
-                            )}
-                          >
-                            {item.title}
-                          </p>
-                          {severityBadge(item.severity)}
-                        </div>
-                        <p className="text-xs text-zinc-400 truncate">{item.description}</p>
-                      </div>
+                {displayed.length === 0 ? (
+                  <Card className="p-6 text-center text-zinc-400 border-zinc-800/80 bg-zinc-950/40">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-500 mb-3">
+                      <CheckCircle2 className="h-6 w-6 text-emerald-400" />
                     </div>
+                    <p className="text-sm font-semibold text-zinc-200">Nada pendente para hoje!</p>
+                    <p className="text-xs text-zinc-500 mt-1">Aproveite seu tempo livre ou registre novos planos.</p>
+                  </Card>
+                ) : (
+                  <div className="space-y-2.5">
+                    {displayed.map((item: TodayPriority) => {
+                      const Icon = sourceIcon(item.source)
+                      const colorCls = sourceColor(item.source)
+                      const isEvent = item.source === 'agenda' && item.rawId
+                      const isDone = Boolean(item.completed)
 
-                    <div className="shrink-0 flex items-center gap-2">
-                      {isEvent && (
-                        <button
-                          type="button"
-                          title={isDone ? 'Reabrir compromisso' : 'Concluir compromisso'}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (item.rawId) {
-                              void toggleEventCompleted(item.rawId)
-                              toast.success(isDone ? 'Compromisso reaberto.' : 'Compromisso concluído! 🎉')
-                            }
-                          }}
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => item.path && navigate(item.path)}
                           className={cn(
-                            'flex h-8 w-8 items-center justify-center rounded-lg border transition-all',
-                            isDone
-                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                              : 'bg-zinc-900/80 text-zinc-400 border-zinc-800 hover:text-emerald-400 hover:border-emerald-500/40 hover:bg-emerald-500/10',
+                            'group flex items-start justify-between gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-3.5 transition-all backdrop-blur-sm hover:border-zinc-700 hover:bg-zinc-900/60 active:scale-[0.99]',
+                            item.path ? 'cursor-pointer' : '',
+                            isDone ? 'opacity-65 bg-zinc-950/40 border-zinc-800/50' : '',
                           )}
                         >
-                          {isDone ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                        </button>
-                      )}
+                          <div className="flex items-start gap-3 min-w-0 flex-1">
+                            <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-sm mt-0.5', colorCls)}>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                                <p
+                                  className={cn(
+                                    'text-sm font-semibold text-zinc-100 break-words leading-snug group-hover:text-sky-300 transition-colors',
+                                    isDone ? 'line-through text-zinc-400' : '',
+                                  )}
+                                >
+                                  {item.title}
+                                </p>
+                                {severityBadge(item.severity)}
+                              </div>
+                              <p className="text-xs text-zinc-400 break-words leading-relaxed">{item.description}</p>
+                            </div>
+                          </div>
 
-                      {item.path && !isEvent && (
-                        <div className="flex items-center text-zinc-500 group-hover:text-zinc-300 transition-colors">
-                          <ChevronRight className="h-4 w-4" />
+                          <div className="shrink-0 flex items-center gap-2 self-center ml-1">
+                            {isEvent && (
+                              <button
+                                type="button"
+                                title={isDone ? 'Reabrir compromisso' : 'Concluir compromisso'}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (item.rawId) {
+                                    void toggleEventCompleted(item.rawId)
+                                    toast.success(isDone ? 'Compromisso reaberto.' : 'Compromisso concluído! 🎉')
+                                  }
+                                }}
+                                className={cn(
+                                  'flex h-8 w-8 items-center justify-center rounded-lg border transition-all',
+                                  isDone
+                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                                    : 'bg-zinc-900/80 text-zinc-400 border-zinc-800 hover:text-emerald-400 hover:border-emerald-500/40 hover:bg-emerald-500/10',
+                                )}
+                              >
+                                {isDone ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                              </button>
+                            )}
+
+                            {item.path && !isEvent && (
+                              <div className="flex items-center text-zinc-500 group-hover:text-zinc-300 transition-colors">
+                                <ChevronRight className="h-4 w-4" />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      )
+                    })}
                   </div>
-                )
-              })}
-            </div>
-          )}
+                )}
+              </>
+            )
+          })()}
 
           {/* Se houver alertas críticos adicionais */}
           {plan.alerts.length > 0 && (
@@ -621,12 +643,12 @@ export function HojePage() {
                     key={al.id}
                     onClick={() => al.path && navigate(al.path)}
                     className={cn(
-                      'flex items-center justify-between gap-2 p-1.5 rounded-lg hover:bg-amber-500/10 transition-colors',
+                      'flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-amber-500/10 transition-colors',
                       al.path ? 'cursor-pointer' : '',
                     )}
                   >
-                    <span className="truncate">· {al.title}</span>
-                    <span className="text-[11px] text-amber-400/80 shrink-0">{al.actionLabel} →</span>
+                    <span className="text-xs text-zinc-200 break-words flex-1 min-w-0">· {al.title}</span>
+                    <span className="text-[11px] font-medium text-amber-400/90 shrink-0">{al.actionLabel} →</span>
                   </li>
                 ))}
               </ul>

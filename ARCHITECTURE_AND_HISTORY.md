@@ -951,9 +951,21 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   5. **👨‍👩‍👧 Suporte Multi-Feeds iCal (Agendas Compartilhadas / Esposa / Família) ([googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts) & [SettingsGoogleCalendar.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsGoogleCalendar.tsx)):**
      - Suporte a múltiplos links iCal simultâneos (um por linha no textarea de configurações).
      - Processamento paralelo e unificação dos calendários no banco sem duplicatas.
-  6. **🗑️ Exclusão e Limpeza Automática de Eventos Apagados no Google ([googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts)):**
-     - Detecção inteligente de eventos `gcal-*` que deixaram de existir no feed do Google (cancelados/apagados).
-     - Remoção automática desses eventos no banco de dados local e nuvem no momento da sincronização, mantendo a agenda perfeitamente espelhada.
+## 🚗 55. Persistência de Veículos no Supabase e Responsividade Mobile Completa na Aba Hoje (27/08/2026)
+
+* **Contexto & Problemas Identificados:**
+  1. Ao cadastrar um novo veículo (ex: Chevrolet Prisma) na aba de Manutenção, o registro aparecia na tela momentaneamente, mas sumia após recarregar a página (F5). A causa raiz foi a restrição `next_maintenance DATE NOT NULL` na tabela `assets` do Supabase, que rejeitava cadastros sem data de próxima revisão com erro `23502`.
+  2. Na tela de smartphones na aba **Hoje**, a lista de **Prioridades do Dia** apresentava cortes de texto indesejados (`...`) provocados por classes rígidas de `truncate`, além de ocultar compromissos além do 5º item.
+
+* **Soluções Implementadas:**
+  1. **🛡️ Camada de Compatibilidade Automática no Adaptador ([db.ts](file:///e:/Apps/AppControleTotal/src/lib/db.ts)):**
+     - Tratamento transparente em `toSupabaseRow` e `fromSupabaseRow`: quando um ativo não possui `nextMaintenance`, o adaptador envia com segurança um sentinela temporário que atende ao banco remoto e converte de volta para `null` no frontend.
+     - Nova migração SQL ([20260827000000_relax_assets_constraints.sql](file:///e:/Apps/AppControleTotal/supabase/migrations/20260827000000_relax_assets_constraints.sql)) para remover o `NOT NULL` de `next_maintenance` e expandir a checagem de categorias (`carro`, `moto`, `casa`, `outro`).
+  2. **🔔 Toasts e Feedback em Ativos ([ManutencaoPage.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/ManutencaoPage.tsx)):**
+     - Adicionados blocos `try/catch` e notificações `toast.success` / `toast.error` ao cadastrar, editar e remover veículos e ativos.
+  3. **📱 Quebra de Linha Fluida e Visualização Completa na Central de Hoje ([HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx) & [hojeUtils.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/hojeUtils.ts)):**
+     - Removido `truncate` de linha única; adicionado `break-words leading-snug` e `flex-wrap` nos badges e títulos dos cards de prioridade, avisos operacionais e card "Agora".
+     - Adicionada a propriedade `allPriorities` e botão interativo **"Ver todas (X)" / "Mostrar menos (Top 5)"** na aba Hoje para visualização sem limites em smartphones.
 
 ---
 
