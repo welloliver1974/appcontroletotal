@@ -260,10 +260,13 @@ export async function parseReceiptWithVision(
     ? await detectQrCodeFromFile(rawFile).catch(() => null)
     : await detectQrCodeFromDataUrl(compressedDataUrl).catch(() => null)
 
-  // 2. Vision Model selection (Groq Llama 3.2 Vision or OpenRouter Gemini)
+  // 2. Vision Model selection (Groq Qwen 3.6 Multimodal or OpenRouter Gemini / Nvidia)
   let visionModel = config.llmModel || ''
   if (config.provider === 'groq') {
-    visionModel = 'llama-3.2-11b-vision-preview'
+    visionModel =
+      config.llmModel.includes('qwen') || config.llmModel.includes('vision')
+        ? config.llmModel
+        : 'qwen/qwen3.6-27b'
   } else if (config.provider === 'nvidia') {
     visionModel = config.llmModel.includes('vision')
       ? config.llmModel
@@ -367,7 +370,18 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '')
-      throw new Error(`Falha no leitor de visão: ${errText.slice(0, 150)}`)
+      let cleanMsg = errText
+      try {
+        const parsed = JSON.parse(errText)
+        if (parsed?.error) {
+          cleanMsg = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error)
+          try {
+            const inner = JSON.parse(cleanMsg)
+            if (inner?.error?.message) cleanMsg = inner.error.message
+          } catch {}
+        }
+      } catch {}
+      throw new Error(`Falha no leitor de visão: ${cleanMsg.slice(0, 160)}`)
     }
 
     const data = await res.json()

@@ -775,7 +775,7 @@ Responda APENAS o JSON puro, sem markdown adicional.`
     const endpoint = isGroq
       ? 'https://api.groq.com/openai/v1/chat/completions'
       : 'https://openrouter.ai/api/v1/chat/completions'
-    const model = isGroq ? 'llama-3.2-11b-vision-preview' : 'google/gemini-2.0-flash-001'
+    const model = isGroq ? 'qwen/qwen3.6-27b' : 'google/gemini-2.0-flash-001'
 
     const imageUri = base64Image.startsWith('data:') ? base64Image : `data:image/jpeg;base64,${base64Image}`
 
