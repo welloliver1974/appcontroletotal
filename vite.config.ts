@@ -40,11 +40,22 @@ function llmDevProxyPlugin(): Plugin {
               }
 
               if (action === 'chat') {
+                let targetModel = model
+                if (provider === 'nvidia') {
+                  if (!targetModel || targetModel.startsWith('openai/') || targetModel.includes('gpt-oss') || targetModel.includes('versatile') || !targetModel.includes('/')) {
+                    targetModel = 'meta/llama-3.3-70b-instruct'
+                  }
+                } else if (provider === 'groq') {
+                  if (!targetModel || targetModel.startsWith('meta/') || targetModel.includes('versatile')) {
+                    targetModel = 'openai/gpt-oss-120b'
+                  }
+                }
+
                 const response = await fetch(`${baseUrl}/chat/completions`, {
                   method: 'POST',
                   headers,
                   body: JSON.stringify({
-                    model: model || (provider === 'nvidia' ? 'meta/llama-3.3-70b-instruct' : 'openai/gpt-oss-120b'),
+                    model: targetModel || (provider === 'nvidia' ? 'meta/llama-3.3-70b-instruct' : 'openai/gpt-oss-120b'),
                     messages: messages || [],
                     temperature: body.temperature ?? 0.7,
                     max_tokens: body.max_tokens ?? 800,

@@ -31,6 +31,37 @@ export function getDefaultVisionModel(provider: ProviderId): string {
   return p?.defaultVisionModel || 'google/gemini-2.0-flash-001'
 }
 
+export function normalizeModelForProvider(providerId: ProviderId, modelId?: string): string {
+  const m = (modelId || '').trim()
+  if (providerId === 'nvidia') {
+    if (
+      !m ||
+      m.startsWith('openai/') ||
+      m.includes('gpt-oss') ||
+      m.includes('versatile') ||
+      m.startsWith('google/') ||
+      m.includes('gemini') ||
+      !m.includes('/')
+    ) {
+      return 'meta/llama-3.3-70b-instruct'
+    }
+    return m
+  }
+  if (providerId === 'groq') {
+    if (!m || m.startsWith('meta/') || m.startsWith('google/') || m.includes('versatile')) {
+      return 'openai/gpt-oss-120b'
+    }
+    return m
+  }
+  if (providerId === 'openrouter') {
+    if (!m || m.startsWith('meta/')) {
+      return 'meta-llama/llama-3.3-70b-instruct'
+    }
+    return m
+  }
+  return m || PROVIDERS[providerId]?.defaultModel || 'meta-llama/llama-3.3-70b-instruct'
+}
+
 export function getApiKeyForProvider(config: HermesAdvancedConfig, providerId: ProviderId): string {
   if (providerId === 'groq') {
     return (
@@ -72,11 +103,7 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
       const parsed = JSON.parse(raw)
       const provider = (parsed.provider || 'groq') as ProviderId
       const rawModel = parsed.llmModel || ''
-      const defaultModel = provider === 'groq' ? 'openai/gpt-oss-120b' : 'meta-llama/llama-3.3-70b-instruct'
-      const normalizedModel =
-        !rawModel || rawModel === 'llama-3.3-70b-versatile' || rawModel === 'llama-3.1-70b-versatile'
-          ? defaultModel
-          : rawModel
+      const normalizedModel = normalizeModelForProvider(provider, rawModel)
 
       const rawVision = parsed.visionModel || ''
       const defaultVision = getDefaultVisionModel(provider)
@@ -198,7 +225,7 @@ export async function loadHermesConfigFromCloud(): Promise<HermesAdvancedConfig>
       openRouterApiKey: cloudData.openRouterApiKey || local.openRouterApiKey,
       nvidiaApiKey: cloudData.nvidiaApiKey || local.nvidiaApiKey,
       customApiKey: cloudData.customApiKey || local.customApiKey,
-      llmModel: cloudData.llmModel || local.llmModel,
+      llmModel: normalizeModelForProvider(cloudData.provider || local.provider, cloudData.llmModel || local.llmModel),
       visionModel: cloudData.visionModel || local.visionModel,
       customBaseUrl: cloudData.customBaseUrl || local.customBaseUrl,
       telegramBotUrl: cloudData.telegramBotUrl || local.telegramBotUrl,
@@ -227,7 +254,7 @@ export async function testProviderConnection(
   const start = performance.now()
   const provider = PROVIDERS[providerId]
   const token = (apiKey || '').trim()
-  const modelToUse = model || provider?.defaultModel || 'meta/llama-3.3-70b-instruct'
+  const modelToUse = normalizeModelForProvider(providerId, model || provider?.defaultModel)
 
   if (!token && providerId !== 'vps') {
     return { ok: false, latencyMs: 0, reply: '', error: 'Chave da API não informada.' }
@@ -634,10 +661,7 @@ export async function sendHermesChat(
   // LLM Provider Setup (Groq, OpenRouter, NVIDIA, Custom)
   const provider = PROVIDERS[config.provider] || PROVIDERS.groq
   const apiKey = getApiKeyForProvider(config, config.provider)
-  const modelToUse =
-    config.provider === 'groq' && (!config.llmModel || config.llmModel.includes('llama-3.3-70b-versatile') || config.llmModel.includes('llama-3.1-70b-versatile'))
-      ? 'openai/gpt-oss-120b'
-      : (config.llmModel || provider.defaultModel)
+  const modelToUse = normalizeModelForProvider(config.provider, config.llmModel)
 
   let endpoint = provider.chatEndpoint
   if (config.provider === 'custom' && config.customBaseUrl) {
