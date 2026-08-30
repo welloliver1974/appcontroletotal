@@ -1,14 +1,82 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
+
+function llmDevProxyPlugin(): Plugin {
+  return {
+    name: 'llm-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url?.startsWith('/api/llm/proxy') && req.method === 'POST') {
+          let bodyStr = ''
+          req.on('data', (chunk) => {
+            bodyStr += chunk
+          })
+          req.on('end', async () => {
+            try {
+              const body = JSON.parse(bodyStr || '{}')
+              const { action, provider = 'nvidia', apiKey, model, messages, customUrl } = body
+              const token = (apiKey || '').trim()
+
+              let baseUrl = 'https://integrate.api.nvidia.com/v1'
+              if (provider === 'groq') baseUrl = 'https://api.groq.com/openai/v1'
+              else if (provider === 'openrouter') baseUrl = 'https://openrouter.ai/api/v1'
+              else if (provider === 'custom' && customUrl) baseUrl = customUrl.replace(/\/+$/, '')
+
+              const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+              if (token) headers['Authorization'] = `Bearer ${token}`
+              if (provider === 'openrouter') {
+                headers['HTTP-Referer'] = 'https://appcontroletotal.local'
+                headers['X-Title'] = 'Life OS Hub'
+              }
+
+              if (action === 'models') {
+                const response = await fetch(`${baseUrl}/models`, { method: 'GET', headers })
+                const data = await response.json()
+                res.writeHead(response.status, { 'Content-Type': 'application/json' })
+                return res.end(JSON.stringify({ ok: response.ok, data }))
+              }
+
+              if (action === 'chat') {
+                const response = await fetch(`${baseUrl}/chat/completions`, {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify({
+                    model: model || (provider === 'nvidia' ? 'meta/llama-3.3-70b-instruct' : 'openai/gpt-oss-120b'),
+                    messages: messages || [],
+                    temperature: body.temperature ?? 0.7,
+                    max_tokens: body.max_tokens ?? 800,
+                    ...(body.response_format ? { response_format: body.response_format } : {}),
+                  }),
+                })
+                const data = await response.json()
+                res.writeHead(response.status, { 'Content-Type': 'application/json' })
+                return res.end(JSON.stringify({ ok: response.ok, data }))
+              }
+
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: false, error: 'Ação inválida' }))
+            } catch (err: any) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: false, error: err?.message || 'Erro interno no proxy dev' }))
+            }
+          })
+          return
+        }
+        next()
+      })
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    llmDevProxyPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],

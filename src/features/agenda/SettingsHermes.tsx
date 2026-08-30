@@ -30,6 +30,8 @@ import {
   saveHermesAdvancedConfig,
   loadHermesConfigFromCloud,
   getDefaultVisionModel,
+  getApiKeyForProvider,
+  testProviderConnection,
   sendHermesChat,
   sendHermesWebhook,
   type HermesAdvancedConfig,
@@ -52,11 +54,59 @@ export function SettingsHermes() {
   const [showKey, setShowKey] = useState(false)
   const [showGroqKey, setShowGroqKey] = useState(false)
   const [testingGroq, setTestingGroq] = useState(false)
+  const [testingProvider, setTestingProvider] = useState(false)
 
   const updateConfig = (patch: Partial<HermesAdvancedConfig>) => {
     const next = { ...config, ...patch }
     setConfigState(next)
     saveHermesAdvancedConfig(next)
+  }
+
+  const handleApiKeyChange = (val: string) => {
+    const patch: Partial<HermesAdvancedConfig> = { llmApiKey: val }
+    if (config.provider === 'groq') patch.groqApiKey = val
+    else if (config.provider === 'openrouter') patch.openRouterApiKey = val
+    else if (config.provider === 'nvidia') patch.nvidiaApiKey = val
+    else if (config.provider === 'custom') patch.customApiKey = val
+    updateConfig(patch)
+  }
+
+  const handleTestProvider = async () => {
+    const currentKey = getApiKeyForProvider(config, config.provider)
+    if (!currentKey && config.provider !== 'vps') {
+      toast.warning(`Insira a chave da API da ${currentProvider.name} primeiro.`)
+      return
+    }
+
+    setTestingProvider(true)
+    setTestStatus('testing')
+    setTestMessage(null)
+
+    try {
+      const res = await testProviderConnection(
+        config.provider,
+        currentKey,
+        config.llmModel,
+        config.customBaseUrl || config.vpsUrl,
+      )
+
+      if (res.ok) {
+        setTestStatus('success')
+        setLatencyMs(res.latencyMs)
+        setTestMessage(res.reply)
+        toast.success(`Conexão com ${currentProvider.name} estabelecida com sucesso! (${res.latencyMs}ms) 🚀`)
+      } else {
+        setTestStatus('error')
+        setTestMessage(res.error || 'Falha na conexão com o provedor')
+        toast.error(`Falha no teste: ${res.error || 'Erro desconhecido'}`)
+      }
+    } catch (err: any) {
+      setTestStatus('error')
+      setTestMessage(err?.message || 'Erro inesperado ao testar')
+      toast.error('Erro de conexão com o provedor.')
+    } finally {
+      setTestingProvider(false)
+    }
   }
 
   const handleTestGroqKey = async () => {
@@ -84,13 +134,14 @@ export function SettingsHermes() {
   }
 
   const handleFetchModels = async (showToast = true) => {
-    if (!config.llmApiKey && config.provider !== 'vps') {
+    const currentKey = getApiKeyForProvider(config, config.provider)
+    if (!currentKey && config.provider !== 'vps') {
       if (showToast) toast.warning('Insira a API Key primeiro para buscar os modelos.')
       return
     }
 
     setLoadingModels(true)
-    const res = await fetchProviderModels(config.provider, config.llmApiKey, config.customBaseUrl || config.vpsUrl)
+    const res = await fetchProviderModels(config.provider, currentKey, config.customBaseUrl || config.vpsUrl)
     setLoadingModels(false)
 
     if (res.ok && res.models.length > 0) {
@@ -110,11 +161,12 @@ export function SettingsHermes() {
   }
 
   useEffect(() => {
-    if (config.llmApiKey && config.provider !== 'vps') {
+    const currentKey = getApiKeyForProvider(config, config.provider)
+    if (currentKey && config.provider !== 'vps') {
       void handleFetchModels(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.provider, config.llmApiKey])
+  }, [config.provider])
 
   const handleTestChat = async () => {
     setTestStatus('testing')
@@ -157,6 +209,7 @@ export function SettingsHermes() {
   }
 
   const currentProvider = PROVIDERS[config.provider] || PROVIDERS.groq
+  const activeApiKey = getApiKeyForProvider(config, config.provider)
   const activeVisionModel = config.visionModel || getDefaultVisionModel(config.provider)
   const visionModels = models.filter((m) => m.isVision)
   const otherModels = models.filter((m) => !m.isVision)
@@ -187,13 +240,15 @@ export function SettingsHermes() {
                 <button
                   key={pId}
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    const keyForP = getApiKeyForProvider(config, pId)
                     updateConfig({
                       provider: pId,
+                      llmApiKey: keyForP,
                       llmModel: p.defaultModel,
                       visionModel: p.defaultVisionModel,
                     })
-                  }
+                  }}
                   className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
                     isSelected
                       ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/10 ring-1 ring-indigo-500/30'
@@ -210,9 +265,9 @@ export function SettingsHermes() {
           </div>
         </div>
 
-        {/* API Key */}
+        {/* API Key Box with Dedicated Test Button */}
         {config.provider !== 'vps' && (
-          <div className="space-y-2 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3.5">
+          <div className="space-y-3 rounded-2xl border border-indigo-500/30 bg-zinc-950/60 p-4">
             <div className="flex items-center justify-between flex-wrap gap-1">
               <label className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
                 <Key className="h-3.5 w-3.5 text-indigo-400" />
@@ -225,7 +280,7 @@ export function SettingsHermes() {
                     try {
                       const text = await navigator.clipboard.readText()
                       if (text) {
-                        updateConfig({ llmApiKey: text.trim() })
+                        handleApiKeyChange(text.trim())
                         toast.success('Chave de API colada com sucesso! 📋')
                       }
                     } catch {
@@ -249,12 +304,13 @@ export function SettingsHermes() {
                 )}
               </div>
             </div>
+
             <div className="relative">
               <input
                 type={showKey ? 'text' : 'password'}
-                placeholder={config.provider === 'groq' ? 'gsk_...' : config.provider === 'openrouter' ? 'sk-or-v1-...' : 'nvapi-...'}
-                value={config.llmApiKey}
-                onChange={(e) => updateConfig({ llmApiKey: e.target.value })}
+                placeholder={config.provider === 'groq' ? 'gsk_...' : config.provider === 'openrouter' ? 'sk-or-v1-...' : config.provider === 'nvidia' ? 'nvapi-...' : 'sk-...'}
+                value={activeApiKey}
+                onChange={(e) => handleApiKeyChange(e.target.value)}
                 className="input-base pr-20 font-mono text-xs py-2.5"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-zinc-400">
@@ -267,6 +323,33 @@ export function SettingsHermes() {
                   {showKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-zinc-500" />}
                 </button>
               </div>
+            </div>
+
+            {/* Direct Quick Test Button inside Provider Box */}
+            <div className="flex items-center justify-between pt-1 border-t border-zinc-800/60">
+              <div className="flex items-center gap-2">
+                {testStatus === 'success' && (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400">
+                    <Check className="h-3.5 w-3.5" /> Online {latencyMs ? `(${latencyMs}ms)` : ''}
+                  </span>
+                )}
+                {testStatus === 'error' && (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-400">
+                    <AlertCircle className="h-3.5 w-3.5" /> Falha no teste
+                  </span>
+                )}
+              </div>
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleTestProvider}
+                disabled={testingProvider || !activeApiKey}
+                className="text-xs h-7 gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
+              >
+                {testingProvider ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3 text-amber-300" />}
+                <span>Testar Chave & Conexão com {currentProvider.name}</span>
+              </Button>
             </div>
           </div>
         )}

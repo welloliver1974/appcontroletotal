@@ -14,6 +14,9 @@ export interface HermesAdvancedConfig {
   provider: ProviderId
   llmApiKey: string
   groqApiKey?: string
+  openRouterApiKey?: string
+  nvidiaApiKey?: string
+  customApiKey?: string
   llmModel: string
   visionModel?: string
   customBaseUrl: string
@@ -26,6 +29,40 @@ export interface HermesAdvancedConfig {
 export function getDefaultVisionModel(provider: ProviderId): string {
   const p = PROVIDERS[provider]
   return p?.defaultVisionModel || 'google/gemini-2.0-flash-001'
+}
+
+export function getApiKeyForProvider(config: HermesAdvancedConfig, providerId: ProviderId): string {
+  if (providerId === 'groq') {
+    return (
+      config.groqApiKey ||
+      (config.provider === 'groq' ? config.llmApiKey : '') ||
+      import.meta.env.VITE_GROQ_API_KEY ||
+      import.meta.env.VITE_LLM_API_KEY ||
+      ''
+    ).trim()
+  }
+  if (providerId === 'openrouter') {
+    return (
+      config.openRouterApiKey ||
+      (config.provider === 'openrouter' ? config.llmApiKey : '') ||
+      ''
+    ).trim()
+  }
+  if (providerId === 'nvidia') {
+    return (
+      config.nvidiaApiKey ||
+      (config.provider === 'nvidia' ? config.llmApiKey : '') ||
+      ''
+    ).trim()
+  }
+  if (providerId === 'custom') {
+    return (
+      config.customApiKey ||
+      (config.provider === 'custom' ? config.llmApiKey : '') ||
+      ''
+    ).trim()
+  }
+  return config.llmApiKey?.trim() || ''
 }
 
 export function getHermesAdvancedConfig(): HermesAdvancedConfig {
@@ -48,12 +85,29 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
           ? defaultVision
           : rawVision
 
+      const groqKey = parsed.groqApiKey || (provider === 'groq' ? parsed.llmApiKey : '') || import.meta.env.VITE_GROQ_API_KEY || ''
+      const openRouterKey = parsed.openRouterApiKey || (provider === 'openrouter' ? parsed.llmApiKey : '') || ''
+      const nvidiaKey = parsed.nvidiaApiKey || (provider === 'nvidia' ? parsed.llmApiKey : '') || ''
+      const customKey = parsed.customApiKey || (provider === 'custom' ? parsed.llmApiKey : '') || ''
+
+      const currentKey =
+        provider === 'groq'
+          ? groqKey
+          : provider === 'openrouter'
+            ? openRouterKey
+            : provider === 'nvidia'
+              ? nvidiaKey
+              : customKey || parsed.llmApiKey || ''
+
       return {
         vpsUrl: parsed.vpsUrl || import.meta.env.VITE_HERMES_WEBHOOK_URL || '',
         vpsSecret: parsed.vpsSecret || import.meta.env.VITE_HERMES_API_KEY || '',
         provider,
-        llmApiKey: parsed.llmApiKey || parsed.groqApiKey || import.meta.env.VITE_LLM_API_KEY || '',
-        groqApiKey: parsed.groqApiKey || parsed.llmApiKey || import.meta.env.VITE_GROQ_API_KEY || '',
+        llmApiKey: currentKey,
+        groqApiKey: groqKey,
+        openRouterApiKey: openRouterKey,
+        nvidiaApiKey: nvidiaKey,
+        customApiKey: customKey,
         llmModel: normalizedModel,
         visionModel: normalizedVision,
         customBaseUrl: parsed.customBaseUrl || '',
@@ -70,7 +124,10 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
     vpsSecret: import.meta.env.VITE_HERMES_API_KEY || '',
     provider: 'groq',
     llmApiKey: import.meta.env.VITE_LLM_API_KEY || '',
-    groqApiKey: import.meta.env.VITE_GROQ_API_KEY || '',
+    groqApiKey: import.meta.env.VITE_GROQ_API_KEY || import.meta.env.VITE_LLM_API_KEY || '',
+    openRouterApiKey: '',
+    nvidiaApiKey: '',
+    customApiKey: '',
     llmModel: 'openai/gpt-oss-120b',
     visionModel: getDefaultVisionModel('groq'),
     customBaseUrl: '',
@@ -123,7 +180,6 @@ export async function loadHermesConfigFromCloud(): Promise<HermesAdvancedConfig>
       .maybeSingle()
 
     if (error || !data?.data) {
-      // If cloud is empty and local device already has configured keys, automatically seed the cloud!
       if (local.llmApiKey || local.groqApiKey || local.vpsUrl) {
         saveHermesAdvancedConfig(local)
       }
@@ -139,6 +195,9 @@ export async function loadHermesConfigFromCloud(): Promise<HermesAdvancedConfig>
       provider: cloudData.provider || local.provider,
       llmApiKey: cloudData.llmApiKey || local.llmApiKey,
       groqApiKey: cloudData.groqApiKey || local.groqApiKey,
+      openRouterApiKey: cloudData.openRouterApiKey || local.openRouterApiKey,
+      nvidiaApiKey: cloudData.nvidiaApiKey || local.nvidiaApiKey,
+      customApiKey: cloudData.customApiKey || local.customApiKey,
       llmModel: cloudData.llmModel || local.llmModel,
       visionModel: cloudData.visionModel || local.visionModel,
       customBaseUrl: cloudData.customBaseUrl || local.customBaseUrl,
@@ -153,6 +212,114 @@ export async function loadHermesConfigFromCloud(): Promise<HermesAdvancedConfig>
   } catch (err) {
     console.warn('[hermes] Could not sync config from cloud:', err)
     return local
+  }
+}
+
+/**
+ * Tests direct connectivity and latency to any LLM provider (NVIDIA, Groq, OpenRouter, VPS).
+ */
+export async function testProviderConnection(
+  providerId: ProviderId,
+  apiKey: string,
+  model?: string,
+  customUrl?: string,
+): Promise<{ ok: boolean; latencyMs: number; reply: string; error?: string }> {
+  const start = performance.now()
+  const provider = PROVIDERS[providerId]
+  const token = (apiKey || '').trim()
+  const modelToUse = model || provider?.defaultModel || 'meta/llama-3.3-70b-instruct'
+
+  if (!token && providerId !== 'vps') {
+    return { ok: false, latencyMs: 0, reply: '', error: 'Chave da API não informada.' }
+  }
+
+  const testMessages = [
+    { role: 'system', content: 'Você é o Hermes. Responda em 1 frase curta confirmando que está online.' },
+    { role: 'user', content: 'Teste de conexão Life OS Hub. Responda apenas "Conexão estabelecida com sucesso!".' },
+  ]
+
+  // 1. Tenta Direct Fetch primeiro
+  let endpoint = provider?.chatEndpoint
+  if (providerId === 'custom' && customUrl) {
+    endpoint = `${customUrl.replace(/\/+$/, '')}/chat/completions`
+  }
+
+  if (endpoint && token && providerId !== 'vps') {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 8000)
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      }
+      if (providerId === 'openrouter') {
+        headers['HTTP-Referer'] = 'https://appcontroletotal.local'
+        headers['X-Title'] = 'Life OS Hub'
+      }
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: testMessages,
+          max_tokens: 50,
+        }),
+      })
+
+      clearTimeout(timeout)
+
+      if (res.ok) {
+        const data = await res.json()
+        const reply = data.choices?.[0]?.message?.content || 'OK'
+        const latencyMs = Math.round(performance.now() - start)
+        return { ok: true, latencyMs, reply }
+      }
+    } catch {
+      // Fallback para proxy
+    }
+  }
+
+  // 2. Tenta Serverless Proxy
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
+
+    const proxyRes = await fetch('/api/llm/proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        action: 'chat',
+        provider: providerId,
+        apiKey: token,
+        model: modelToUse,
+        messages: testMessages,
+        max_tokens: 50,
+        customUrl,
+      }),
+    })
+
+    clearTimeout(timeout)
+
+    if (proxyRes.ok) {
+      const data = await proxyRes.json()
+      const reply = data.data?.choices?.[0]?.message?.content || data.choices?.[0]?.message?.content || 'OK'
+      const latencyMs = Math.round(performance.now() - start)
+      return { ok: true, latencyMs, reply }
+    } else {
+      const errText = await proxyRes.text().catch(() => '')
+      let cleanMsg = errText
+      try {
+        const parsed = JSON.parse(errText)
+        if (parsed?.error) cleanMsg = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error)
+      } catch {}
+      return { ok: false, latencyMs: 0, reply: '', error: cleanMsg.slice(0, 160) || `HTTP ${proxyRes.status}` }
+    }
+  } catch (err: any) {
+    return { ok: false, latencyMs: 0, reply: '', error: err?.message || 'Falha ao conectar com o provedor' }
   }
 }
 
@@ -466,7 +633,7 @@ export async function sendHermesChat(
 
   // LLM Provider Setup (Groq, OpenRouter, NVIDIA, Custom)
   const provider = PROVIDERS[config.provider] || PROVIDERS.groq
-  const apiKey = (config.provider === 'groq' ? (config.groqApiKey || config.llmApiKey) : config.llmApiKey || config.groqApiKey || '').trim()
+  const apiKey = getApiKeyForProvider(config, config.provider)
   const modelToUse =
     config.provider === 'groq' && (!config.llmModel || config.llmModel.includes('llama-3.3-70b-versatile') || config.llmModel.includes('llama-3.1-70b-versatile'))
       ? 'openai/gpt-oss-120b'
