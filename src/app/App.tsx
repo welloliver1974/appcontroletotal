@@ -5,7 +5,6 @@ import { AuthGate } from '@/components/auth/AuthGate'
 import { AppShell } from '@/components/layout/AppShell'
 import { ToastContainer } from '@/components/ui/ToastContainer'
 import { Skeleton } from '@/components/ui/feedback'
-import { syncAllUnsyncedMaintenance } from '@/lib/maintFinanceSync'
 
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const HojePage = lazy(() => import('@/features/hoje/HojePage').then((m) => ({ default: m.HojePage })))
@@ -46,7 +45,6 @@ export default function App() {
 
   useEffect(() => {
     initAuth()
-    void syncAllUnsyncedMaintenance().catch(() => 0)
   }, [initAuth])
 
   return (

@@ -5,7 +5,6 @@ import { Card } from '@/components/ui/Card'
 import { ProgressBar } from '@/components/ui/feedback'
 import { api } from '@/data/api'
 import { formatBRL } from '@/lib/utils'
-import { syncAllUnsyncedMaintenance } from '@/lib/maintFinanceSync'
 import type { FixedBill, SpendingItem } from '@/data/types'
 
 export function FinanceQuickSummaryCard() {
@@ -25,17 +24,15 @@ export function FinanceQuickSummaryCard() {
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
   useEffect(() => {
-    void syncAllUnsyncedMaintenance().catch(() => 0).then(() => {
-      Promise.all([
-        api.list<SpendingItem>('spendingEntries').catch(() => []),
-        api.list<FixedBill>('fixedBills').catch(() => []),
-      ])
-        .then(([entries, bills]) => {
-          setSpending(Array.isArray(entries) ? entries : [])
-          setFixedBills(Array.isArray(bills) ? bills : [])
-        })
-        .finally(() => setLoading(false))
-    })
+    Promise.all([
+      api.list<SpendingItem>('spendingEntries').catch(() => []),
+      api.list<FixedBill>('fixedBills').catch(() => []),
+    ])
+      .then(([entries, bills]) => {
+        setSpending(Array.isArray(entries) ? entries : [])
+        setFixedBills(Array.isArray(bills) ? bills : [])
+      })
+      .finally(() => setLoading(false))
 
     try {
       const b = Number(localStorage.getItem('act.financas.monthlyBudget')) || 3500

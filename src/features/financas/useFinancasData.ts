@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/data/api'
-import { syncAllUnsyncedMaintenance } from '@/lib/maintFinanceSync'
 import type { FixedBill, SpendingItem } from '@/data/types'
 
 export interface FinancasData {
@@ -17,9 +16,6 @@ export function useFinancasData() {
 
   const loadData = useCallback(async () => {
     try {
-      // Sync any unsynced maintenance/fuel records first
-      await syncAllUnsyncedMaintenance().catch(() => 0)
-
       const [spending, fixedBills] = await Promise.all([
         api.list<SpendingItem>('spendingEntries').catch(async () => {
           return api.list<SpendingItem>('spending').catch(() => [])

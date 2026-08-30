@@ -144,7 +144,34 @@ export function ManutencaoPage() {
   }
 
   const deleteRecord = async (id: string) => {
-    setRecords(await api.remove<MaintenanceRecord>('maintenance', id))
+    if (!data) return
+    try {
+      const recordToDelete = data.records.find((r) => r.id === id)
+      setRecords(await api.remove<MaintenanceRecord>('maintenance', id))
+
+      // Also clean up linked spending item in Finanças if present
+      if (recordToDelete && recordToDelete.cost > 0) {
+        void (async () => {
+          try {
+            const spendingList = await api.list<{ id: string; amount: number; date: string; note?: string }>('spendingEntries').catch(() => [])
+            const linked = spendingList.find((s) => {
+              const sameCost = Math.abs(Number(s.amount) - Number(recordToDelete.cost)) < 0.01
+              const sameDate = s.date === recordToDelete.date
+              const sameTitle = s.note && (s.note.includes(recordToDelete.title) || recordToDelete.title.includes(s.note))
+              return sameCost && sameDate && sameTitle
+            })
+            if (linked) {
+              await api.remove('spendingEntries', linked.id).catch(() => {})
+            }
+          } catch {}
+        })()
+      }
+
+      toast.success('Registro de manutenção / abastecimento excluído com sucesso!')
+    } catch (err) {
+      console.error('Erro ao excluir registro:', err)
+      toast.error('Erro ao excluir registro.')
+    }
   }
 
   return (
