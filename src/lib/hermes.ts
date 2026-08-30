@@ -350,6 +350,127 @@ export async function testProviderConnection(
   }
 }
 
+/**
+ * Tests vision capabilities (OCR / multimodal) of the selected vision model.
+ */
+export async function testVisionModel(
+  providerId: ProviderId,
+  apiKey: string,
+  visionModel?: string,
+  customUrl?: string,
+): Promise<{ ok: boolean; latencyMs: number; reply: string; error?: string }> {
+  const start = performance.now()
+  const token = (apiKey || '').trim()
+  const modelToUse = visionModel || getDefaultVisionModel(providerId)
+
+  if (!token && providerId !== 'vps') {
+    return { ok: false, latencyMs: 0, reply: '', error: 'Chave da API não informada.' }
+  }
+
+  // 1x1 base64 transparent PNG for instant multimodal verification
+  const testImageUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
+
+  const testMessages = [
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: 'Responda apenas "Visão IA OK" confirmando que você consegue processar imagens.' },
+        {
+          type: 'image_url',
+          image_url: {
+            url: testImageUrl,
+          },
+        },
+      ],
+    },
+  ]
+
+  const provider = PROVIDERS[providerId]
+  let endpoint = provider?.chatEndpoint
+  if (providerId === 'custom' && customUrl) {
+    endpoint = `${customUrl.replace(/\/+$/, '')}/chat/completions`
+  }
+
+  // 1. Tenta Direct Fetch
+  if (endpoint && token && providerId !== 'vps') {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10000)
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      }
+      if (providerId === 'openrouter') {
+        headers['HTTP-Referer'] = 'https://appcontroletotal.local'
+        headers['X-Title'] = 'Life OS Hub - Vision Test'
+      }
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: testMessages,
+          max_tokens: 50,
+        }),
+      })
+
+      clearTimeout(timeout)
+
+      if (res.ok) {
+        const data = await res.json()
+        const reply = data.choices?.[0]?.message?.content || 'Visão OK'
+        const latencyMs = Math.round(performance.now() - start)
+        return { ok: true, latencyMs, reply }
+      }
+    } catch {
+      // Fallback para proxy
+    }
+  }
+
+  // 2. Tenta Proxy
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 12000)
+
+    const proxyRes = await fetch('/api/llm/proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        action: 'chat',
+        provider: providerId,
+        apiKey: token,
+        model: modelToUse,
+        messages: testMessages,
+        max_tokens: 50,
+        customUrl,
+      }),
+    })
+
+    clearTimeout(timeout)
+
+    if (proxyRes.ok) {
+      const data = await proxyRes.json()
+      const reply = data.data?.choices?.[0]?.message?.content || data.choices?.[0]?.message?.content || 'Visão OK'
+      const latencyMs = Math.round(performance.now() - start)
+      return { ok: true, latencyMs, reply }
+    } else {
+      const errText = await proxyRes.text().catch(() => '')
+      let cleanMsg = errText
+      try {
+        const parsed = JSON.parse(errText)
+        if (parsed?.error) cleanMsg = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error)
+      } catch {}
+      return { ok: false, latencyMs: 0, reply: '', error: cleanMsg.slice(0, 160) || `HTTP ${proxyRes.status}` }
+    }
+  } catch (err: any) {
+    return { ok: false, latencyMs: 0, reply: '', error: err?.message || 'Falha ao testar modelo de visão' }
+  }
+}
+
 // Backwards-compatible getters
 export function getHermesConfig() {
   const adv = getHermesAdvancedConfig()

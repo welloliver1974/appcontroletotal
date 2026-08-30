@@ -32,6 +32,7 @@ import {
   getDefaultVisionModel,
   getApiKeyForProvider,
   testProviderConnection,
+  testVisionModel,
   sendHermesChat,
   sendHermesWebhook,
   type HermesAdvancedConfig,
@@ -55,6 +56,9 @@ export function SettingsHermes() {
   const [showGroqKey, setShowGroqKey] = useState(false)
   const [testingGroq, setTestingGroq] = useState(false)
   const [testingProvider, setTestingProvider] = useState(false)
+  const [testingVision, setTestingVision] = useState(false)
+  const [visionStatus, setVisionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
+  const [visionLatency, setVisionLatency] = useState<number | null>(null)
 
   const updateConfig = (patch: Partial<HermesAdvancedConfig>) => {
     const next = { ...config, ...patch }
@@ -106,6 +110,40 @@ export function SettingsHermes() {
       toast.error('Erro de conexão com o provedor.')
     } finally {
       setTestingProvider(false)
+    }
+  }
+
+  const handleTestVisionModel = async () => {
+    const currentKey = getApiKeyForProvider(config, config.provider)
+    if (!currentKey && config.provider !== 'vps') {
+      toast.warning(`Insira a chave da API da ${currentProvider.name} primeiro.`)
+      return
+    }
+
+    setTestingVision(true)
+    setVisionStatus('testing')
+
+    try {
+      const res = await testVisionModel(
+        config.provider,
+        currentKey,
+        activeVisionModel,
+        config.customBaseUrl || config.vpsUrl,
+      )
+
+      if (res.ok) {
+        setVisionStatus('success')
+        setVisionLatency(res.latencyMs)
+        toast.success(`Modelo de Visão validado com sucesso! (${res.latencyMs}ms) 📸`)
+      } else {
+        setVisionStatus('error')
+        toast.error(`Falha no teste de visão: ${res.error || 'Modelo não aceitou imagem'}`)
+      }
+    } catch (err: any) {
+      setVisionStatus('error')
+      toast.error('Erro de conexão ao testar visão.')
+    } finally {
+      setTestingVision(false)
     }
   }
 
@@ -448,6 +486,33 @@ export function SettingsHermes() {
             <p className="text-[10px] text-zinc-400">
               Usado para extrair itens, preços e mercado de fotos de cupom fiscal.
             </p>
+
+            {/* Direct Quick Test Button for Vision Model */}
+            <div className="flex items-center justify-between pt-2 border-t border-purple-500/20">
+              <div className="flex items-center gap-1.5">
+                {visionStatus === 'success' && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400">
+                    <Check className="h-3 w-3" /> Visão OK {visionLatency ? `(${visionLatency}ms)` : ''}
+                  </span>
+                )}
+                {visionStatus === 'error' && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-400">
+                    <AlertCircle className="h-3 w-3" /> Falha OCR
+                  </span>
+                )}
+              </div>
+
+              <Button
+                variant="soft"
+                size="sm"
+                onClick={handleTestVisionModel}
+                disabled={testingVision || !activeApiKey}
+                className="text-[11px] h-6 px-2.5 gap-1.5 border border-purple-500/30 bg-purple-500/10 text-purple-200 hover:bg-purple-500/20 font-medium"
+              >
+                {testingVision ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3 text-purple-400" />}
+                <span>Testar Modelo de Visão (OCR)</span>
+              </Button>
+            </div>
           </div>
         </div>
 
