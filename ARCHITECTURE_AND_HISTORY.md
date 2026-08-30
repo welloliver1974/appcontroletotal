@@ -1007,6 +1007,25 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
      - Implementado **Direct Fetch** direto do navegador com fallback para o proxy serverless e formatação estrita `response_format: { type: 'json_object' }`.
      - Extração completa de cada item comprado (nome, quantidade, unidade, preço unitário e valor total), data e total da nota, com abastecimento direto da **Despensa**.
 
+## ⛽ 58. Eliminação de Duplicação Fantasma de Abastecimentos, Botão de Teste OCR e Motor de Prioridades de Hoje (30/08/2026)
+
+* **Contexto & Problemas Identificados:**
+  1. Ao excluir abastecimentos ou registros de manutenção e recriá-los, registros antigos reapareciam sozinhos ("criando sozinho... apareceu mais um monte"). A causa raiz foi a rotina de varredura bidirecional `syncAllUnsyncedMaintenance()` em `maintFinanceSync.ts`, que rodava no boot (`App.tsx`), na tela de Finanças e no Dashboard, recriando novos `MaintenanceRecord` a partir de despesas de combustível órfãs que permaneciam na tabela `spendingEntries`.
+  2. Ausência de teste direto para o modelo multimodal de Visão (OCR) no painel de configurações, impossibilitando o usuário de validar a capacidade de imagem antes de usar a câmera.
+  3. Falta de feedback visual e botão explícito de "Salvar Configurações" na tela de ajustes do Hermes.
+
+* **Soluções Implementadas:**
+  1. **🛑 Desativação da Recriação Fantasma de Manutenção ([maintFinanceSync.ts](file:///e:/Apps/AppControleTotal/src/lib/maintFinanceSync.ts), [useFinancasData.ts](file:///e:/Apps/AppControleTotal/src/features/financas/useFinancasData.ts), [FinanceQuickSummaryCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/FinanceQuickSummaryCard.tsx) & [App.tsx](file:///e:/Apps/AppControleTotal/src/app/App.tsx)):**
+     - `syncAllUnsyncedMaintenance()` transformado em no-op seguro para impedir que despesas antigas de combustível ressuscitem manutenções excluídas pelo usuário.
+     - `deleteRecord` em [ManutencaoPage.tsx](file:///e:/Apps/AppControleTotal/src/features/manutencao/ManutencaoPage.tsx) agora exclui o registro do veículo e remove em cascata o lançamento financeiro vinculado em `spendingEntries`, eliminando registros órfãos.
+  2. **📸 Botão Dedicado de Teste de Visão (OCR) ([hermes.ts](file:///e:/Apps/AppControleTotal/src/lib/hermes.ts) & [SettingsHermes.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsHermes.tsx)):**
+     - Criada a função `testVisionModel` que envia um micro-payload base64 de imagem sintética para o modelo de visão selecionado, validando suporte multimodal e exibindo latência em ms.
+     - Botão `📸 Testar Modelo de Visão (OCR)` adicionado diretamente no card de Modelo de Visão com feedback de status.
+  3. **💾 Auto-Save com Badge Visual e Botão Físico "Salvar Ajustes" ([SettingsHermes.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsHermes.tsx)):**
+     - Adicionado badge de sincronização em nuvem (`☁️ Auto-salvamento ativo / Salvo & Sincronizado`) e botões explícitos `💾 Salvar Ajustes` no cabeçalho e rodapé.
+  4. **🎯 Mapeamento das Fontes das Prioridades Inteligentes de Hoje ([hojeUtils.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/hojeUtils.ts) & [HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx)):**
+     - O motor unificado de prioridades varre dinamicamente: 1. Eventos e compromissos do dia na **Agenda**; 2. **Hábitos diários** cadastrados na aba Hoje; 3. **Contas Fixas** que vencem hoje ou estão em atraso em Finanças; 4. Alertas de **Despensa** (itens zerados/vencendo); 5. Alertas de **Manutenção** de veículos com revisão agendada para hoje; 6. **Viagens** ativas.
+
 ---
 
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
