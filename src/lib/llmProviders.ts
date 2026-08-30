@@ -12,6 +12,7 @@ export interface ProviderConfig {
   chatEndpoint: string
   docsUrl: string
   defaultModel: string
+  defaultVisionModel: string
 }
 
 export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
@@ -23,6 +24,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     chatEndpoint: '/api/chat',
     docsUrl: 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/',
     defaultModel: 'hermes-vps-model',
+    defaultVisionModel: 'hermes-vps-vision',
   },
   openrouter: {
     id: 'openrouter',
@@ -32,6 +34,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     chatEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
     docsUrl: 'https://openrouter.ai/keys',
     defaultModel: 'meta-llama/llama-3.3-70b-instruct',
+    defaultVisionModel: 'google/gemini-2.0-flash-001',
   },
   groq: {
     id: 'groq',
@@ -41,6 +44,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     chatEndpoint: 'https://api.groq.com/openai/v1/chat/completions',
     docsUrl: 'https://console.groq.com/keys',
     defaultModel: 'openai/gpt-oss-120b',
+    defaultVisionModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
   },
   nvidia: {
     id: 'nvidia',
@@ -50,6 +54,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     chatEndpoint: 'https://integrate.api.nvidia.com/v1/chat/completions',
     docsUrl: 'https://build.nvidia.com',
     defaultModel: 'meta/llama-3.3-70b-instruct',
+    defaultVisionModel: 'meta/llama-3.2-11b-vision-instruct',
   },
   custom: {
     id: 'custom',
@@ -59,6 +64,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     chatEndpoint: '/chat/completions',
     docsUrl: '',
     defaultModel: 'default-model',
+    defaultVisionModel: 'default-vision-model',
   },
 }
 
@@ -67,10 +73,35 @@ export interface ModelItem {
   name: string
   description?: string
   contextLength?: number
+  isVision?: boolean
+}
+
+/**
+ * Checks if a model ID or name represents a multimodal / vision model capable of image OCR.
+ */
+export function isVisionModel(modelId: string): boolean {
+  if (!modelId || typeof modelId !== 'string') return false
+  const lower = modelId.toLowerCase()
+  return (
+    lower.includes('vision') ||
+    lower.includes('gemini') ||
+    lower.includes('vl') ||
+    lower.includes('scout') ||
+    lower.includes('gpt-4o') ||
+    lower.includes('pixtral') ||
+    lower.includes('claude-3') ||
+    lower.includes('llama-3.2-11b') ||
+    lower.includes('llama-3.2-90b') ||
+    lower.includes('qwen-vl') ||
+    lower.includes('internvl') ||
+    lower.includes('omni') ||
+    lower.includes('multimodal')
+  )
 }
 
 export const DEFAULT_NVIDIA_MODELS: ModelItem[] = [
   { id: 'meta/llama-3.3-70b-instruct', name: 'Meta Llama 3.3 70B Instruct (Recomendado)', description: 'Alta velocidade e precisão' },
+  { id: 'meta/llama-3.2-11b-vision-instruct', name: 'Meta Llama 3.2 11B Vision (Scanner/OCR)', description: 'Capacidade de visão e leitura de notas', isVision: true },
   { id: 'meta/llama-3.1-70b-instruct', name: 'Meta Llama 3.1 70B Instruct', description: 'Versátil e robusto' },
   { id: 'meta/llama-3.1-8b-instruct', name: 'Meta Llama 3.1 8B Instruct', description: 'Ultra-rápido e leve' },
   { id: 'meta/llama-3.1-405b-instruct', name: 'Meta Llama 3.1 405B Instruct', description: 'Máxima capacidade de raciocínio' },
@@ -85,9 +116,22 @@ export const DEFAULT_NVIDIA_MODELS: ModelItem[] = [
 export const DEFAULT_GROQ_MODELS: ModelItem[] = [
   { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (Recomendado - Máxima Inteligência)', description: 'Raciocínio livre de alta capacidade' },
   { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B (Ultra-Rápido)', description: 'Velocidade instantânea' },
+  { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout (Visão & Imagens)', description: 'Suporte multimodal para leitura de cupons', isVision: true },
+  { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision', description: 'Visão computacional e OCR', isVision: true },
+  { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision', description: 'Visão de alta resolução', isVision: true },
   { id: 'qwen/qwen3.6-27b', name: 'Qwen 3.6 27B', description: 'Excelente em português' },
   { id: 'groq/compound', name: 'Groq Compound', description: 'Múltiplos agentes combinados' },
   { id: 'groq/compound-mini', name: 'Groq Compound Mini', description: 'Versão compacta' },
+]
+
+export const DEFAULT_OPENROUTER_MODELS: ModelItem[] = [
+  { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Meta Llama 3.3 70B Instruct (Recomendado)', description: 'Chat rápido e inteligente' },
+  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Recomendado p/ OCR)', description: 'Visão instantânea e precisa', isVision: true },
+  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash Grátis', description: 'Visão e leitura grátis', isVision: true },
+  { id: 'google/gemini-flash-1.5-8b', name: 'Gemini Flash 1.5 8B', description: 'Ultra-econômico com visão', isVision: true },
+  { id: 'meta-llama/llama-3.2-11b-vision-instruct:free', name: 'Llama 3.2 11B Vision Grátis', description: 'OCR de cupons e documentos', isVision: true },
+  { id: 'qwen/qwen-2.5-vl-72b-instruct:free', name: 'Qwen 2.5 VL 72B Grátis', description: 'Multimodal de alta capacidade', isVision: true },
+  { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', description: 'Raciocínio analítico avançado' },
 ]
 
 function parseModelList(json: unknown): ModelItem[] {
@@ -97,22 +141,28 @@ function parseModelList(json: unknown): ModelItem[] {
 
   if (!Array.isArray(rawList)) return []
 
-  return rawList
-    .map((item: unknown) => {
-      if (typeof item === 'string') return { id: item, name: item }
-      if (item && typeof item === 'object') {
-        const m = item as Record<string, unknown>
-        return {
-          id: String(m.id || m.name || ''),
-          name: String(m.name || m.id || ''),
+  const items: ModelItem[] = []
+
+  for (const item of rawList) {
+    if (typeof item === 'string' && item.trim()) {
+      items.push({ id: item.trim(), name: item.trim(), isVision: isVisionModel(item) })
+    } else if (item && typeof item === 'object') {
+      const m = item as Record<string, unknown>
+      const id = String(m.id || m.name || '').trim()
+      const name = String(m.name || m.id || '').trim()
+      if (id) {
+        items.push({
+          id,
+          name: name || id,
           description: typeof m.description === 'string' ? m.description : undefined,
           contextLength: typeof m.context_length === 'number' ? m.context_length : undefined,
-        }
+          isVision: isVisionModel(id) || isVisionModel(name),
+        })
       }
-      return null
-    })
-    .filter((m: ModelItem | null): m is ModelItem => Boolean(m && m.id))
-    .sort((a: ModelItem, b: ModelItem) => a.id.localeCompare(b.id))
+    }
+  }
+
+  return items.sort((a, b) => a.id.localeCompare(b.id))
 }
 
 /**
@@ -189,12 +239,15 @@ export async function fetchProviderModels(
     clearTimeout(timeout)
 
     if (!res.ok) {
-      // Return curated list on error for NVIDIA / Groq
+      // Return curated list on error for NVIDIA / Groq / OpenRouter
       if (providerId === 'nvidia') {
         return { ok: true, models: DEFAULT_NVIDIA_MODELS }
       }
       if (providerId === 'groq') {
         return { ok: true, models: DEFAULT_GROQ_MODELS }
+      }
+      if (providerId === 'openrouter') {
+        return { ok: true, models: DEFAULT_OPENROUTER_MODELS }
       }
 
       const errText = await res.text().catch(() => '')
@@ -214,6 +267,7 @@ export async function fetchProviderModels(
 
     if (providerId === 'nvidia') return { ok: true, models: DEFAULT_NVIDIA_MODELS }
     if (providerId === 'groq') return { ok: true, models: DEFAULT_GROQ_MODELS }
+    if (providerId === 'openrouter') return { ok: true, models: DEFAULT_OPENROUTER_MODELS }
 
     return { ok: true, models: [] }
   } catch {
@@ -223,6 +277,9 @@ export async function fetchProviderModels(
     }
     if (providerId === 'groq') {
       return { ok: true, models: DEFAULT_GROQ_MODELS }
+    }
+    if (providerId === 'openrouter') {
+      return { ok: true, models: DEFAULT_OPENROUTER_MODELS }
     }
 
     return {

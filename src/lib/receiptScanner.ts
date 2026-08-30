@@ -1,4 +1,6 @@
-import { getHermesAdvancedConfig } from './hermes'
+import { getHermesAdvancedConfig, getDefaultVisionModel } from './hermes'
+import { PROVIDERS } from './llmProviders'
+import { lookupCnpj } from './cnpjLookup'
 import {
   detectQrCodeFromDataUrl,
   detectQrCodeFromFile,
@@ -243,7 +245,7 @@ function parseReceiptResponse(raw: string, existingQr?: SefazQrCodeData | null):
 
 /**
  * High-speed, QR-assisted Vision OCR for Brazilian tax receipts (SAT, NFC-e, Padarias, Restaurantes).
- * Finishes in ~2-3 seconds without hanging or hitting rate limits.
+ * Finishes in ~2-3 seconds with Direct Fetch and proxy fallback.
  */
 export async function parseReceiptWithVision(
   compressedDataUrl: string,
@@ -260,25 +262,8 @@ export async function parseReceiptWithVision(
     ? await detectQrCodeFromFile(rawFile).catch(() => null)
     : await detectQrCodeFromDataUrl(compressedDataUrl).catch(() => null)
 
-  // 2. Vision Model selection (Groq Qwen 3.6 Multimodal or OpenRouter Gemini / Nvidia)
-  let visionModel = config.llmModel || ''
-  if (config.provider === 'groq') {
-    visionModel =
-      config.llmModel.includes('qwen') || config.llmModel.includes('vision')
-        ? config.llmModel
-        : 'qwen/qwen3.6-27b'
-  } else if (config.provider === 'nvidia') {
-    visionModel = config.llmModel.includes('vision')
-      ? config.llmModel
-      : 'meta/llama-3.2-11b-vision-instruct'
-  } else if (config.provider === 'openrouter') {
-    visionModel =
-      config.llmModel.includes('vision') ||
-      config.llmModel.includes('gemini') ||
-      config.llmModel.includes('qwen')
-        ? config.llmModel
-        : 'google/gemini-2.0-flash-001'
-  }
+  // 2. Vision Model selection (User-configured or Smart Provider Default)
+  const visionModel = config.visionModel || getDefaultVisionModel(config.provider)
 
   const systemPrompt = `Você é um scanner OCR especialista em cupons fiscais brasileiros (Hortifrutis, Mercados, Padarias, Lanchonetes, SAT CFe, NFC-e).
 
@@ -333,72 +318,139 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
   ]
 }`
 
-  // Timeout safety controller (45 seconds for mobile networks)
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 45000)
+  const userMessages = [
+    { role: 'system', content: systemPrompt },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: 'Leia este cupom fiscal / recibo. Extraia o estabelecimento no topo, valor líquido pago, data/hora, produtos e a chave de acesso fiscal em JSON.',
+        },
+        { type: 'image_url', image_url: { url: compressedDataUrl } },
+      ],
+    },
+  ]
 
-  try {
-    const res = await fetch('/api/llm/proxy', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        action: 'chat',
-        provider: config.provider,
-        apiKey: config.llmApiKey.trim(),
-        model: visionModel,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Leia este cupom fiscal / recibo. Extraia o estabelecimento no topo, valor líquido pago, data/hora, produtos e a chave de acesso fiscal.',
-              },
-              { type: 'image_url', image_url: { url: compressedDataUrl } },
-            ],
-          },
-        ],
-        temperature: 0.1,
-        max_tokens: 800,
-        customUrl: config.customBaseUrl,
-      }),
-    })
+  let rawContent = ''
 
-    clearTimeout(timeoutId)
+  // 1. TENTATIVA 1: DIRECT FETCH (Navegador -> Provedor direto, ultrarrápido)
+  const provider = PROVIDERS[config.provider] || PROVIDERS.groq
+  const apiKey = (config.provider === 'groq' ? (config.groqApiKey || config.llmApiKey) : config.llmApiKey || config.groqApiKey || '').trim()
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      let cleanMsg = errText
-      try {
-        const parsed = JSON.parse(errText)
-        if (parsed?.error) {
-          cleanMsg = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error)
-          try {
-            const inner = JSON.parse(cleanMsg)
-            if (inner?.error?.message) cleanMsg = inner.error.message
-          } catch {}
-        }
-      } catch {}
-      throw new Error(`Falha no leitor de visão: ${cleanMsg.slice(0, 160)}`)
-    }
-
-    const data = await res.json()
-    const content =
-      data.data?.choices?.[0]?.message?.content || data.choices?.[0]?.message?.content || ''
-
-    if (!content) {
-      throw new Error('Não foi possível ler o cupom. Verifique a iluminação e sua chave de API.')
-    }
-
-    const result = parseReceiptResponse(content, qrCode)
-    return result
-  } catch (err: any) {
-    clearTimeout(timeoutId)
-    if (err?.name === 'AbortError') {
-      throw new Error('Tempo limite excedido. A conexão com a IA demorou para responder. Tente novamente.')
-    }
-    throw err
+  let endpoint = provider.chatEndpoint
+  if (config.provider === 'custom' && config.customBaseUrl) {
+    endpoint = `${config.customBaseUrl.replace(/\/+$/, '')}/chat/completions`
   }
+
+  if (apiKey && endpoint && config.provider !== 'vps') {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      }
+
+      if (config.provider === 'openrouter') {
+        headers['HTTP-Referer'] = 'https://appcontroletotal.local'
+        headers['X-Title'] = 'Life OS Hub - Receipt Scanner'
+      }
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: visionModel,
+          messages: userMessages,
+          temperature: 0.1,
+          max_tokens: 1500,
+          response_format: { type: 'json_object' },
+        }),
+      })
+
+      clearTimeout(timeoutId)
+
+      if (res.ok) {
+        const data = await res.json()
+        rawContent = data.choices?.[0]?.message?.content || ''
+      }
+    } catch {
+      // Falha de rede/CORS no direct fetch, continua para fallback de proxy
+    }
+  }
+
+  // 2. TENTATIVA 2: SERVERLESS PROXY FALLBACK
+  if (!rawContent) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 45000)
+
+    try {
+      const res = await fetch('/api/llm/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          action: 'chat',
+          provider: config.provider,
+          apiKey: apiKey,
+          model: visionModel,
+          messages: userMessages,
+          temperature: 0.1,
+          max_tokens: 1500,
+          customUrl: config.customBaseUrl,
+        }),
+      })
+
+      clearTimeout(timeoutId)
+
+      if (res.ok) {
+        const data = await res.json()
+        rawContent = data.data?.choices?.[0]?.message?.content || data.choices?.[0]?.message?.content || ''
+      } else {
+        const errText = await res.text().catch(() => '')
+        let cleanMsg = errText
+        try {
+          const parsed = JSON.parse(errText)
+          if (parsed?.error) {
+            cleanMsg = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error)
+            try {
+              const inner = JSON.parse(cleanMsg)
+              if (inner?.error?.message) cleanMsg = inner.error.message
+            } catch {}
+          }
+        } catch {}
+        throw new Error(`Falha no leitor de visão: ${cleanMsg.slice(0, 160)}`)
+      }
+    } catch (err: any) {
+      clearTimeout(timeoutId)
+      if (err?.name === 'AbortError') {
+        throw new Error('Tempo limite excedido. A conexão com a IA demorou para responder. Tente novamente.')
+      }
+      throw err
+    }
+  }
+
+  if (!rawContent) {
+    throw new Error('Não foi possível ler o cupom. Verifique sua chave de API e se o modelo escolhido suporta visão/imagens.')
+  }
+
+  const result = parseReceiptResponse(rawContent, qrCode)
+
+  // 3. Auto-resolução de CNPJ para nome real do estabelecimento
+  const cnpjToResolve = result.qrCode?.cnpj || qrCode?.cnpj
+  if (cnpjToResolve && (result.establishment === 'Cupom Fiscal' || result.establishment.startsWith('Nota Fiscal'))) {
+    try {
+      const lookup = await lookupCnpj(cnpjToResolve)
+      if (lookup && lookup.tradeName) {
+        result.establishment = lookup.tradeName
+      }
+    } catch {
+      // Ignore CNPJ lookup failures
+    }
+  }
+
+  return result
 }

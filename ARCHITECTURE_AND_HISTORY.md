@@ -987,6 +987,26 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   4. **✅ Integração com Eventos Concluídos:** Lembretes de 15 minutos (`checkUpcomingEventsReminders`) consultam o `isEventCompleted` e ignoram itens concluídos.
   5. **🛒 Despensa Precisa:** Apenas itens com quantidade em estoque positiva (`qty > 0`) e cálculo de datas locais são elegíveis para alertas de validade de 3 dias.
 
+## 🧾 57. Correção do Scanner de Cupom Fiscal, Consulta de CNPJ e Seletor de Modelo de Visão (30/08/2026)
+
+* **Contexto & Problemas Identificados:**
+  1. Ao escanear o QR Code de cupons fiscais brasileiros (NFC-e / SAT) ou digitar a Chave de Acesso de 44 dígitos, o formulário preenchia o campo de estabelecimento apenas com `"Nota Fiscal (CNPJ ...)"`, sem identificar o nome comercial do mercado (*Nome Fantasia*).
+  2. O scanner por foto de cupom fiscal ("Foto Cupom (IA)") falhava ao extrair produtos e valores quando configurado com a Groq devido à atribuição do modelo `qwen/qwen3.6-27b` (que é somente texto e rejeita chamadas com imagem `image_url`).
+  3. No `receiptScanner.ts`, a rota `/api/llm/proxy` retornava 404 no servidor de desenvolvimento local (Vite) por falta de fallback para chamada direta do navegador (*Direct Fetch*).
+  4. O usuário não possuía nas Configurações do Hermes a opção de selecionar e alternar livremente o **Modelo de Visão (OCR)** independente do modelo de chat.
+
+* **Soluções Implementadas:**
+  1. **🏢 Consulta Automática de CNPJ e Nome Comercial ([cnpjLookup.ts](file:///e:/Apps/AppControleTotal/src/lib/cnpjLookup.ts)):**
+     - Criado serviço de resolução instantânea de CNPJ via **BrasilAPI** (com fallback para **MinhaReceita**), com cache em memória.
+     - Converte o CNPJ extraído do QR Code ou Chave de Acesso no **Nome Fantasia** real do estabelecimento (ex: *"Assaí Atacadista"*, *"Pão de Açúcar"*, *"Carrefour"*, *"Sacolão"*).
+  2. **📸 Seletor Dinâmico de Modelo de Visão ([SettingsHermes.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsHermes.tsx), [llmProviders.ts](file:///e:/Apps/AppControleTotal/src/lib/llmProviders.ts) & [hermes.ts](file:///e:/Apps/AppControleTotal/src/lib/hermes.ts)):**
+     - Adicionada a propriedade `visionModel?: string` em `HermesAdvancedConfig` com persistência no `localStorage` e nuvem Supabase (`app_settings`).
+     - Adicionado seletor dedicado em **Configurações > Hermes & IA**, agrupando e destacando modelos com capacidade multimodal/visão (`📸 Modelos com Suporte a Visão`).
+     - Eliminação de modelos fixos no código, permitindo ao usuário alterar o modelo de visão a qualquer momento caso haja depreciação pelo provedor.
+  3. **⚡ Motor de Visão Resiliente (Direct Fetch + Fallback) ([receiptScanner.ts](file:///e:/Apps/AppControleTotal/src/lib/receiptScanner.ts) & [ReceiptScannerModal.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/ReceiptScannerModal.tsx)):**
+     - Implementado **Direct Fetch** direto do navegador com fallback para o proxy serverless e formatação estrita `response_format: { type: 'json_object' }`.
+     - Extração completa de cada item comprado (nome, quantidade, unidade, preço unitário e valor total), data e total da nota, com abastecimento direto da **Despensa**.
+
 ---
 
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*

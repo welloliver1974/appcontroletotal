@@ -29,6 +29,7 @@ import {
   parseSefazUrl,
   type SefazQrCodeData,
 } from '@/lib/qrReceiptReader'
+import { lookupCnpj } from '@/lib/cnpjLookup'
 import { db } from '@/lib/db'
 import type { PantryItem } from '@/data/types'
 import { toast } from '@/stores/toastStore'
@@ -77,13 +78,13 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
   const [showPhotoPreview, setShowPhotoPreview] = useState(false)
   const [hasResult, setHasResult] = useState(false)
 
-  // Apply parsed QR / Access Key result into form
-  const applyQrResult = (qr: SefazQrCodeData) => {
+  // Apply parsed QR / Access Key result into form with asynchronous CNPJ Trade Name lookup
+  const applyQrResult = async (qr: SefazQrCodeData) => {
     setQrInfo(qr)
     setErrorMsg(null)
 
-    const storeLabel = qr.cnpj ? `Nota Fiscal (CNPJ ${qr.cnpj})` : qr.model || 'Nota Fiscal SEFAZ'
-    setEstablishment(storeLabel)
+    const initialStoreLabel = qr.cnpj ? `Nota Fiscal (CNPJ ${qr.cnpj})` : qr.model || 'Nota Fiscal SEFAZ'
+    setEstablishment(initialStoreLabel)
     if (qr.totalAmount && qr.totalAmount > 0) {
       setAmountStr(qr.totalAmount.toFixed(2).replace('.', ','))
     }
@@ -97,6 +98,19 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     toast.success(
       qr.accessKey ? 'Chave de Acesso identificada com sucesso! 🔑✨' : 'QR Code SEFAZ lido com sucesso! 🧾✨',
     )
+
+    // Lookup CNPJ for real Trade Name / Market Name
+    if (qr.cnpj) {
+      try {
+        const lookup = await lookupCnpj(qr.cnpj)
+        if (lookup && lookup.tradeName) {
+          setEstablishment(lookup.tradeName)
+          toast.success(`Mercado identificado: ${lookup.tradeName} 🏪`)
+        }
+      } catch {
+        // Keep initial store label
+      }
+    }
   }
 
   // Handle Access Key (44 digits) typing and auto-formatting

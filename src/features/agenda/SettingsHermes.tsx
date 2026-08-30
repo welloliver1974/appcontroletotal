@@ -15,6 +15,7 @@ import {
   ClipboardPaste,
   Mic,
   Sparkles,
+  Camera,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -28,6 +29,7 @@ import {
   getHermesAdvancedConfig,
   saveHermesAdvancedConfig,
   loadHermesConfigFromCloud,
+  getDefaultVisionModel,
   sendHermesChat,
   sendHermesWebhook,
   type HermesAdvancedConfig,
@@ -155,6 +157,9 @@ export function SettingsHermes() {
   }
 
   const currentProvider = PROVIDERS[config.provider] || PROVIDERS.groq
+  const activeVisionModel = config.visionModel || getDefaultVisionModel(config.provider)
+  const visionModels = models.filter((m) => m.isVision)
+  const otherModels = models.filter((m) => !m.isVision)
 
   return (
     <Card className="space-y-6 p-5">
@@ -182,7 +187,13 @@ export function SettingsHermes() {
                 <button
                   key={pId}
                   type="button"
-                  onClick={() => updateConfig({ provider: pId, llmModel: p.defaultModel })}
+                  onClick={() =>
+                    updateConfig({
+                      provider: pId,
+                      llmModel: p.defaultModel,
+                      visionModel: p.defaultVisionModel,
+                    })
+                  }
                   className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
                     isSelected
                       ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/10 ring-1 ring-indigo-500/30'
@@ -261,47 +272,100 @@ export function SettingsHermes() {
         )}
 
         {/* Model Selector & Live Fetch */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="text-xs text-zinc-400">Modelo Selecionado</label>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleFetchModels(true)}
-              disabled={loadingModels}
-              className="h-7 text-xs flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300"
-            >
-              <RefreshCw className={`h-3 w-3 ${loadingModels ? 'animate-spin' : ''}`} />
-              {loadingModels ? 'Buscando...' : 'Buscar modelos disponíveis'}
-            </Button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* 1. Modelo de Chat Principal */}
+          <div className="space-y-1.5 p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/40">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
+                <Bot className="h-3.5 w-3.5 text-indigo-400" /> Modelo de Chat (Hermes)
+              </label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleFetchModels(true)}
+                disabled={loadingModels}
+                className="h-6 text-[11px] px-2 flex items-center gap-1 text-indigo-400 hover:text-indigo-300"
+              >
+                <RefreshCw className={`h-2.5 w-2.5 ${loadingModels ? 'animate-spin' : ''}`} />
+                {loadingModels ? 'Buscando...' : 'Atualizar Lista'}
+              </Button>
+            </div>
+
+            {models.length > 0 ? (
+              <select
+                value={config.llmModel}
+                onChange={(e) => updateConfig({ llmModel: e.target.value })}
+                className="input-base text-xs font-mono"
+              >
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.id} {m.name !== m.id ? `(${m.name})` : ''}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                placeholder="ex.: llama-3.3-70b-versatile ou meta-llama/llama-3.3-70b-instruct"
+                value={config.llmModel}
+                onChange={(e) => updateConfig({ llmModel: e.target.value })}
+                className="input-base font-mono text-xs"
+              />
+            )}
+            <p className="text-[10px] text-zinc-500">
+              Usado para debriefings diários, consultas gerais e automações.
+            </p>
           </div>
 
-          {models.length > 0 ? (
-            <select
-              value={config.llmModel}
-              onChange={(e) => updateConfig({ llmModel: e.target.value })}
-              className="input-base text-xs font-mono"
-            >
-              {models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.id} {m.name !== m.id ? `(${m.name})` : ''}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type="text"
-              placeholder="ex.: llama-3.3-70b-versatile ou meta-llama/llama-3.3-70b-instruct"
-              value={config.llmModel}
-              onChange={(e) => updateConfig({ llmModel: e.target.value })}
-              className="input-base font-mono text-xs"
-            />
-          )}
-          <p className="text-[11px] text-zinc-500">
-            {models.length > 0
-              ? `${models.length} modelos sincronizados com a sua conta.`
-              : 'Clique em "Buscar modelos disponíveis" para listar todos os modelos ativos da sua chave.'}
-          </p>
+          {/* 2. Modelo de Visão / OCR de Cupons */}
+          <div className="space-y-1.5 p-3.5 rounded-xl border border-purple-500/30 bg-purple-500/5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-purple-300 flex items-center gap-1.5">
+                <Camera className="h-3.5 w-3.5 text-purple-400" /> Modelo de Visão (Scanner de Cupons)
+              </label>
+              <span className="text-[10px] uppercase font-bold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">
+                Multimodal OCR
+              </span>
+            </div>
+
+            {models.length > 0 ? (
+              <select
+                value={activeVisionModel}
+                onChange={(e) => updateConfig({ visionModel: e.target.value })}
+                className="input-base text-xs font-mono border-purple-500/30 focus:border-purple-400"
+              >
+                {visionModels.length > 0 && (
+                  <optgroup label="✨ Modelos com Suporte a Visão (Recomendados)">
+                    {visionModels.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        📸 {m.id} {m.name !== m.id ? `(${m.name})` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {otherModels.length > 0 && (
+                  <optgroup label="Demais Modelos">
+                    {otherModels.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.id}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            ) : (
+              <input
+                type="text"
+                placeholder={getDefaultVisionModel(config.provider)}
+                value={activeVisionModel}
+                onChange={(e) => updateConfig({ visionModel: e.target.value })}
+                className="input-base font-mono text-xs border-purple-500/30 focus:border-purple-400"
+              />
+            )}
+            <p className="text-[10px] text-zinc-400">
+              Usado para extrair itens, preços e mercado de fotos de cupom fiscal.
+            </p>
+          </div>
         </div>
 
         {/* Dedicated Groq Whisper Audio Transcription Section */}

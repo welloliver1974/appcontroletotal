@@ -15,6 +15,7 @@ export interface HermesAdvancedConfig {
   llmApiKey: string
   groqApiKey?: string
   llmModel: string
+  visionModel?: string
   customBaseUrl: string
   telegramBotUrl: string
   telegramBotToken?: string
@@ -22,18 +23,30 @@ export interface HermesAdvancedConfig {
   enabled: boolean
 }
 
+export function getDefaultVisionModel(provider: ProviderId): string {
+  const p = PROVIDERS[provider]
+  return p?.defaultVisionModel || 'google/gemini-2.0-flash-001'
+}
+
 export function getHermesAdvancedConfig(): HermesAdvancedConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      const provider = parsed.provider || 'groq'
+      const provider = (parsed.provider || 'groq') as ProviderId
       const rawModel = parsed.llmModel || ''
       const defaultModel = provider === 'groq' ? 'openai/gpt-oss-120b' : 'meta-llama/llama-3.3-70b-instruct'
       const normalizedModel =
         !rawModel || rawModel === 'llama-3.3-70b-versatile' || rawModel === 'llama-3.1-70b-versatile'
           ? defaultModel
           : rawModel
+
+      const rawVision = parsed.visionModel || ''
+      const defaultVision = getDefaultVisionModel(provider)
+      const normalizedVision =
+        !rawVision || rawVision === 'qwen/qwen3.6-27b' || rawVision === 'llama-3.2-11b-vision-preview'
+          ? defaultVision
+          : rawVision
 
       return {
         vpsUrl: parsed.vpsUrl || import.meta.env.VITE_HERMES_WEBHOOK_URL || '',
@@ -42,6 +55,7 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
         llmApiKey: parsed.llmApiKey || parsed.groqApiKey || import.meta.env.VITE_LLM_API_KEY || '',
         groqApiKey: parsed.groqApiKey || parsed.llmApiKey || import.meta.env.VITE_GROQ_API_KEY || '',
         llmModel: normalizedModel,
+        visionModel: normalizedVision,
         customBaseUrl: parsed.customBaseUrl || '',
         telegramBotUrl: parsed.telegramBotUrl || '',
         telegramBotToken: parsed.telegramBotToken || import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '',
@@ -58,6 +72,7 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
     llmApiKey: import.meta.env.VITE_LLM_API_KEY || '',
     groqApiKey: import.meta.env.VITE_GROQ_API_KEY || '',
     llmModel: 'openai/gpt-oss-120b',
+    visionModel: getDefaultVisionModel('groq'),
     customBaseUrl: '',
     telegramBotUrl: '',
     telegramBotToken: import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '',
@@ -125,6 +140,7 @@ export async function loadHermesConfigFromCloud(): Promise<HermesAdvancedConfig>
       llmApiKey: cloudData.llmApiKey || local.llmApiKey,
       groqApiKey: cloudData.groqApiKey || local.groqApiKey,
       llmModel: cloudData.llmModel || local.llmModel,
+      visionModel: cloudData.visionModel || local.visionModel,
       customBaseUrl: cloudData.customBaseUrl || local.customBaseUrl,
       telegramBotUrl: cloudData.telegramBotUrl || local.telegramBotUrl,
       telegramBotToken: cloudData.telegramBotToken || local.telegramBotToken,
