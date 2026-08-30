@@ -16,6 +16,8 @@ import {
   Mic,
   Sparkles,
   Camera,
+  Save,
+  Cloud,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -59,11 +61,21 @@ export function SettingsHermes() {
   const [testingVision, setTestingVision] = useState(false)
   const [visionStatus, setVisionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
   const [visionLatency, setVisionLatency] = useState<number | null>(null)
+  const [savedIndicator, setSavedIndicator] = useState(false)
 
   const updateConfig = (patch: Partial<HermesAdvancedConfig>) => {
     const next = { ...config, ...patch }
     setConfigState(next)
     saveHermesAdvancedConfig(next)
+    setSavedIndicator(true)
+    setTimeout(() => setSavedIndicator(false), 2500)
+  }
+
+  const handleManualSave = () => {
+    saveHermesAdvancedConfig(config)
+    setSavedIndicator(true)
+    toast.success('Configurações salvas e sincronizadas com a nuvem! ☁️✨')
+    setTimeout(() => setSavedIndicator(false), 3000)
   }
 
   const handleApiKeyChange = (val: string) => {
@@ -254,13 +266,38 @@ export function SettingsHermes() {
 
   return (
     <Card className="space-y-6 p-5">
-      <div className="flex items-center gap-3">
-        <Bot className="h-5 w-5 text-indigo-400" />
-        <div>
-          <h3 className="font-medium text-zinc-100">Hermes Agent & Conexão com IA</h3>
-          <p className="text-xs text-zinc-500">
-            Conecte sua VPS com Cloudflare, LLMs (Groq, OpenRouter, NVIDIA) e Telegram
-          </p>
+      <div className="flex items-center justify-between flex-wrap gap-2 pb-1 border-b border-zinc-800/80">
+        <div className="flex items-center gap-3">
+          <Bot className="h-5 w-5 text-indigo-400" />
+          <div>
+            <h3 className="font-medium text-zinc-100">Hermes Agent & Conexão com IA</h3>
+            <p className="text-xs text-zinc-500">
+              Conecte sua VPS com Cloudflare, LLMs (Groq, OpenRouter, NVIDIA) e Telegram
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition-all ${
+              savedIndicator
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/20'
+                : 'bg-zinc-900/80 text-zinc-400 border-zinc-800'
+            }`}
+          >
+            <Cloud className={`h-3 w-3 ${savedIndicator ? 'text-emerald-400 animate-pulse' : 'text-zinc-500'}`} />
+            <span>{savedIndicator ? 'Salvo & Sincronizado ☁️' : 'Auto-salvamento ativo'}</span>
+          </span>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleManualSave}
+            className="h-7 text-xs px-3 gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+          >
+            <Save className="h-3.5 w-3.5" />
+            <span>Salvar Ajustes</span>
+          </Button>
         </div>
       </div>
 
@@ -756,42 +793,54 @@ export function SettingsHermes() {
         </div>
 
         {/* Action & Test buttons */}
-        <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-zinc-800">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-zinc-800">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleTestChat}
+              disabled={testStatus === 'testing'}
+              className="flex items-center gap-2"
+            >
+              <Zap className="h-3.5 w-3.5" />
+              {testStatus === 'testing' ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Testando IA...
+                </>
+              ) : (
+                'Testar Comunicação com a IA'
+              )}
+            </Button>
+
+            {config.vpsUrl && (
+              <Button variant="ghost" size="sm" onClick={handleTestWebhook} className="flex items-center gap-2">
+                <Send className="h-3.5 w-3.5" />
+                Testar Webhook VPS
+              </Button>
+            )}
+
+            {testStatus === 'success' && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-300">
+                <Check className="h-3.5 w-3.5" /> Conectado {latencyMs ? `(${latencyMs}ms)` : ''}
+              </span>
+            )}
+            {testStatus === 'error' && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-300">
+                <AlertCircle className="h-3.5 w-3.5" /> Falha no teste
+              </span>
+            )}
+          </div>
+
           <Button
             variant="primary"
             size="sm"
-            onClick={handleTestChat}
-            disabled={testStatus === 'testing'}
-            className="flex items-center gap-2"
+            onClick={handleManualSave}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-md shadow-emerald-900/30"
           >
-            <Zap className="h-3.5 w-3.5" />
-            {testStatus === 'testing' ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Testando IA...
-              </>
-            ) : (
-              'Testar Comunicação com a IA'
-            )}
+            <Save className="h-3.5 w-3.5" />
+            <span>Salvar Configurações</span>
           </Button>
-
-          {config.vpsUrl && (
-            <Button variant="ghost" size="sm" onClick={handleTestWebhook} className="flex items-center gap-2">
-              <Send className="h-3.5 w-3.5" />
-              Testar Webhook VPS
-            </Button>
-          )}
-
-          {testStatus === 'success' && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-300">
-              <Check className="h-3.5 w-3.5" /> Conectado {latencyMs ? `(${latencyMs}ms)` : ''}
-            </span>
-          )}
-          {testStatus === 'error' && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-300">
-              <AlertCircle className="h-3.5 w-3.5" /> Falha no teste
-            </span>
-          )}
         </div>
 
         {testMessage && (
