@@ -15,6 +15,7 @@ import { EventModal } from '@/features/agenda/EventModal'
 import { api } from '@/data/api'
 import { toast } from '@/stores/toastStore'
 import { syncMaintenanceRecordToFinance } from '@/lib/maintFinanceSync'
+import { todayStr } from '@/lib/utils'
 import type { AgendaEvent, Asset, LifeLogEntry, MaintenanceRecord, SpendingItem } from '@/data/types'
 import type { ParsedReceiptData } from '@/lib/receiptScanner'
 
@@ -57,7 +58,7 @@ export function DashboardQuickActions({ onRefresh }: { onRefresh?: () => void })
       await api.create<SpendingItem>('spendingEntries', {
         amount: data.amount || 0,
         category: data.category || 'Alimentação',
-        date: data.date || new Date().toISOString().slice(0, 10),
+        date: data.date || todayStr(),
         time: data.time,
         note: data.establishment
           ? `${data.establishment}${data.items?.length ? ` (${data.items.join(', ')})` : ''}`

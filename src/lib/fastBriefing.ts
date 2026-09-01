@@ -6,15 +6,15 @@
 import { getHermesAdvancedConfig } from './hermes'
 import type { DashboardData } from '@/features/dashboard/dashboardData'
 import { calculateVehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
-import { isValidIsoDate } from './utils'
+import { isoOffset, isValidIsoDate, todayStr } from './utils'
 import { fetchCurrentWeather } from './weatherService'
 
 export async function generateFastAIBriefing(data: DashboardData): Promise<string> {
   const config = getHermesAdvancedConfig()
 
   const now = new Date()
-  const todayIso = now.toISOString().slice(0, 10)
-  const tomorrowIso = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+  const todayIso = todayStr(now)
+  const tomorrowIso = isoOffset(1, now)
 
   // Clima em tempo real (Open-Meteo)
   const weather = await fetchCurrentWeather().catch(() => null)
@@ -240,8 +240,8 @@ function buildSmartRefinedBriefing(
 export async function generateNightDebriefing(data: DashboardData): Promise<string> {
   const config = getHermesAdvancedConfig()
   const now = new Date()
-  const todayIso = now.toISOString().slice(0, 10)
-  const tomorrowIso = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+  const todayIso = todayStr(now)
+  const tomorrowIso = isoOffset(1, now)
 
   const todayEvents = (data.events || []).filter((e) => e.date === todayIso)
   const tomorrowEvents = (data.events || []).filter((e) => e.date === tomorrowIso)

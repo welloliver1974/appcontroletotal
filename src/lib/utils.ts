@@ -98,17 +98,23 @@ export function formatBRL(n: number): string {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-/** ISO date string for `offsetDays` from today (YYYY-MM-DD). */
-export function isoOffset(offsetDays: number, now = new Date()): string {
-  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offsetDays)
-  return d.toISOString().slice(0, 10)
+/** Local ISO date string (YYYY-MM-DD) for a given Date object in local timezone. */
+export function formatLocalIsoDate(d: Date = new Date()): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
-/** Local date key (YYYY-MM-DD) for the start of today. */
-export function todayStr(): string {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString().slice(0, 10)
+/** ISO date string for `offsetDays` from reference date in local timezone (YYYY-MM-DD). */
+export function isoOffset(offsetDays: number, now = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offsetDays)
+  return formatLocalIsoDate(d)
+}
+
+/** Local date key (YYYY-MM-DD) for the start of today in local timezone. */
+export function todayStr(now = new Date()): string {
+  return formatLocalIsoDate(now)
 }
 
 /** Whole days from today until `dateStr` (negative = in the past). */

@@ -1,4 +1,5 @@
 import type { TripKind, TripStop } from '@/data/types'
+import { formatLocalIsoDate, todayStr } from './utils'
 
 export interface ParsedTimelineTrip {
   destination: string
@@ -12,8 +13,7 @@ export interface ParsedTimelineTrip {
 
 function parseDateAndTimeToBrasilia(input: any): { date: string; time: string } {
   if (!input) {
-    const n = new Date()
-    return { date: n.toISOString().slice(0, 10), time: '12:00' }
+    return { date: todayStr(), time: '12:00' }
   }
 
   let d: Date
@@ -55,7 +55,7 @@ function parseDateAndTimeToBrasilia(input: any): { date: string; time: string } 
     }
   } catch {
     return {
-      date: d.toISOString().slice(0, 10),
+      date: formatLocalIsoDate(d),
       time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
     }
   }
@@ -260,9 +260,9 @@ export function parseGoogleTimeline(
   // Sort stops chronologically
   deduplicatedStops.sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''))
 
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const startDate = deduplicatedStops[0]?.date || todayStr
-  const endDate = deduplicatedStops[deduplicatedStops.length - 1]?.date || todayStr
+  const currentToday = todayStr()
+  const startDate = deduplicatedStops[0]?.date || currentToday
+  const endDate = deduplicatedStops[deduplicatedStops.length - 1]?.date || currentToday
 
   // Generate day-indexed stops (1..N)
   const startTs = new Date(`${startDate}T00:00:00`).getTime()
@@ -322,7 +322,7 @@ function parseKmlTimeline(kmlText: string, preferredKind: TripKind): ParsedTimel
     placemarks.push(name)
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const currentToday = todayStr()
   const stops: TripStop[] = placemarks.slice(0, 30).map((name, i) => ({
     id: `stop-kml-${Date.now()}-${i}`,
     day: Math.floor(i / 4) + 1,
@@ -331,8 +331,8 @@ function parseKmlTimeline(kmlText: string, preferredKind: TripKind): ParsedTimel
 
   return {
     destination: placemarks[0] || 'Viagem Google Maps',
-    startDate: todayStr,
-    endDate: todayStr,
+    startDate: currentToday,
+    endDate: currentToday,
     totalKm: 0,
     kind: preferredKind,
     stops,

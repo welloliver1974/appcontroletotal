@@ -5,12 +5,8 @@ import { Button } from '@/components/ui/Button'
 import { ProgressBar } from '@/components/ui/feedback'
 import { api } from '@/data/api'
 import { toast } from '@/stores/toastStore'
-import { cn } from '@/lib/utils'
+import { cn, todayStr } from '@/lib/utils'
 import type { DailyHabit } from '@/data/types'
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10)
-}
 
 export function DailyHabitsCard() {
   const [habits, setHabits] = useState<DailyHabit[]>([])
@@ -18,7 +14,7 @@ export function DailyHabitsCard() {
   const [newTitle, setNewTitle] = useState('')
   const [adding, setAdding] = useState(false)
 
-  const today = todayIso()
+  const today = todayStr()
 
   useEffect(() => {
     api

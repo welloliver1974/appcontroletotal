@@ -3,6 +3,7 @@ import { Calendar, Camera, Check, FileText, Sparkles, Tag, X } from 'lucide-reac
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/stores/toastStore'
+import { todayStr } from '@/lib/utils'
 import type { SpendingItem } from '@/data/types'
 import { ReceiptScannerModal } from './ReceiptScannerModal'
 import type { ParsedReceiptData } from '@/lib/receiptScanner'
@@ -28,7 +29,7 @@ export function SpendingFormModal({ open, onClose, onSubmit }: SpendingFormModal
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('Alimentação')
   const [note, setNote] = useState('')
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(() => todayStr())
   const [time, setTime] = useState(() => {
     const now = new Date()
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`

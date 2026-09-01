@@ -1026,6 +1026,36 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   4. **🎯 Mapeamento das Fontes das Prioridades Inteligentes de Hoje ([hojeUtils.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/hojeUtils.ts) & [HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx)):**
      - O motor unificado de prioridades varre dinamicamente: 1. Eventos e compromissos do dia na **Agenda**; 2. **Hábitos diários** cadastrados na aba Hoje; 3. **Contas Fixas** que vencem hoje ou estão em atraso em Finanças; 4. Alertas de **Despensa** (itens zerados/vencendo); 5. Alertas de **Manutenção** de veículos com revisão agendada para hoje; 6. **Viagens** ativas.
 
+## 🌐 59. Correção Global de Fuso Horário no Dashboard e Módulos do Sistema (01/09/2026)
+
+* **Contexto & Problemas Identificados:**
+  1. No JavaScript, a chamada `new Date().toISOString().slice(0, 10)` sempre extrai a data no fuso UTC (GMT 0). No Brasil (fuso horário UTC-3 / Horário de Brasília), após as 21h00, o UTC já avançou para o dia seguinte (00h00+).
+  2. Isso causava discrepâncias graves no período noturno no **Dashboard** e demais abas:
+     - **Hermes Briefing Card & Debriefing Noturno:** O debriefing das 21h30 e os cards filtravam eventos de amanhã como sendo de "hoje" e os de depois de amanhã como sendo de "amanhã".
+     - **Próximos Compromissos (`UpcomingCard`):** Eventos agendados para a noite do dia corrente eram ocultados prematuramente por serem considerados datas passadas.
+     - **Hábitos Diários (`DailyHabitsCard`):** A marcação de hábitos à noite persistia a data do dia seguinte (`YYYY-MM-DD + 1`), fazendo com que o checklist aparecesse desmarcado no dia atual.
+     - **Radar de Alertas (`Alerts.tsx`):** Manutenções com vencimento no próprio dia eram marcadas como "atrasadas" prematuramente.
+     - **Viagem Ativa (`ActiveTripCard`):** A contagem de dias da viagem e detecção de viagem em andamento sofria desvio de 1 dia após as 21h00.
+     - **Formulários de Gastos, Combustível e Cupons:** Preenchiam a data padrão com o dia seguinte ao serem abertos à noite.
+
+* **Soluções Implementadas:**
+  1. **🕒 Padronização das Funções de Data Local ([utils.ts](file:///e:/Apps/AppControleTotal/src/lib/utils.ts)):**
+     - `formatLocalIsoDate(d)`: Converte qualquer objeto `Date` no formato `YYYY-MM-DD` usando `getFullYear()`, `getMonth() + 1` e `getDate()` locais.
+     - `todayStr(now)`: Retorna `YYYY-MM-DD` da data atual com garantia de respeitar o fuso local do usuário.
+     - `isoOffset(offsetDays, now)`: Calcula datas relativas (`+1` dia, `+3` dias, `-7` dias) sem desvio de UTC.
+     - `daysUntil(dateStr)`: Calcula a diferença em dias inteiros via `Date.UTC(y, m - 1, d)` do calendário, imune a variações de fuso horário.
+  2. **📊 Correção dos Componentes do Dashboard:**
+     - [`Widgets.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/Widgets.tsx): Filtro de compromissos futuros atualizado para `todayStr()`.
+     - [`HermesBriefingCard.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/HermesBriefingCard.tsx): `todayIso` e `tomorrowIso` sincronizados com `todayStr(now)` e `isoOffset(1, now)`.
+     - [`DailyHabitsCard.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/DailyHabitsCard.tsx): Checklist diário e persistência de conclusão usando `todayStr()`.
+     - [`Alerts.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/Alerts.tsx): Checagem de manutenções atrasadas/iminentes com `todayStr()`.
+     - [`ActiveTripCard.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/ActiveTripCard.tsx): Identificação de viagem ativa e contagem de dias com timestamps UTC seguros.
+     - [`QuickShoppingListCard.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/QuickShoppingListCard.tsx) e [`DashboardQuickActions.tsx`](file:///e:/Apps/AppControleTotal/src/features/dashboard/DashboardQuickActions.tsx): Cadastro de itens e cupons na data local.
+  3. **⚙️ Sincronização e Serviços:**
+     - [`fastBriefing.ts`](file:///e:/Apps/AppControleTotal/src/lib/fastBriefing.ts): Geração de briefing matinal e fechamento noturno (21:30) com horizontes de 2 dias precisos.
+     - [`lifeOsContext.ts`](file:///e:/Apps/AppControleTotal/src/lib/lifeOsContext.ts), [`hermes.ts`](file:///e:/Apps/AppControleTotal/src/lib/hermes.ts), [`hermesActions.ts`](file:///e:/Apps/AppControleTotal/src/lib/hermesActions.ts), [`googleCalendarSync.ts`](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts), [`maintFinanceSync.ts`](file:///e:/Apps/AppControleTotal/src/lib/maintFinanceSync.ts), [`receiptScanner.ts`](file:///e:/Apps/AppControleTotal/src/lib/receiptScanner.ts) e [`timelineParser.ts`](file:///e:/Apps/AppControleTotal/src/lib/timelineParser.ts).
+     - [`HojePage.tsx`](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx) e [`FinancasPage.tsx`](file:///e:/Apps/AppControleTotal/src/features/financas/FinancasPage.tsx).
+
 ---
 
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Calendar, Clock, MapPin, Tag } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { todayStr } from '@/lib/utils'
 import type { AgendaEvent } from '@/data/types'
 
 interface EventModalProps {
@@ -40,9 +41,7 @@ function EventForm({ event, onSubmit }: {
       setCompleted(Boolean(event.completed))
     } else {
       // Default to today
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      setDate(today.toISOString().slice(0, 10))
+      setDate(todayStr())
       setTimeStart('09:00')
       setTimeEnd('10:00')
       setCompleted(false)

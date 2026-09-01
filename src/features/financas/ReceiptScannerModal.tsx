@@ -33,6 +33,7 @@ import { lookupCnpj } from '@/lib/cnpjLookup'
 import { db } from '@/lib/db'
 import type { PantryItem } from '@/data/types'
 import { toast } from '@/stores/toastStore'
+import { todayStr } from '@/lib/utils'
 
 const CATEGORIES = [
   'Despensa',
@@ -88,7 +89,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     if (qr.totalAmount && qr.totalAmount > 0) {
       setAmountStr(qr.totalAmount.toFixed(2).replace('.', ','))
     }
-    setDate(qr.date || new Date().toISOString().slice(0, 10))
+    setDate(qr.date || todayStr())
     setTime('')
     setCategory('Despensa')
     setSyncWithPantry(false) // No products detected from bare QR code / access key
@@ -183,7 +184,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
 
         setEstablishment(parsed.establishment || 'Cupom Fiscal')
         setAmountStr(parsed.amount > 0 ? parsed.amount.toFixed(2).replace('.', ',') : '')
-        setDate(parsed.date || new Date().toISOString().slice(0, 10))
+        setDate(parsed.date || todayStr())
         setTime(parsed.time || '')
         if (parsed.qrCode) setQrInfo(parsed.qrCode)
 
@@ -235,7 +236,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
 
       setEstablishment(parsed.establishment || 'Cupom Fiscal')
       setAmountStr(parsed.amount > 0 ? parsed.amount.toFixed(2).replace('.', ',') : '')
-      setDate(parsed.date || new Date().toISOString().slice(0, 10))
+      setDate(parsed.date || todayStr())
       setTime(parsed.time || '')
       if (parsed.qrCode) setQrInfo(parsed.qrCode)
 
@@ -323,7 +324,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     const finalData: ParsedReceiptData = {
       establishment: establishment.trim() || 'Cupom Fiscal',
       amount: parsedAmount,
-      date: date || new Date().toISOString().slice(0, 10),
+      date: date || todayStr(),
       time: time || undefined,
       category,
       items: items.map((i) => i.name),

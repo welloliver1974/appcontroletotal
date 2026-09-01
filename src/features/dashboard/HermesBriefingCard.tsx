@@ -22,6 +22,7 @@ import {
 import { HermesScheduleModal } from './HermesScheduleModal'
 import { toast } from '@/stores/toastStore'
 import { calculateVehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
+import { isoOffset, todayStr } from '@/lib/utils'
 
 export function HermesBriefingCard({ data }: { data: DashboardData }) {
   const [briefing, setBriefing] = useState<string | null>(() => {
@@ -68,8 +69,8 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
   }
 
   const now = new Date()
-  const todayIso = now.toISOString().slice(0, 10)
-  const tomorrowIso = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+  const todayIso = todayStr(now)
+  const tomorrowIso = isoOffset(1, now)
 
   const todayEvents = (data.events || [])
     .filter((e) => e.date === todayIso)

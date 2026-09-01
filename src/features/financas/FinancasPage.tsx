@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { EmptyState, Skeleton } from '@/components/ui/feedback'
 import { usePendingDelete } from '@/lib/usePendingDelete'
-import { cn } from '@/lib/utils'
+import { cn, isoOffset, todayStr } from '@/lib/utils'
 import { useFinancasData } from './useFinancasData'
 import { SpendingFormModal } from './SpendingFormModal'
 import { FixedBillFormModal } from './FixedBillFormModal'
@@ -80,7 +80,7 @@ export function FinancasPage() {
 
   const { pendingDelete, request } = usePendingDelete()
 
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const currentTodayStr = useMemo(() => todayStr(), [])
   const thisMonth = useMemo(() => currentMonthStr(), [])
 
   // Cálculos do Scorecard
@@ -88,7 +88,7 @@ export function FinancasPage() {
     if (!data) return { todayTotal: 0, todayCount: 0, weekTotal: 0, monthTotal: 0, remainingBudget: 0 }
 
     const now = new Date()
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    const oneWeekAgo = isoOffset(-7, now)
 
     let todayT = 0
     let todayC = 0
@@ -99,11 +99,11 @@ export function FinancasPage() {
       const itemDate = item.date || item.createdAt?.slice(0, 10) || ''
       const amount = Number(item.amount) || 0
 
-      if (itemDate === todayStr) {
+      if (itemDate === currentTodayStr) {
         todayT += amount
         todayC += 1
       }
-      if (itemDate >= oneWeekAgo && itemDate <= todayStr) {
+      if (itemDate >= oneWeekAgo && itemDate <= currentTodayStr) {
         weekT += amount
       }
       if (itemDate.startsWith(thisMonth)) {

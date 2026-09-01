@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { api } from '@/data/api'
 import { toast } from '@/stores/toastStore'
-import { cn } from '@/lib/utils'
+import { cn, todayStr } from '@/lib/utils'
 import type { PantryItem } from '@/data/types'
 
 export function QuickShoppingListCard() {
@@ -22,7 +22,7 @@ export function QuickShoppingListCard() {
   const [newName, setNewName] = useState('')
   const [newCategory, setNewCategory] = useState('Alimentos')
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayStr()
 
   const loadPantry = () => {
     api

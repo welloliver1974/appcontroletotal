@@ -27,7 +27,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Skeleton, ProgressBar } from '@/components/ui/feedback'
-import { cn } from '@/lib/utils'
+import { cn, todayStr } from '@/lib/utils'
 import { useHojeData } from './useHojeData'
 import type { TodayPriority, TodayPrioritySeverity, TodayPrioritySource } from './hojeUtils'
 import { SpendingFormModal } from '@/features/financas/SpendingFormModal'
@@ -199,7 +199,7 @@ export function HojePage() {
       await api.create<SpendingItem>('spendingEntries', {
         amount: data.amount || 0,
         category: data.category || 'Alimentação',
-        date: data.date || new Date().toISOString().slice(0, 10),
+        date: data.date || todayStr(),
         time: data.time,
         note: data.establishment
           ? `${data.establishment}${data.items?.length ? ` (${data.items.join(', ')})` : ''}`
@@ -690,8 +690,8 @@ export function HojePage() {
             ) : (
               <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
                 {rawData?.habits?.map((h) => {
-                  const todayStr = new Date().toISOString().slice(0, 10)
-                  const isDone = (h.completedDates || []).includes(todayStr)
+                  const today = todayStr()
+                  const isDone = (h.completedDates || []).includes(today)
 
                   return (
                     <button

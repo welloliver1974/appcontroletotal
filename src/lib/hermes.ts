@@ -5,6 +5,7 @@
 import { PROVIDERS, type ProviderId } from './llmProviders'
 import { extractAndExecuteHermesActions, type ExecutedAction } from './hermesActions'
 import { db, supabase } from './db'
+import { isoOffset, todayStr } from './utils'
 
 const STORAGE_KEY = 'act.hermesAdvancedConfig'
 
@@ -891,7 +892,7 @@ async function generateLocalHermesResponse(userMessage: string): Promise<HermesC
     lower.includes('até amanhã')
   ) {
     const events = await db.get<Record<string, unknown>>('events').catch(() => [])
-    const tomorrowIso = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+    const tomorrowIso = isoOffset(1)
     const tomorrowEvents = events.filter((e) => String(e.date || '').startsWith(tomorrowIso))
 
     const agendaText =
@@ -947,7 +948,7 @@ async function generateLocalHermesResponse(userMessage: string): Promise<HermesC
   // 4. Agenda e Compromissos
   if (lower.includes('agenda') || lower.includes('hoje') || lower.includes('compromisso') || lower.includes('reunião') || lower.includes('reuniao')) {
     const events = await db.get<Record<string, unknown>>('events').catch(() => [])
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayStr()
     const todayEvents = events.filter((e) => String(e.date || '').startsWith(today))
     return {
       reply: `Hermes (Agenda): Você tem ${todayEvents.length} compromisso(s) para hoje: ${todayEvents.length > 0 ? todayEvents.map((e) => `• ${e.title} (${e.timeStart || 'dia todo'})`).join(' ') : 'Nenhum compromisso agendado para hoje. Aproveite o dia livre!' }`,
@@ -1095,7 +1096,7 @@ Extraia com precisão os dados da compra e retorne EXCLUSIVAMENTE um objeto JSON
   ]
 }
 
-Se a data não estiver legível, use a data atual ${new Date().toISOString().slice(0, 10)}.
+Se a data não estiver legível, use a data atual ${todayStr()}.
 Responda APENAS o JSON puro, sem markdown adicional.`
 
   try {
@@ -1142,7 +1143,7 @@ Responda APENAS o JSON puro, sem markdown adicional.`
     const parsed = JSON.parse(match[0]) as AnalyzedReceipt
     return {
       establishment: parsed.establishment || 'Estabelecimento',
-      date: parsed.date || new Date().toISOString().slice(0, 10),
+      date: parsed.date || todayStr(),
       category: parsed.category || 'alimentacao',
       totalAmount: Number(parsed.totalAmount) || 0,
       paymentMethod: parsed.paymentMethod || 'Cartão de Crédito',

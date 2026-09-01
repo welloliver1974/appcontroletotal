@@ -1,4 +1,5 @@
 import { db } from './db'
+import { todayStr } from './utils'
 import type { AgendaEvent, PantryItem } from '@/data/types'
 
 export interface ExecutedAction {
@@ -25,43 +26,27 @@ export async function extractAndExecuteHermesActions(replyText: string): Promise
   const actionRegex = /ACTION:\s*(\{.*?\})/gi
   let cleanedReply = replyText
 
-  const matches = [...replyText.matchAll(actionRegex)]
-
-  for (const match of matches) {
+  let match: RegExpExecArray | null
+  while ((match = actionRegex.exec(replyText)) !== null) {
     try {
       const fullTag = match[0]
-      const jsonStr = match[1]
-      const parsed = JSON.parse(jsonStr)
+      const parsed = JSON.parse(match[1])
 
       cleanedReply = cleanedReply.replace(fullTag, '').trim()
 
-      if ((parsed.action === 'pantry_add' || parsed.action === 'shopping_add') && parsed.payload?.name) {
-        const rawName = String(parsed.payload.name).trim()
-        const toBuy = parsed.action === 'shopping_add' || parsed.payload.toBuy !== false || parsed.payload.qty === 0
-        const desiredCount = Number(
-          parsed.payload.quantityToBuy ||
-          parsed.payload.lowThreshold ||
-          parsed.payload.quantity ||
-          parsed.payload.qty ||
-          parsed.payload.minQuantity ||
-          1,
-        )
-
+      if (parsed.action === 'pantry_add' && parsed.payload?.name) {
         const item: PantryItem = {
           id: uid(),
-          name: rawName,
-          category: parsed.payload.category || 'Alimentos',
-          qty: toBuy ? 0 : desiredCount,
+          name: String(parsed.payload.name),
+          qty: Number(parsed.payload.qty) || 1,
           unit: parsed.payload.unit || 'un',
-          lowThreshold: toBuy ? Math.max(1, desiredCount) : 1,
-          expiresAt: parsed.payload.expiresAt,
+          category: parsed.payload.category || 'Outros',
+          lowThreshold: Number(parsed.payload.lowThreshold) || 1,
         }
         await db.insert('pantry', item)
         actions.push({
           type: 'pantry_add',
-          description: toBuy
-            ? `Adicionado à lista de compras: ${item.name} (${item.lowThreshold} ${item.unit} a comprar)`
-            : `Adicionado ao estoque da despensa: ${item.name} (${item.qty} ${item.unit})`,
+          description: `Item adicionado à despensa: ${item.name} (${item.qty} ${item.unit})`,
           success: true,
           data: item,
         })
@@ -71,7 +56,7 @@ export async function extractAndExecuteHermesActions(replyText: string): Promise
           amount: Number(parsed.payload.amount),
           category: parsed.payload.category || 'Alimentação',
           note: parsed.payload.note || 'Despesa registrada pelo Hermes',
-          date: parsed.payload.date || new Date().toISOString().slice(0, 10),
+          date: parsed.payload.date || todayStr(),
         }
         await db.insert('spending', spendingItem)
         actions.push({
@@ -84,7 +69,7 @@ export async function extractAndExecuteHermesActions(replyText: string): Promise
         const event: AgendaEvent = {
           id: uid(),
           title: String(parsed.payload.title),
-          date: parsed.payload.date || new Date().toISOString().slice(0, 10),
+          date: parsed.payload.date || todayStr(),
           timeStart: parsed.payload.timeStart || '09:00',
           timeEnd: parsed.payload.timeEnd,
           category: parsed.payload.category || 'pessoal',

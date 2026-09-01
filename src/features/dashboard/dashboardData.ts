@@ -13,6 +13,8 @@ import type {
   WeeklySpending,
 } from '@/data/types'
 
+import { daysUntil } from '@/lib/utils'
+
 export interface DashboardData {
   events: AgendaEvent[]
   emails: InboxEmail[]
@@ -81,9 +83,7 @@ export function shortWeekLabel(iso: string): string {
 
 /** Counts an upcoming window in ISO days from today. */
 export function upcomingWindowDays(date: string, days: number): boolean {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const target = new Date(`${date}T00:00:00`)
-  const diff = Math.round((target.getTime() - today.getTime()) / 86_400_000)
+  if (!date) return false
+  const diff = daysUntil(date)
   return diff >= 0 && diff <= days
 }

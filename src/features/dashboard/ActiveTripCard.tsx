@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import type { Trip } from '@/data/types'
 import { Link } from 'react-router-dom'
+import { todayStr } from '@/lib/utils'
 
 interface ActiveTripCardProps {
   trips: Trip[]
@@ -19,12 +20,12 @@ interface ActiveTripCardProps {
 const CURRENCY_RATES = { USD: 5.65, EUR: 6.15 }
 
 export function ActiveTripCard({ trips }: ActiveTripCardProps) {
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const currentTodayStr = todayStr()
 
   // Identificar viagem em andamento
   const activeTrip = useMemo(() => {
-    return trips.find((t) => t.startDate <= todayStr && t.endDate >= todayStr)
-  }, [trips, todayStr])
+    return trips.find((t) => t.startDate <= currentTodayStr && t.endDate >= currentTodayStr)
+  }, [trips, currentTodayStr])
 
   // Mini conversor de moedas rápido (USD/EUR para BRL)
   const [foreignAmount, setForeignAmount] = useState('10')
@@ -37,12 +38,15 @@ export function ActiveTripCard({ trips }: ActiveTripCardProps) {
 
   if (!activeTrip) return null
 
-  // Calcular dia atual da viagem (1-indexed)
-  const startTimestamp = new Date(activeTrip.startDate).getTime()
-  const todayTimestamp = new Date(todayStr).getTime()
-  const currentDayNumber = Math.max(1, Math.floor((todayTimestamp - startTimestamp) / 86_400_000) + 1)
+  // Calcular dia atual da viagem (1-indexed) de forma segura contra fuso
+  const [sy, sm, sd] = (activeTrip.startDate || '').split('-').map(Number)
+  const [ty, tm, td] = currentTodayStr.split('-').map(Number)
+  const [ey, em, ed] = (activeTrip.endDate || '').split('-').map(Number)
+  const startTimestamp = Date.UTC(sy || 2026, (sm || 1) - 1, sd || 1)
+  const todayTimestamp = Date.UTC(ty, tm - 1, td)
+  const endTimestamp = Date.UTC(ey || 2026, (em || 1) - 1, ed || 1)
 
-  const endTimestamp = new Date(activeTrip.endDate).getTime()
+  const currentDayNumber = Math.max(1, Math.floor((todayTimestamp - startTimestamp) / 86_400_000) + 1)
   const totalDays = Math.max(1, Math.floor((endTimestamp - startTimestamp) / 86_400_000) + 1)
 
   // Paradas de hoje

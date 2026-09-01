@@ -1,6 +1,7 @@
 import { getHermesAdvancedConfig, getDefaultVisionModel } from './hermes'
 import { PROVIDERS } from './llmProviders'
 import { lookupCnpj } from './cnpjLookup'
+import { todayStr } from './utils'
 import {
   detectQrCodeFromDataUrl,
   detectQrCodeFromFile,
@@ -30,7 +31,7 @@ export interface ParsedReceiptData {
 }
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  return todayStr()
 }
 
 /**

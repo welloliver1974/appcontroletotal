@@ -2,7 +2,7 @@ import { CalendarClock, Inbox as InboxIcon, NotebookPen } from 'lucide-react'
 import type { DashboardData } from './dashboardData'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/feedback'
-import { cn, formatDayAndMonth, relativeDayLabel, shortDateTime } from '@/lib/utils'
+import { cn, formatDayAndMonth, relativeDayLabel, shortDateTime, todayStr } from '@/lib/utils'
 
 const CATEGORY: Record<string, string> = {
   reuniao: 'text-rose-300 bg-rose-500/15 border-rose-500/30',
@@ -28,8 +28,9 @@ function Mood({ value }: { value: number }) {
 }
 
 export function UpcomingCard({ data }: { data: DashboardData }) {
+  const today = todayStr()
   const upcoming = data.events
-    .filter((e) => e.date >= new Date().toISOString().slice(0, 10))
+    .filter((e) => e.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date) || a.timeStart.localeCompare(b.timeStart))
     .slice(0, 5)
 

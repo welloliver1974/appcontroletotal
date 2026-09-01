@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { EmptyState, Skeleton } from '@/components/ui/feedback'
 import { api } from '@/data/api'
-import { cn } from '@/lib/utils'
+import { cn, todayStr } from '@/lib/utils'
 import type { PantryItem, SpendingItem } from '@/data/types'
 import { useDespensaData } from './useDespensaData'
 import { Kpis } from './Kpis'
@@ -162,7 +162,7 @@ export function DespensaPage() {
         amount: totalSpent,
         category: 'Alimentação',
         note: `Supermercado — ${completedItemIds.length} itens repostos`,
-        date: new Date().toISOString().slice(0, 10),
+        date: todayStr(),
         createdAt: new Date().toISOString(),
       }).catch((err) => {
         console.warn('Erro ao sincronizar despesa de compras com Finanças:', err)

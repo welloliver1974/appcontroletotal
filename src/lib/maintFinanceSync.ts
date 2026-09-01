@@ -1,5 +1,6 @@
 import { api } from '@/data/api'
 import type { Asset, SpendingItem } from '@/data/types'
+import { todayStr } from '@/lib/utils'
 
 /**
  * Sincroniza um registro de manutenção / abastecimento diretamente no módulo de Finanças (spendingEntries).
@@ -25,7 +26,7 @@ export async function syncMaintenanceRecordToFinance(
     amount: record.cost,
     category,
     note,
-    date: record.date || new Date().toISOString().slice(0, 10),
+    date: record.date || todayStr(),
     time: new Date().toTimeString().slice(0, 5),
     createdAt: new Date().toISOString(),
   }

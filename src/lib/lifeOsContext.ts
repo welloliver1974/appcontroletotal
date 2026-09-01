@@ -1,5 +1,5 @@
 import { db } from './db'
-import { isValidIsoDate } from './utils'
+import { isoOffset, isValidIsoDate, todayStr } from './utils'
 import type { AgendaEvent, Asset, DocVaultItem, FixedBill, MaintenanceRecord, PantryItem, SpendingItem } from '@/data/types'
 import { calculateVehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
 
@@ -21,7 +21,7 @@ export interface LifeOsSummaryContext {
  */
 export async function getLifeOsSummaryContext(): Promise<LifeOsSummaryContext> {
   const now = new Date()
-  const todayIso = now.toISOString().slice(0, 10)
+  const todayIso = todayStr(now)
   const currentMonthPrefix = todayIso.slice(0, 7) // YYYY-MM
 
   const [
@@ -53,7 +53,7 @@ export async function getLifeOsSummaryContext(): Promise<LifeOsSummaryContext> {
     .map((b) => `${b.name} (R$ ${Number(b.amount || 0).toFixed(2)}, vence dia ${b.dueDay})`)
 
   // 2. Agenda (hoje e próximos 3 dias)
-  const threeDaysLater = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
+  const threeDaysLater = isoOffset(3, now)
   const upcomingEvents = events
     .filter((e) => e.date >= todayIso && e.date <= threeDaysLater)
     .sort((a, b) => a.date.localeCompare(b.date) || (a.timeStart || '').localeCompare(b.timeStart || ''))

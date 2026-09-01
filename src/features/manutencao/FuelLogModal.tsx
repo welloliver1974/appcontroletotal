@@ -3,6 +3,7 @@ import { Calendar, Check, Fuel, Gauge, X, Zap } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/stores/toastStore'
+import { todayStr } from '@/lib/utils'
 import type { Asset, MaintenanceRecord } from '@/data/types'
 
 interface FuelLogModalProps {
@@ -47,7 +48,7 @@ export function FuelLogModal({
   const [totalCost, setTotalCost] = useState('')
   const [fuelType, setFuelType] = useState('Gasolina Comum')
   const [gasStation, setGasStation] = useState('')
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(() => todayStr())
   const [syncFinance, setSyncFinance] = useState(true)
   const [saving, setSaving] = useState(false)
 
