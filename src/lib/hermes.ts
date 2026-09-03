@@ -88,34 +88,25 @@ export function normalizeModelForProvider(providerId: ProviderId, modelId?: stri
 
 export function getApiKeyForProvider(config: HermesAdvancedConfig, providerId: ProviderId): string {
   if (providerId === 'groq') {
-    return (
-      config.groqApiKey ||
-      (config.provider === 'groq' ? config.llmApiKey : '') ||
-      import.meta.env.VITE_GROQ_API_KEY ||
-      import.meta.env.VITE_LLM_API_KEY ||
-      ''
-    ).trim()
+    if (config.groqApiKey?.trim()) return config.groqApiKey.trim()
+    if (config.provider === 'groq' && config.llmApiKey?.startsWith('gsk_')) return config.llmApiKey.trim()
+    if (import.meta.env.VITE_GROQ_API_KEY) return import.meta.env.VITE_GROQ_API_KEY.trim()
+    return ''
   }
   if (providerId === 'openrouter') {
-    return (
-      config.openRouterApiKey ||
-      (config.provider === 'openrouter' || config.visionProvider === 'openrouter' ? config.llmApiKey : '') ||
-      ''
-    ).trim()
+    if (config.openRouterApiKey?.trim()) return config.openRouterApiKey.trim()
+    if (config.provider === 'openrouter' && config.llmApiKey?.startsWith('sk-or-')) return config.llmApiKey.trim()
+    return ''
   }
   if (providerId === 'nvidia') {
-    return (
-      config.nvidiaApiKey ||
-      (config.provider === 'nvidia' || config.visionProvider === 'nvidia' ? config.llmApiKey : '') ||
-      ''
-    ).trim()
+    if (config.nvidiaApiKey?.trim()) return config.nvidiaApiKey.trim()
+    if (config.provider === 'nvidia' && config.llmApiKey?.startsWith('nvapi-')) return config.llmApiKey.trim()
+    return ''
   }
   if (providerId === 'custom') {
-    return (
-      config.customApiKey ||
-      (config.provider === 'custom' ? config.llmApiKey : '') ||
-      ''
-    ).trim()
+    if (config.customApiKey?.trim()) return config.customApiKey.trim()
+    if (config.provider === 'custom') return config.llmApiKey?.trim() || ''
+    return ''
   }
   return config.llmApiKey?.trim() || ''
 }
@@ -510,10 +501,18 @@ export async function testVisionModel(
         else if (parsed?.data?.title) cleanMsg = parsed.data.title
       } catch {}
 
-      if (cleanMsg.includes('Authorization failed') || cleanMsg.includes('403')) {
-        cleanMsg = 'Chave da NVIDIA inválida ou sem permissão. Verifique se começa com "nvapi-" e foi gerada em build.nvidia.com.'
-      } else if (cleanMsg.includes('404') || cleanMsg.includes('does not exist')) {
-        cleanMsg = 'Modelo não encontrado ou você precisa aceitar os termos de licença em build.nvidia.com.'
+      if (providerId === 'nvidia') {
+        if (cleanMsg.includes('Not found for account') || cleanMsg.includes('Function') || cleanMsg.includes('404')) {
+          cleanMsg = 'Sua chave NVIDIA é válida, mas este modelo de visão precisa ser ativado na sua conta. Acesse build.nvidia.com, abra o modelo (ex: Meta Llama 3.2 11B Vision) e clique em "Get API Key" para aceitar os termos da Meta.'
+        } else if (cleanMsg.includes('Authorization failed') || cleanMsg.includes('403')) {
+          cleanMsg = 'Chave da NVIDIA inválida ou sem permissão. Verifique se começa com "nvapi-" e foi gerada em build.nvidia.com.'
+        }
+      } else if (providerId === 'openrouter') {
+        if (cleanMsg.includes('401') || cleanMsg.includes('auth') || cleanMsg.includes('User key')) {
+          cleanMsg = 'Chave da OpenRouter inválida ou não informada. Cole sua chave "sk-or-v1-..." no campo de chave de visão.'
+        } else if (cleanMsg.includes('404') || cleanMsg.includes('not found')) {
+          cleanMsg = 'Modelo da OpenRouter não encontrado. Recomendamos selecionar "google/gemini-2.0-flash-001".'
+        }
       }
 
       return { ok: false, latencyMs: 0, reply: '', error: cleanMsg.slice(0, 180) || `HTTP ${proxyRes.status}` }
