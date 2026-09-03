@@ -84,7 +84,7 @@ export function normalizeModelForProvider(providerId: ProviderId, modelId?: stri
     }
     return m
   }
-  return m || PROVIDERS[providerId]?.defaultModel || 'gemini-2.0-flash'
+  return m || PROVIDERS[providerId]?.defaultModel || 'openai/gpt-oss-120b'
 }
 
 export function getApiKeyForProvider(config: HermesAdvancedConfig, providerId: ProviderId): string {
@@ -128,7 +128,7 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
 
       // Independent Vision Provider
       let visionProvider: ProviderId = parsed.visionProvider
-      if (!visionProvider || visionProvider === 'groq') {
+      if (!visionProvider || !PROVIDERS[visionProvider] || visionProvider === 'groq') {
         if (nvidiaKey) visionProvider = 'nvidia'
         else if (openRouterKey) visionProvider = 'openrouter'
         else visionProvider = 'openrouter'
@@ -236,20 +236,26 @@ export async function loadHermesConfigFromCloud(): Promise<HermesAdvancedConfig>
     }
 
     const cloudData = data.data as Partial<HermesAdvancedConfig>
+    let safeProvider = (cloudData.provider || local.provider || 'groq') as ProviderId
+    if (!PROVIDERS[safeProvider]) safeProvider = 'groq'
+
+    let safeVisionProvider = (cloudData.visionProvider || local.visionProvider || 'openrouter') as ProviderId
+    if (!PROVIDERS[safeVisionProvider] || safeVisionProvider === 'groq') safeVisionProvider = 'openrouter'
+
     const merged: HermesAdvancedConfig = {
       ...local,
       ...cloudData,
       vpsUrl: cloudData.vpsUrl || local.vpsUrl,
       vpsSecret: cloudData.vpsSecret || local.vpsSecret,
-      provider: cloudData.provider || local.provider,
+      provider: safeProvider,
+      visionProvider: safeVisionProvider,
       llmApiKey: cloudData.llmApiKey || local.llmApiKey,
-      googleApiKey: cloudData.googleApiKey || local.googleApiKey,
       groqApiKey: cloudData.groqApiKey || local.groqApiKey,
       openRouterApiKey: cloudData.openRouterApiKey || local.openRouterApiKey,
       nvidiaApiKey: cloudData.nvidiaApiKey || local.nvidiaApiKey,
       customApiKey: cloudData.customApiKey || local.customApiKey,
-      llmModel: normalizeModelForProvider(cloudData.provider || local.provider, cloudData.llmModel || local.llmModel),
-      visionModel: cloudData.visionModel || local.visionModel,
+      llmModel: normalizeModelForProvider(safeProvider, cloudData.llmModel || local.llmModel),
+      visionModel: normalizeVisionModelForProvider(safeVisionProvider, cloudData.visionModel || local.visionModel),
       customBaseUrl: cloudData.customBaseUrl || local.customBaseUrl,
       telegramBotUrl: cloudData.telegramBotUrl || local.telegramBotUrl,
       telegramBotToken: cloudData.telegramBotToken || local.telegramBotToken,
