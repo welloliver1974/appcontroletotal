@@ -15,6 +15,7 @@ export interface HermesAdvancedConfig {
   provider: ProviderId
   visionProvider: ProviderId
   llmApiKey: string
+  googleApiKey?: string
   groqApiKey?: string
   openRouterApiKey?: string
   nvidiaApiKey?: string
@@ -37,9 +38,13 @@ export function getDefaultVisionModel(provider: ProviderId): string {
 
 export function normalizeVisionModelForProvider(providerId: ProviderId, modelId?: string): string {
   const m = (modelId || '').trim()
+  if (providerId === 'google') {
+    if (!m || !m.startsWith('gemini-')) return 'gemini-2.0-flash'
+    return m
+  }
   if (providerId === 'openrouter') {
-    if (!m || m === 'meta/llama-3.2-11b-vision-instruct') {
-      return 'google/gemini-2.0-flash-exp:free'
+    if (!m || m.includes(':free') || m === 'meta/llama-3.2-11b-vision-instruct') {
+      return 'google/gemini-2.5-flash'
     }
     return m
   }
@@ -50,13 +55,17 @@ export function normalizeVisionModelForProvider(providerId: ProviderId, modelId?
     return m
   }
   if (providerId === 'groq') {
-    return 'google/gemini-2.0-flash-exp:free'
+    return 'gemini-2.0-flash'
   }
   return m || getDefaultVisionModel(providerId)
 }
 
 export function normalizeModelForProvider(providerId: ProviderId, modelId?: string): string {
   const m = (modelId || '').trim()
+  if (providerId === 'google') {
+    if (!m || !m.startsWith('gemini-')) return 'gemini-2.0-flash'
+    return m
+  }
   if (providerId === 'nvidia') {
     if (
       !m ||
@@ -83,10 +92,16 @@ export function normalizeModelForProvider(providerId: ProviderId, modelId?: stri
     }
     return m
   }
-  return m || PROVIDERS[providerId]?.defaultModel || 'meta-llama/llama-3.3-70b-instruct'
+  return m || PROVIDERS[providerId]?.defaultModel || 'gemini-2.0-flash'
 }
 
 export function getApiKeyForProvider(config: HermesAdvancedConfig, providerId: ProviderId): string {
+  if (providerId === 'google') {
+    if (config.googleApiKey?.trim()) return config.googleApiKey.trim()
+    if (config.provider === 'google' && config.llmApiKey?.startsWith('AIza')) return config.llmApiKey.trim()
+    if (import.meta.env.VITE_GEMINI_API_KEY) return import.meta.env.VITE_GEMINI_API_KEY.trim()
+    return ''
+  }
   if (providerId === 'groq') {
     if (config.groqApiKey?.trim()) return config.groqApiKey.trim()
     if (config.provider === 'groq' && config.llmApiKey?.startsWith('gsk_')) return config.llmApiKey.trim()
@@ -242,6 +257,7 @@ export async function loadHermesConfigFromCloud(): Promise<HermesAdvancedConfig>
       vpsSecret: cloudData.vpsSecret || local.vpsSecret,
       provider: cloudData.provider || local.provider,
       llmApiKey: cloudData.llmApiKey || local.llmApiKey,
+      googleApiKey: cloudData.googleApiKey || local.googleApiKey,
       groqApiKey: cloudData.groqApiKey || local.groqApiKey,
       openRouterApiKey: cloudData.openRouterApiKey || local.openRouterApiKey,
       nvidiaApiKey: cloudData.nvidiaApiKey || local.nvidiaApiKey,

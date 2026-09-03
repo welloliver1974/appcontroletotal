@@ -21,6 +21,7 @@ function llmDevProxyPlugin(): Plugin {
               const token = (apiKey || '').trim()
 
               let baseUrl = 'https://integrate.api.nvidia.com/v1'
+        if (provider === 'google') baseUrl = 'https://generativelanguage.googleapis.com/v1beta/openai'
               if (provider === 'groq') baseUrl = 'https://api.groq.com/openai/v1'
               else if (provider === 'openrouter') baseUrl = 'https://openrouter.ai/api/v1'
               else if (provider === 'custom' && customUrl) baseUrl = customUrl.replace(/\/+$/, '')
