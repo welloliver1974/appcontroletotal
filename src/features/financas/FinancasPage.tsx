@@ -120,7 +120,7 @@ export function FinancasPage() {
       monthTotal: monthT,
       remainingBudget: remaining,
     }
-  }, [data, todayStr, thisMonth])
+  }, [data, currentTodayStr, thisMonth])
 
   // Filtragem do extrato
   const filteredSpending = useMemo(() => {

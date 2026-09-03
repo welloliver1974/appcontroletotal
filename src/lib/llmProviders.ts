@@ -13,6 +13,7 @@ export interface ProviderConfig {
   docsUrl: string
   defaultModel: string
   defaultVisionModel: string
+  supportsVision: boolean
 }
 
 export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
@@ -25,6 +26,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     docsUrl: 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/',
     defaultModel: 'hermes-vps-model',
     defaultVisionModel: 'hermes-vps-vision',
+    supportsVision: true,
   },
   openrouter: {
     id: 'openrouter',
@@ -35,6 +37,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     docsUrl: 'https://openrouter.ai/keys',
     defaultModel: 'meta-llama/llama-3.3-70b-instruct',
     defaultVisionModel: 'google/gemini-2.0-flash-001',
+    supportsVision: true,
   },
   groq: {
     id: 'groq',
@@ -44,7 +47,8 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     chatEndpoint: 'https://api.groq.com/openai/v1/chat/completions',
     docsUrl: 'https://console.groq.com/keys',
     defaultModel: 'openai/gpt-oss-120b',
-    defaultVisionModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    defaultVisionModel: '',
+    supportsVision: false,
   },
   nvidia: {
     id: 'nvidia',
@@ -55,6 +59,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     docsUrl: 'https://build.nvidia.com',
     defaultModel: 'meta/llama-3.3-70b-instruct',
     defaultVisionModel: 'meta/llama-3.2-11b-vision-instruct',
+    supportsVision: true,
   },
   custom: {
     id: 'custom',
@@ -65,6 +70,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     docsUrl: '',
     defaultModel: 'default-model',
     defaultVisionModel: 'default-vision-model',
+    supportsVision: true,
   },
 }
 
@@ -114,21 +120,18 @@ export const DEFAULT_NVIDIA_MODELS: ModelItem[] = [
 ]
 
 export const DEFAULT_GROQ_MODELS: ModelItem[] = [
-  { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (Recomendado - Máxima Inteligência)', description: 'Raciocínio livre de alta capacidade' },
+  { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (Recomendado - Chat Inteligente)', description: 'Raciocínio livre de alta capacidade' },
   { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B (Ultra-Rápido)', description: 'Velocidade instantânea' },
-  { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout (Visão & Imagens)', description: 'Suporte multimodal para leitura de cupons', isVision: true },
-  { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision', description: 'Visão computacional e OCR', isVision: true },
-  { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision', description: 'Visão de alta resolução', isVision: true },
   { id: 'qwen/qwen3.6-27b', name: 'Qwen 3.6 27B', description: 'Excelente em português' },
   { id: 'groq/compound', name: 'Groq Compound', description: 'Múltiplos agentes combinados' },
   { id: 'groq/compound-mini', name: 'Groq Compound Mini', description: 'Versão compacta' },
 ]
 
 export const DEFAULT_OPENROUTER_MODELS: ModelItem[] = [
-  { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Meta Llama 3.3 70B Instruct (Recomendado)', description: 'Chat rápido e inteligente' },
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Recomendado p/ OCR)', description: 'Visão instantânea e precisa', isVision: true },
-  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash Grátis', description: 'Visão e leitura grátis', isVision: true },
+  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Recomendado OCR)', description: 'Visão instantânea e leitura precisa de cupons', isVision: true },
+  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash Grátis', description: 'Visão e leitura de notas grátis', isVision: true },
   { id: 'google/gemini-flash-1.5-8b', name: 'Gemini Flash 1.5 8B', description: 'Ultra-econômico com visão', isVision: true },
+  { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Meta Llama 3.3 70B Instruct (Recomendado Chat)', description: 'Chat rápido e inteligente' },
   { id: 'meta-llama/llama-3.2-11b-vision-instruct:free', name: 'Llama 3.2 11B Vision Grátis', description: 'OCR de cupons e documentos', isVision: true },
   { id: 'qwen/qwen-2.5-vl-72b-instruct:free', name: 'Qwen 2.5 VL 72B Grátis', description: 'Multimodal de alta capacidade', isVision: true },
   { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', description: 'Raciocínio analítico avançado' },
@@ -289,3 +292,6 @@ export async function fetchProviderModels(
     }
   }
 }
+
+export const CHAT_PROVIDERS: ProviderId[] = ['groq', 'openrouter', 'nvidia', 'vps'];
+export const VISION_PROVIDERS: ProviderId[] = ['openrouter', 'nvidia', 'custom', 'vps'];

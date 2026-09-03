@@ -147,3 +147,10 @@ Acesse pelo menu **Life-Log ➔ Cofre de Documentos (`DocVault`)**:
 
 ---
 *Life OS Hub — Viva com clareza, controle e tranquilidade.*
+
+
+### 🤖 Inteligência Artificial Hermes & Scanner de Cupons
+O Life OS Hub conta com dois motores de IA independentes:
+1. **💬 Chat & Assistente Hermes:** Recomendado usar **Groq** (`gsk_...`) para respostas ultra-rápidas e gratuitas em conversas e briefings.
+2. **📸 Scanner de Cupom Fiscal & QR Code (Visão OCR):** Recomendado usar **OpenRouter** (`sk-or-v1-...`) com o modelo `google/gemini-2.0-flash-001` ou **NVIDIA** (`nvapi-...`) com `meta/llama-3.2-11b-vision-instruct`.
+3. Configure e teste ambos separadamente em **Configurações ⚙️ > Hermes / Inteligência Artificial**.

@@ -50,9 +50,14 @@ export default async function handler(req, res) {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
+        let cleanErr = errorText;
+        try {
+          const parsed = JSON.parse(errorText);
+          cleanErr = parsed?.error?.message || parsed?.detail || parsed?.title || parsed?.message || errorText;
+        } catch {}
         return res.status(response.status).json({
           ok: false,
-          error: `HTTP ${response.status}: ${errorText.slice(0, 300) || 'Falha ao buscar modelos'}`,
+          error: `HTTP ${response.status}: ${cleanErr.slice(0, 300) || 'Falha ao buscar modelos'}`,
         });
       }
 
@@ -63,22 +68,49 @@ export default async function handler(req, res) {
     // 2. ACTION: CHAT COMPLETIONS
     if (action === 'chat') {
       const chatUrl = `${baseUrl}/chat/completions`;
+
+      let targetModel = model;
+      if (provider === 'nvidia') {
+        if (!targetModel || targetModel.startsWith('openai/') || targetModel.includes('gpt-oss') || targetModel.includes('versatile')) {
+          targetModel = 'meta/llama-3.3-70b-instruct';
+        }
+      } else if (provider === 'groq') {
+        if (!targetModel || targetModel.startsWith('meta/') || targetModel.startsWith('google/') || targetModel.includes('vision')) {
+          targetModel = 'openai/gpt-oss-120b';
+        }
+      } else if (provider === 'openrouter') {
+        if (!targetModel || targetModel.startsWith('meta/')) {
+          targetModel = 'meta-llama/llama-3.3-70b-instruct';
+        }
+      }
+
+      const reqPayload = {
+        model: targetModel,
+        messages: messages || [],
+        temperature: body.temperature ?? 0.7,
+        max_tokens: body.max_tokens ?? 800,
+      };
+
+      if (body.response_format) {
+        reqPayload.response_format = body.response_format;
+      }
+
       const response = await fetch(chatUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          model: model || (provider === 'nvidia' ? 'meta/llama-3.3-70b-instruct' : 'llama-3.3-70b-versatile'),
-          messages: messages || [],
-          temperature: body.temperature ?? 0.7,
-          max_tokens: body.max_tokens ?? 800,
-        }),
+        body: JSON.stringify(reqPayload),
       });
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
+        let cleanErr = errorText;
+        try {
+          const parsed = JSON.parse(errorText);
+          cleanErr = parsed?.error?.message || parsed?.detail || parsed?.title || parsed?.message || errorText;
+        } catch {}
         return res.status(response.status).json({
           ok: false,
-          error: `HTTP ${response.status}: ${errorText.slice(0, 300) || 'Falha na resposta do modelo'}`,
+          error: `HTTP ${response.status}: ${cleanErr.slice(0, 300) || 'Falha na resposta do modelo'}`,
         });
       }
 

@@ -1,4 +1,8 @@
-import { getHermesAdvancedConfig, getDefaultVisionModel } from './hermes'
+import {
+  getHermesAdvancedConfig,
+  normalizeVisionModelForProvider,
+  getApiKeyForProvider,
+} from './hermes'
 import { PROVIDERS } from './llmProviders'
 import { lookupCnpj } from './cnpjLookup'
 import { todayStr } from './utils'
@@ -254,17 +258,29 @@ export async function parseReceiptWithVision(
 ): Promise<ParsedReceiptData> {
   const config = getHermesAdvancedConfig()
 
-  if (!config.llmApiKey && config.provider !== 'vps') {
-    throw new Error('Configure sua API Key em Configurações > Inteligência Artificial Hermes.')
+  // 1. Provedor de Visão Dedicado e Independente do Chat
+  const visionProvider = config.visionProvider || (config.nvidiaApiKey ? 'nvidia' : 'openrouter')
+
+  if (visionProvider === 'groq') {
+    throw new Error(
+      'A Groq não possui modelos de visão/OCR. Acesse Configurações > Hermes e selecione OpenRouter ou NVIDIA para o Scanner de Cupons.'
+    )
   }
 
-  // 1. Fast client-side QR Code detection directly on raw sensor File or DataURL
+  const apiKey = getApiKeyForProvider(config, visionProvider)
+
+  if (!apiKey && visionProvider !== 'vps') {
+    const pName = PROVIDERS[visionProvider]?.name || visionProvider
+    throw new Error(`Configure sua chave de API para o Leitor de Visão (${pName}) em Configurações > Inteligência Artificial Hermes.`)
+  }
+
+  // 2. Detecção ultrarrápida de QR Code direto no arquivo do sensor
   const qrCode = rawFile
     ? await detectQrCodeFromFile(rawFile).catch(() => null)
     : await detectQrCodeFromDataUrl(compressedDataUrl).catch(() => null)
 
-  // 2. Vision Model selection (User-configured or Smart Provider Default)
-  const visionModel = config.visionModel || getDefaultVisionModel(config.provider)
+  // 3. Seleção do Modelo de Visão normalizado para o provedor de visão
+  const visionModel = normalizeVisionModelForProvider(visionProvider, config.visionModel)
 
   const systemPrompt = `Você é um scanner OCR especialista em cupons fiscais brasileiros (Hortifrutis, Mercados, Padarias, Lanchonetes, SAT CFe, NFC-e).
 
@@ -335,16 +351,15 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
 
   let rawContent = ''
 
-  // 1. TENTATIVA 1: DIRECT FETCH (Navegador -> Provedor direto, ultrarrápido)
-  const provider = PROVIDERS[config.provider] || PROVIDERS.groq
-  const apiKey = (config.provider === 'groq' ? (config.groqApiKey || config.llmApiKey) : config.llmApiKey || config.groqApiKey || '').trim()
+  // 1. TENTATIVA 1: DIRECT FETCH (Navegador -> Provedor de Visão direto)
+  const provider = PROVIDERS[visionProvider] || PROVIDERS.openrouter
 
   let endpoint = provider.chatEndpoint
-  if (config.provider === 'custom' && config.customBaseUrl) {
+  if (visionProvider === 'custom' && config.customBaseUrl) {
     endpoint = `${config.customBaseUrl.replace(/\/+$/, '')}/chat/completions`
   }
 
-  if (apiKey && endpoint && config.provider !== 'vps') {
+  if (apiKey && endpoint && visionProvider !== 'vps') {
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30000)
@@ -354,7 +369,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
         Authorization: `Bearer ${apiKey}`,
       }
 
-      if (config.provider === 'openrouter') {
+      if (visionProvider === 'openrouter') {
         headers['HTTP-Referer'] = 'https://appcontroletotal.local'
         headers['X-Title'] = 'Life OS Hub - Receipt Scanner'
       }
@@ -395,12 +410,13 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
         signal: controller.signal,
         body: JSON.stringify({
           action: 'chat',
-          provider: config.provider,
+          provider: visionProvider,
           apiKey: apiKey,
           model: visionModel,
           messages: userMessages,
           temperature: 0.1,
           max_tokens: 1500,
+          response_format: { type: 'json_object' },
           customUrl: config.customBaseUrl,
         }),
       })

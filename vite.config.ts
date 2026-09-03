@@ -62,9 +62,13 @@ function llmDevProxyPlugin(): Plugin {
                     ...(body.response_format ? { response_format: body.response_format } : {}),
                   }),
                 })
-                const data = await response.json()
+                const data: any = await response.json().catch(() => ({}))
                 res.writeHead(response.status, { 'Content-Type': 'application/json' })
-                return res.end(JSON.stringify({ ok: response.ok, data }))
+                if (!response.ok) {
+                  const errMsg = data?.error?.message || data?.detail || data?.title || data?.message || 'Falha na resposta do modelo'
+                  return res.end(JSON.stringify({ ok: false, error: `HTTP ${response.status}: ${errMsg}`, data }))
+                }
+                return res.end(JSON.stringify({ ok: true, data }))
               }
 
               res.writeHead(400, { 'Content-Type': 'application/json' })

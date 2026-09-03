@@ -1058,4 +1058,31 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+
+## 🧠 60. Arquitetura Desacoplada de Provedores de IA: Chat Hermes vs. Scanner de Visão OCR (03/09/2026)
+
+* **Contexto & Problema:**
+  1. O sistema possuía apenas uma variável global de provedor (`provider`), forçando o **Chat Hermes** e o **Scanner de Visão (OCR de Cupons Fiscais)** a usarem o mesmo provedor.
+  2. A Groq descontinuou o suporte a modelos multimodais de visão (Llama 3.2 Vision) em sua API pública. Quando o usuário estava conectado à Groq (padrão para chat rápido e gratuito), o Scanner de Cupom quebrava com erro `HTTP 404: The model meta/llama-3.2-11b-vision-instruct does not exist or you do not have access to it` ao tentar enviar imagens para a Groq com o ID da NVIDIA.
+  3. Além disso, requisições diretas do navegador para a API da NVIDIA sofriam bloqueio de CORS (`405 Method Not Allowed`) em navegadores móveis/PWA, e faltavam mensagens claras de diagnóstico para chaves da NVIDIA sem autorização (`403`) ou termos não aceitos no portal da NVIDIA (`404`).
+
+* **Soluções Implementadas:**
+  1. **🔀 Desacoplamento Total de Provedores ([llmProviders.ts](file:///e:/Apps/AppControleTotal/src/lib/llmProviders.ts) & [hermes.ts](file:///e:/Apps/AppControleTotal/src/lib/hermes.ts)):**
+     - Criação do campo `visionProvider` independente de `provider` (Chat) em `HermesAdvancedConfig`.
+     - Permite a combinação ideal recomendada: **Groq no Chat** (respostas instantâneas e gratuitas de texto) + **OpenRouter (Gemini 2.0 Flash)** ou **NVIDIA (Llama 3.2 11B Vision)** no **Scanner de Cupons**.
+     - Definição de `supportsVision: boolean` em `ProviderConfig` e listas separadas `CHAT_PROVIDERS` e `VISION_PROVIDERS`.
+     - Limpeza dos modelos obsoletos de visão da lista da Groq para evitar seleções inválidas.
+     - Criação da função `normalizeVisionModelForProvider(providerId, modelId)` para garantir que modelos corretos sejam sempre mapeados para cada provedor de visão.
+  2. **📸 Scanner de Cupons Blindado ([receiptScanner.ts](file:///e:/Apps/AppControleTotal/src/lib/receiptScanner.ts)):**
+     - `parseReceiptWithVision` agora consulta explicitamente `config.visionProvider` e sua respectiva chave de API (`getApiKeyForProvider`), nunca mais enviando fotos para a Groq por engano.
+     - Validação amigável que orienta o usuário a selecionar OpenRouter ou NVIDIA caso configure Groq para visão.
+  3. **🎨 Nova Interface Modular em Configurações ([SettingsHermes.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsHermes.tsx)):**
+     - **Card 1: 💬 Provedor de Chat & Assistente Hermes:** Seleção entre Groq, OpenRouter, NVIDIA e VPS, com campo de chave de API exclusivo e botão de teste de chat.
+     - **Card 2: 📸 Provedor de Visão / Scanner de Cupom & QR Code (OCR):** Seleção independente entre OpenRouter (Recomendado Gemini 2.0 Flash), NVIDIA AI Foundation e VPS, com badge de modelo multimodal, campo de chave de visão dedicado e botão de teste exclusivo `Testar Scanner de Visão (OCR)`.
+  4. **🛡️ Proxy Dev e Serverless Aprimorados ([proxy.js](file:///e:/Apps/AppControleTotal/api/llm/proxy.js) & [vite.config.ts](file:///e:/Apps/AppControleTotal/vite.config.ts)):**
+     - Repasse correto de `response_format: { type: "json_object" }` no proxy de produção e desenvolvimento.
+     - Extração e tradução de mensagens de erro JSON upstream da NVIDIA e Groq (`403 Forbidden`, `404 Model Not Found`, `429 Rate Limit`), evitando mensagens cruas e incompreensíveis para o usuário.
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*

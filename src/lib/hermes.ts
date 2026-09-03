@@ -13,6 +13,7 @@ export interface HermesAdvancedConfig {
   vpsUrl: string
   vpsSecret: string
   provider: ProviderId
+  visionProvider: ProviderId
   llmApiKey: string
   groqApiKey?: string
   openRouterApiKey?: string
@@ -28,8 +29,30 @@ export interface HermesAdvancedConfig {
 }
 
 export function getDefaultVisionModel(provider: ProviderId): string {
-  const p = PROVIDERS[provider]
-  return p?.defaultVisionModel || 'google/gemini-2.0-flash-001'
+  if (provider === 'nvidia') return 'meta/llama-3.2-11b-vision-instruct'
+  if (provider === 'openrouter') return 'google/gemini-2.0-flash-001'
+  if (provider === 'vps') return 'hermes-vps-vision'
+  return 'google/gemini-2.0-flash-001'
+}
+
+export function normalizeVisionModelForProvider(providerId: ProviderId, modelId?: string): string {
+  const m = (modelId || '').trim()
+  if (providerId === 'openrouter') {
+    if (!m || m.startsWith('meta/') || m.includes('gpt-oss') || m.includes('vision-preview')) {
+      return 'google/gemini-2.0-flash-001'
+    }
+    return m
+  }
+  if (providerId === 'nvidia') {
+    if (!m || m.startsWith('google/') || m.startsWith('meta-llama/') || m.includes('gemini') || m.includes('gpt-oss') || !m.includes('/')) {
+      return 'meta/llama-3.2-11b-vision-instruct'
+    }
+    return m
+  }
+  if (providerId === 'groq') {
+    return 'google/gemini-2.0-flash-001'
+  }
+  return m || getDefaultVisionModel(providerId)
 }
 
 export function normalizeModelForProvider(providerId: ProviderId, modelId?: string): string {
@@ -76,14 +99,14 @@ export function getApiKeyForProvider(config: HermesAdvancedConfig, providerId: P
   if (providerId === 'openrouter') {
     return (
       config.openRouterApiKey ||
-      (config.provider === 'openrouter' ? config.llmApiKey : '') ||
+      (config.provider === 'openrouter' || config.visionProvider === 'openrouter' ? config.llmApiKey : '') ||
       ''
     ).trim()
   }
   if (providerId === 'nvidia') {
     return (
       config.nvidiaApiKey ||
-      (config.provider === 'nvidia' ? config.llmApiKey : '') ||
+      (config.provider === 'nvidia' || config.visionProvider === 'nvidia' ? config.llmApiKey : '') ||
       ''
     ).trim()
   }
@@ -106,17 +129,21 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
       const rawModel = parsed.llmModel || ''
       const normalizedModel = normalizeModelForProvider(provider, rawModel)
 
-      const rawVision = parsed.visionModel || ''
-      const defaultVision = getDefaultVisionModel(provider)
-      const normalizedVision =
-        !rawVision || rawVision === 'qwen/qwen3.6-27b' || rawVision === 'llama-3.2-11b-vision-preview'
-          ? defaultVision
-          : rawVision
-
       const groqKey = parsed.groqApiKey || (provider === 'groq' ? parsed.llmApiKey : '') || import.meta.env.VITE_GROQ_API_KEY || ''
       const openRouterKey = parsed.openRouterApiKey || (provider === 'openrouter' ? parsed.llmApiKey : '') || ''
       const nvidiaKey = parsed.nvidiaApiKey || (provider === 'nvidia' ? parsed.llmApiKey : '') || ''
       const customKey = parsed.customApiKey || (provider === 'custom' ? parsed.llmApiKey : '') || ''
+
+      // Independent Vision Provider
+      let visionProvider: ProviderId = parsed.visionProvider
+      if (!visionProvider || visionProvider === 'groq') {
+        if (nvidiaKey) visionProvider = 'nvidia'
+        else if (openRouterKey) visionProvider = 'openrouter'
+        else visionProvider = 'openrouter'
+      }
+
+      const rawVision = parsed.visionModel || ''
+      const normalizedVision = normalizeVisionModelForProvider(visionProvider, rawVision)
 
       const currentKey =
         provider === 'groq'
@@ -131,6 +158,7 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
         vpsUrl: parsed.vpsUrl || import.meta.env.VITE_HERMES_WEBHOOK_URL || '',
         vpsSecret: parsed.vpsSecret || import.meta.env.VITE_HERMES_API_KEY || '',
         provider,
+        visionProvider,
         llmApiKey: currentKey,
         groqApiKey: groqKey,
         openRouterApiKey: openRouterKey,
@@ -151,13 +179,14 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
     vpsUrl: import.meta.env.VITE_HERMES_WEBHOOK_URL || '',
     vpsSecret: import.meta.env.VITE_HERMES_API_KEY || '',
     provider: 'groq',
+    visionProvider: 'openrouter',
     llmApiKey: import.meta.env.VITE_LLM_API_KEY || '',
     groqApiKey: import.meta.env.VITE_GROQ_API_KEY || import.meta.env.VITE_LLM_API_KEY || '',
     openRouterApiKey: '',
     nvidiaApiKey: '',
     customApiKey: '',
     llmModel: 'openai/gpt-oss-120b',
-    visionModel: getDefaultVisionModel('groq'),
+    visionModel: getDefaultVisionModel('openrouter'),
     customBaseUrl: '',
     telegramBotUrl: '',
     telegramBotToken: import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '',
@@ -362,13 +391,21 @@ export async function testVisionModel(
 ): Promise<{ ok: boolean; latencyMs: number; reply: string; error?: string }> {
   const start = performance.now()
   const token = (apiKey || '').trim()
-  const modelToUse = visionModel || getDefaultVisionModel(providerId)
+  const modelToUse = normalizeVisionModelForProvider(providerId, visionModel)
 
-  if (!token && providerId !== 'vps') {
-    return { ok: false, latencyMs: 0, reply: '', error: 'Chave da API não informada.' }
+  if (providerId === 'groq') {
+    return {
+      ok: false,
+      latencyMs: 0,
+      reply: '',
+      error: 'A Groq não possui modelos de visão/OCR. Selecione OpenRouter ou NVIDIA como Provedor de Visão.',
+    }
   }
 
-  // 1x1 base64 transparent PNG for instant multimodal verification
+  if (!token && providerId !== 'vps') {
+    return { ok: false, latencyMs: 0, reply: '', error: 'Chave da API do leitor de visão não informada.' }
+  }
+
   const testImageUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
 
   const testMessages = [
@@ -392,11 +429,10 @@ export async function testVisionModel(
     endpoint = `${customUrl.replace(/\/+$/, '')}/chat/completions`
   }
 
-  // 1. Tenta Direct Fetch
   if (endpoint && token && providerId !== 'vps') {
     try {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 10000)
+      const timeout = setTimeout(() => controller.abort(), 12000)
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -426,15 +462,12 @@ export async function testVisionModel(
         const latencyMs = Math.round(performance.now() - start)
         return { ok: true, latencyMs, reply }
       }
-    } catch {
-      // Fallback para proxy
-    }
+    } catch {}
   }
 
-  // 2. Tenta Proxy
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 12000)
+    const timeout = setTimeout(() => controller.abort(), 15000)
 
     const proxyRes = await fetch('/api/llm/proxy', {
       method: 'POST',
@@ -464,8 +497,17 @@ export async function testVisionModel(
       try {
         const parsed = JSON.parse(errText)
         if (parsed?.error) cleanMsg = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error)
+        else if (parsed?.data?.detail) cleanMsg = parsed.data.detail
+        else if (parsed?.data?.title) cleanMsg = parsed.data.title
       } catch {}
-      return { ok: false, latencyMs: 0, reply: '', error: cleanMsg.slice(0, 160) || `HTTP ${proxyRes.status}` }
+
+      if (cleanMsg.includes('Authorization failed') || cleanMsg.includes('403')) {
+        cleanMsg = 'Chave da NVIDIA inválida ou sem permissão. Verifique se começa com "nvapi-" e foi gerada em build.nvidia.com.'
+      } else if (cleanMsg.includes('404') || cleanMsg.includes('does not exist')) {
+        cleanMsg = 'Modelo não encontrado ou você precisa aceitar os termos de licença em build.nvidia.com.'
+      }
+
+      return { ok: false, latencyMs: 0, reply: '', error: cleanMsg.slice(0, 180) || `HTTP ${proxyRes.status}` }
     }
   } catch (err: any) {
     return { ok: false, latencyMs: 0, reply: '', error: err?.message || 'Falha ao testar modelo de visão' }

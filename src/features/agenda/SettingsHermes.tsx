@@ -3,35 +3,38 @@ import {
   Bot,
   Key,
   Globe,
-  Loader2,
-  Check,
-  AlertCircle,
-  RefreshCw,
   Send,
-  ExternalLink,
+  Save,
+  Check,
   Zap,
+  AlertCircle,
+  ExternalLink,
   Eye,
   EyeOff,
+  Cloud,
+  Loader2,
+  Sparkles,
+  RefreshCw,
+  Camera,
   ClipboardPaste,
   Mic,
-  Sparkles,
-  Camera,
-  Save,
-  Cloud,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import {
   PROVIDERS,
+  CHAT_PROVIDERS,
+  VISION_PROVIDERS,
+  DEFAULT_NVIDIA_MODELS,
+  DEFAULT_OPENROUTER_MODELS,
   fetchProviderModels,
-  type ProviderId,
   type ModelItem,
 } from '@/lib/llmProviders'
 import {
   getHermesAdvancedConfig,
   saveHermesAdvancedConfig,
   loadHermesConfigFromCloud,
-  getDefaultVisionModel,
+  normalizeVisionModelForProvider,
   getApiKeyForProvider,
   testProviderConnection,
   testVisionModel,
@@ -49,18 +52,26 @@ export function SettingsHermes() {
       setConfigState(cloudCfg)
     })
   }, [])
-  const [models, setModels] = useState<ModelItem[]>([])
-  const [loadingModels, setLoadingModels] = useState(false)
+
+  const [chatModels, setChatModels] = useState<ModelItem[]>([])
+  const [loadingChatModels, setLoadingChatModels] = useState(false)
+
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
   const [testMessage, setTestMessage] = useState<string | null>(null)
   const [latencyMs, setLatencyMs] = useState<number | null>(null)
-  const [showKey, setShowKey] = useState(false)
+
+  const [showChatKey, setShowChatKey] = useState(false)
+  const [showVisionKey, setShowVisionKey] = useState(false)
   const [showGroqKey, setShowGroqKey] = useState(false)
-  const [testingGroq, setTestingGroq] = useState(false)
-  const [testingProvider, setTestingProvider] = useState(false)
+
+  const [testingChat, setTestingChat] = useState(false)
   const [testingVision, setTestingVision] = useState(false)
+  const [testingGroq, setTestingGroq] = useState(false)
+
   const [visionStatus, setVisionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
+  const [visionMessage, setVisionMessage] = useState<string | null>(null)
   const [visionLatency, setVisionLatency] = useState<number | null>(null)
+
   const [savedIndicator, setSavedIndicator] = useState(false)
 
   const updateConfig = (patch: Partial<HermesAdvancedConfig>) => {
@@ -78,7 +89,7 @@ export function SettingsHermes() {
     setTimeout(() => setSavedIndicator(false), 3000)
   }
 
-  const handleApiKeyChange = (val: string) => {
+  const handleChatApiKeyChange = (val: string) => {
     const patch: Partial<HermesAdvancedConfig> = { llmApiKey: val }
     if (config.provider === 'groq') patch.groqApiKey = val
     else if (config.provider === 'openrouter') patch.openRouterApiKey = val
@@ -87,14 +98,53 @@ export function SettingsHermes() {
     updateConfig(patch)
   }
 
-  const handleTestProvider = async () => {
+  const handleVisionApiKeyChange = (val: string) => {
+    const vProvider = config.visionProvider || 'openrouter'
+    const patch: Partial<HermesAdvancedConfig> = {}
+    if (vProvider === 'openrouter') patch.openRouterApiKey = val
+    else if (vProvider === 'nvidia') patch.nvidiaApiKey = val
+    else if (vProvider === 'custom') patch.customApiKey = val
+    updateConfig(patch)
+  }
+
+  const handleFetchChatModels = async (showToast = true) => {
+    const currentKey = getApiKeyForProvider(config, config.provider)
+    setLoadingChatModels(true)
+
+    const res = await fetchProviderModels(config.provider, currentKey, config.customBaseUrl)
+    setLoadingChatModels(false)
+
+    if (res.ok && res.models.length > 0) {
+      setChatModels(res.models)
+      if (showToast) {
+        toast.success(`${res.models.length} modelos carregados da ${currentChatProvider.name}!`)
+      }
+      if (!res.models.some((m) => m.id === config.llmModel)) {
+        updateConfig({ llmModel: res.models[0].id })
+      }
+    } else {
+      if (showToast) {
+        toast.error(res.error || 'Falha ao buscar lista de modelos.')
+      }
+    }
+  }
+
+  useEffect(() => {
+    const currentKey = getApiKeyForProvider(config, config.provider)
+    if (currentKey && config.provider !== 'vps') {
+      void handleFetchChatModels(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.provider])
+
+  const handleTestChatProvider = async () => {
     const currentKey = getApiKeyForProvider(config, config.provider)
     if (!currentKey && config.provider !== 'vps') {
-      toast.warning(`Insira a chave da API da ${currentProvider.name} primeiro.`)
+      toast.warning(`Insira a chave da API da ${currentChatProvider.name} primeiro.`)
       return
     }
 
-    setTestingProvider(true)
+    setTestingChat(true)
     setTestStatus('testing')
     setTestMessage(null)
 
@@ -110,7 +160,7 @@ export function SettingsHermes() {
         setTestStatus('success')
         setLatencyMs(res.latencyMs)
         setTestMessage(res.reply)
-        toast.success(`Conexão com ${currentProvider.name} estabelecida com sucesso! (${res.latencyMs}ms) 🚀`)
+        toast.success(`Conexão com ${currentChatProvider.name} estabelecida com sucesso! (${res.latencyMs}ms) 🚀`)
       } else {
         setTestStatus('error')
         setTestMessage(res.error || 'Falha na conexão com o provedor')
@@ -121,38 +171,49 @@ export function SettingsHermes() {
       setTestMessage(err?.message || 'Erro inesperado ao testar')
       toast.error('Erro de conexão com o provedor.')
     } finally {
-      setTestingProvider(false)
+      setTestingChat(false)
     }
   }
 
   const handleTestVisionModel = async () => {
-    const currentKey = getApiKeyForProvider(config, config.provider)
-    if (!currentKey && config.provider !== 'vps') {
-      toast.warning(`Insira a chave da API da ${currentProvider.name} primeiro.`)
+    const vProvider = config.visionProvider || 'openrouter'
+    const currentKey = getApiKeyForProvider(config, vProvider)
+
+    if (vProvider === 'groq') {
+      toast.error('A Groq não oferece modelos de visão. Selecione OpenRouter ou NVIDIA para o Scanner de Cupons.')
+      return
+    }
+
+    if (!currentKey && vProvider !== 'vps') {
+      toast.warning(`Insira a chave da API para ${PROVIDERS[vProvider]?.name || vProvider} primeiro.`)
       return
     }
 
     setTestingVision(true)
     setVisionStatus('testing')
+    setVisionMessage(null)
 
     try {
       const res = await testVisionModel(
-        config.provider,
+        vProvider,
         currentKey,
-        activeVisionModel,
+        config.visionModel,
         config.customBaseUrl || config.vpsUrl,
       )
 
       if (res.ok) {
         setVisionStatus('success')
         setVisionLatency(res.latencyMs)
-        toast.success(`Modelo de Visão validado com sucesso! (${res.latencyMs}ms) 📸`)
+        setVisionMessage(res.reply)
+        toast.success(`Scanner de Visão (${PROVIDERS[vProvider]?.name}) validado com sucesso! (${res.latencyMs}ms) 📸`)
       } else {
         setVisionStatus('error')
-        toast.error(`Falha no teste de visão: ${res.error || 'Modelo não aceitou imagem'}`)
+        setVisionMessage(res.error || 'Falha no teste de visão')
+        toast.error(`Falha no scanner de visão: ${res.error || 'Erro desconhecido'}`)
       }
     } catch (err: any) {
       setVisionStatus('error')
+      setVisionMessage(err?.message || 'Erro de conexão ao testar visão')
       toast.error('Erro de conexão ao testar visão.')
     } finally {
       setTestingVision(false)
@@ -182,41 +243,6 @@ export function SettingsHermes() {
       setTestingGroq(false)
     }
   }
-
-  const handleFetchModels = async (showToast = true) => {
-    const currentKey = getApiKeyForProvider(config, config.provider)
-    if (!currentKey && config.provider !== 'vps') {
-      if (showToast) toast.warning('Insira a API Key primeiro para buscar os modelos.')
-      return
-    }
-
-    setLoadingModels(true)
-    const res = await fetchProviderModels(config.provider, currentKey, config.customBaseUrl || config.vpsUrl)
-    setLoadingModels(false)
-
-    if (res.ok && res.models.length > 0) {
-      setModels(res.models)
-      if (showToast) {
-        toast.success(`${res.models.length} modelos encontrados com sucesso! ✨`)
-      }
-      // If current model isn't in list, select first
-      if (!res.models.some((m) => m.id === config.llmModel)) {
-        updateConfig({ llmModel: res.models[0].id })
-      }
-    } else {
-      if (showToast) {
-        toast.error(res.error || 'Falha ao buscar lista de modelos.')
-      }
-    }
-  }
-
-  useEffect(() => {
-    const currentKey = getApiKeyForProvider(config, config.provider)
-    if (currentKey && config.provider !== 'vps') {
-      void handleFetchModels(false)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.provider])
 
   const handleTestChat = async () => {
     setTestStatus('testing')
@@ -258,21 +284,31 @@ export function SettingsHermes() {
     }
   }
 
-  const currentProvider = PROVIDERS[config.provider] || PROVIDERS.groq
-  const activeApiKey = getApiKeyForProvider(config, config.provider)
-  const activeVisionModel = config.visionModel || getDefaultVisionModel(config.provider)
-  const visionModels = models.filter((m) => m.isVision)
-  const otherModels = models.filter((m) => !m.isVision)
+  const currentChatProvider = PROVIDERS[config.provider] || PROVIDERS.groq
+  const activeChatApiKey = getApiKeyForProvider(config, config.provider)
+
+  const activeVisionProvider = config.visionProvider || 'openrouter'
+  const currentVisionProvider = PROVIDERS[activeVisionProvider] || PROVIDERS.openrouter
+  const activeVisionApiKey = getApiKeyForProvider(config, activeVisionProvider)
+
+  const normalizedVisionModel = normalizeVisionModelForProvider(activeVisionProvider, config.visionModel)
+
+  // Vision options for selected vision provider
+  const visionPresetModels =
+    activeVisionProvider === 'nvidia'
+      ? DEFAULT_NVIDIA_MODELS.filter((m) => m.isVision)
+      : DEFAULT_OPENROUTER_MODELS.filter((m) => m.isVision)
 
   return (
     <Card className="space-y-6 p-5">
+      {/* Top Header */}
       <div className="flex items-center justify-between flex-wrap gap-2 pb-1 border-b border-zinc-800/80">
         <div className="flex items-center gap-3">
           <Bot className="h-5 w-5 text-indigo-400" />
           <div>
             <h3 className="font-medium text-zinc-100">Hermes Agent & Conexão com IA</h3>
             <p className="text-xs text-zinc-500">
-              Conecte sua VPS com Cloudflare, LLMs (Groq, OpenRouter, NVIDIA) e Telegram
+              Configure provedores independentes para Chat (Hermes) e Scanner de Cupom (Visão OCR)
             </p>
           </div>
         </div>
@@ -286,7 +322,7 @@ export function SettingsHermes() {
             }`}
           >
             <Cloud className={`h-3 w-3 ${savedIndicator ? 'text-emerald-400 animate-pulse' : 'text-zinc-500'}`} />
-            <span>{savedIndicator ? 'Salvo & Sincronizado ☁️' : 'Auto-salvamento ativo'}</span>
+            <span>{savedIndicator ? 'Salvo & Sincronizado ✨' : 'Auto-salvamento ativo'}</span>
           </span>
 
           <Button
@@ -301,16 +337,35 @@ export function SettingsHermes() {
         </div>
       </div>
 
-      {/* Provider Selector */}
-      <div className="space-y-4">
+      {/* SEÇÃO 1: CHAT & ASSISTENTE HERMES */}
+      <div className="space-y-4 rounded-2xl border border-indigo-500/30 bg-zinc-950/70 p-4 sm:p-5">
+        <div className="flex items-center justify-between flex-wrap gap-2 border-b border-zinc-800/80 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400">
+              <Bot className="h-4 w-4" />
+            </span>
+            <div>
+              <h4 className="text-xs font-bold text-indigo-300 uppercase tracking-wide flex items-center gap-2">
+                <span>1. Provedor de Chat & Assistente Hermes</span>
+                <span className="chip px-1.5 py-0 text-[9px] bg-indigo-500/20 text-indigo-300 border-indigo-500/40 font-mono">
+                  Conversação & Raciocínio
+                </span>
+              </h4>
+              <p className="text-[11px] text-zinc-400">
+                Usado para debriefings matinais, consultas gerais no Life OS e automações de texto.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Chat Provider Selector */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wide">
-            Provedor de Inteligência Artificial (LLM)
-          </label>
+          <label className="text-xs font-semibold text-zinc-300">Selecione o Provedor do Chat:</label>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {(['groq', 'openrouter', 'nvidia', 'vps'] as ProviderId[]).map((pId) => {
+            {(CHAT_PROVIDERS).map((pId) => {
               const p = PROVIDERS[pId]
               const isSelected = config.provider === pId
+              const isGroq = pId === 'groq'
               return (
                 <button
                   key={pId}
@@ -321,7 +376,6 @@ export function SettingsHermes() {
                       provider: pId,
                       llmApiKey: keyForP,
                       llmModel: p.defaultModel,
-                      visionModel: p.defaultVisionModel,
                     })
                   }}
                   className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
@@ -334,19 +388,24 @@ export function SettingsHermes() {
                     <span className="font-medium text-xs text-zinc-100">{p.name}</span>
                     {isSelected && <Check className="h-3.5 w-3.5 text-indigo-400" />}
                   </div>
+                  {isGroq && (
+                    <span className="mt-1 text-[10px] text-emerald-400 font-medium">
+                      ⚡ Recomendado (Ultra-Rápido & Free)
+                    </span>
+                  )}
                 </button>
               )
             })}
           </div>
         </div>
 
-        {/* API Key Box with Dedicated Test Button */}
+        {/* Chat API Key Input */}
         {config.provider !== 'vps' && (
-          <div className="space-y-3 rounded-2xl border border-indigo-500/30 bg-zinc-950/60 p-4">
+          <div className="space-y-2 p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/40">
             <div className="flex items-center justify-between flex-wrap gap-1">
               <label className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
                 <Key className="h-3.5 w-3.5 text-indigo-400" />
-                <span>Chave da API ({currentProvider.name})</span>
+                <span>Chave de API do Chat ({currentChatProvider.name})</span>
               </label>
               <div className="flex items-center gap-2">
                 <button
@@ -355,8 +414,8 @@ export function SettingsHermes() {
                     try {
                       const text = await navigator.clipboard.readText()
                       if (text) {
-                        handleApiKeyChange(text.trim())
-                        toast.success('Chave de API colada com sucesso! 📋')
+                        handleChatApiKeyChange(text.trim())
+                        toast.success('Chave colada com sucesso! 📋')
                       }
                     } catch {
                       toast.info('Cole sua chave diretamente no campo abaixo.')
@@ -367,9 +426,9 @@ export function SettingsHermes() {
                   <ClipboardPaste className="h-3 w-3" />
                   <span>Colar</span>
                 </button>
-                {currentProvider.docsUrl && (
+                {currentChatProvider.docsUrl && (
                   <a
-                    href={currentProvider.docsUrl}
+                    href={currentChatProvider.docsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[11px] text-indigo-400 hover:underline flex items-center gap-1"
@@ -382,25 +441,33 @@ export function SettingsHermes() {
 
             <div className="relative">
               <input
-                type={showKey ? 'text' : 'password'}
-                placeholder={config.provider === 'groq' ? 'gsk_...' : config.provider === 'openrouter' ? 'sk-or-v1-...' : config.provider === 'nvidia' ? 'nvapi-...' : 'sk-...'}
-                value={activeApiKey}
-                onChange={(e) => handleApiKeyChange(e.target.value)}
+                type={showChatKey ? 'text' : 'password'}
+                placeholder={
+                  config.provider === 'groq'
+                    ? 'gsk_...'
+                    : config.provider === 'openrouter'
+                      ? 'sk-or-v1-...'
+                      : config.provider === 'nvidia'
+                        ? 'nvapi-...'
+                        : 'sk-...'
+                }
+                value={activeChatApiKey}
+                onChange={(e) => handleChatApiKeyChange(e.target.value)}
                 className="input-base pr-20 font-mono text-xs py-2.5"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-zinc-400">
                 <button
                   type="button"
-                  onClick={() => setShowKey(!showKey)}
+                  onClick={() => setShowChatKey(!showChatKey)}
                   className="p-1 hover:text-zinc-200"
-                  title={showKey ? 'Ocultar chave' : 'Mostrar chave'}
+                  title={showChatKey ? 'Ocultar chave' : 'Mostrar chave'}
                 >
-                  {showKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-zinc-500" />}
+                  {showChatKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-zinc-500" />}
                 </button>
               </div>
             </div>
 
-            {/* Direct Quick Test Button inside Provider Box */}
+            {/* Test Connection Button */}
             <div className="flex items-center justify-between pt-1 border-t border-zinc-800/60">
               <div className="flex items-center gap-2">
                 {testStatus === 'success' && (
@@ -418,440 +485,571 @@ export function SettingsHermes() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={handleTestProvider}
-                disabled={testingProvider || !activeApiKey}
+                onClick={handleTestChatProvider}
+                disabled={testingChat || !activeChatApiKey}
                 className="text-xs h-7 gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
               >
-                {testingProvider ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3 text-amber-300" />}
-                <span>Testar Chave & Conexão com {currentProvider.name}</span>
+                {testingChat ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3 text-amber-300" />}
+                <span>Testar Chave & Conexão com {currentChatProvider.name}</span>
               </Button>
             </div>
           </div>
         )}
 
-        {/* Model Selector & Live Fetch */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* 1. Modelo de Chat Principal */}
-          <div className="space-y-1.5 p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/40">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
-                <Bot className="h-3.5 w-3.5 text-indigo-400" /> Modelo de Chat (Hermes)
-              </label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleFetchModels(true)}
-                disabled={loadingModels}
-                className="h-6 text-[11px] px-2 flex items-center gap-1 text-indigo-400 hover:text-indigo-300"
-              >
-                <RefreshCw className={`h-2.5 w-2.5 ${loadingModels ? 'animate-spin' : ''}`} />
-                {loadingModels ? 'Buscando...' : 'Atualizar Lista'}
-              </Button>
-            </div>
-
-            {models.length > 0 ? (
-              <select
-                value={config.llmModel}
-                onChange={(e) => updateConfig({ llmModel: e.target.value })}
-                className="input-base text-xs font-mono"
-              >
-                {models.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.id} {m.name !== m.id ? `(${m.name})` : ''}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type="text"
-                placeholder="ex.: llama-3.3-70b-versatile ou meta-llama/llama-3.3-70b-instruct"
-                value={config.llmModel}
-                onChange={(e) => updateConfig({ llmModel: e.target.value })}
-                className="input-base font-mono text-xs"
-              />
-            )}
-            <p className="text-[10px] text-zinc-500">
-              Usado para debriefings diários, consultas gerais e automações.
-            </p>
+        {/* Chat Model Selector */}
+        <div className="space-y-1.5 p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/40">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
+              <Bot className="h-3.5 w-3.5 text-indigo-400" /> Modelo de Chat Ativo
+            </label>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleFetchChatModels(true)}
+              disabled={loadingChatModels}
+              className="h-6 text-[11px] px-2 flex items-center gap-1 text-indigo-400 hover:text-indigo-300"
+            >
+              <RefreshCw className={`h-2.5 w-2.5 ${loadingChatModels ? 'animate-spin' : ''}`} />
+              {loadingChatModels ? 'Buscando...' : 'Atualizar Modelos'}
+            </Button>
           </div>
 
-          {/* 2. Modelo de Visão / OCR de Cupons */}
-          <div className="space-y-1.5 p-3.5 rounded-xl border border-purple-500/30 bg-purple-500/5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-purple-300 flex items-center gap-1.5">
-                <Camera className="h-3.5 w-3.5 text-purple-400" /> Modelo de Visão (Scanner de Cupons)
-              </label>
-              <span className="text-[10px] uppercase font-bold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">
-                Multimodal OCR
-              </span>
-            </div>
+          {chatModels.length > 0 ? (
+            <select
+              value={config.llmModel}
+              onChange={(e) => updateConfig({ llmModel: e.target.value })}
+              className="input-base text-xs font-mono"
+            >
+              {chatModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.id} {m.name !== m.id ? `(${m.name})` : ''}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              placeholder="ex.: openai/gpt-oss-120b ou meta/llama-3.3-70b-instruct"
+              value={config.llmModel}
+              onChange={(e) => updateConfig({ llmModel: e.target.value })}
+              className="input-base font-mono text-xs"
+            />
+          )}
+        </div>
+      </div>
 
-            {models.length > 0 ? (
-              <select
-                value={activeVisionModel}
-                onChange={(e) => updateConfig({ visionModel: e.target.value })}
-                className="input-base text-xs font-mono border-purple-500/30 focus:border-purple-400"
-              >
-                {visionModels.length > 0 && (
-                  <optgroup label="✨ Modelos com Suporte a Visão (Recomendados)">
-                    {visionModels.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        📸 {m.id} {m.name !== m.id ? `(${m.name})` : ''}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                {otherModels.length > 0 && (
-                  <optgroup label="Demais Modelos">
-                    {otherModels.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.id}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
-            ) : (
-              <input
-                type="text"
-                placeholder={getDefaultVisionModel(config.provider)}
-                value={activeVisionModel}
-                onChange={(e) => updateConfig({ visionModel: e.target.value })}
-                className="input-base font-mono text-xs border-purple-500/30 focus:border-purple-400"
-              />
-            )}
-            <p className="text-[10px] text-zinc-400">
-              Usado para extrair itens, preços e mercado de fotos de cupom fiscal.
-            </p>
-
-            {/* Direct Quick Test Button for Vision Model */}
-            <div className="flex items-center justify-between pt-2 border-t border-purple-500/20">
-              <div className="flex items-center gap-1.5">
-                {visionStatus === 'success' && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400">
-                    <Check className="h-3 w-3" /> Visão OK {visionLatency ? `(${visionLatency}ms)` : ''}
-                  </span>
-                )}
-                {visionStatus === 'error' && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-400">
-                    <AlertCircle className="h-3 w-3" /> Falha OCR
-                  </span>
-                )}
-              </div>
-
-              <Button
-                variant="soft"
-                size="sm"
-                onClick={handleTestVisionModel}
-                disabled={testingVision || !activeApiKey}
-                className="text-[11px] h-6 px-2.5 gap-1.5 border border-purple-500/30 bg-purple-500/10 text-purple-200 hover:bg-purple-500/20 font-medium"
-              >
-                {testingVision ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3 text-purple-400" />}
-                <span>Testar Modelo de Visão (OCR)</span>
-              </Button>
+      {/* SEÇÃO 2: SCANNER DE CUPOM & OCR (VISÃO IA) - 100% INDEPENDENTE */}
+      <div className="space-y-4 rounded-2xl border border-purple-500/40 bg-purple-950/15 p-4 sm:p-5">
+        <div className="flex items-center justify-between flex-wrap gap-2 border-b border-purple-500/30 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400">
+              <Camera className="h-4 w-4" />
+            </span>
+            <div>
+              <h4 className="text-xs font-bold text-purple-300 uppercase tracking-wide flex items-center gap-2">
+                <span>2. Provedor de Visão / Scanner de Cupom & QR Code (OCR)</span>
+                <span className="chip px-1.5 py-0 text-[9px] bg-purple-500/20 text-purple-300 border-purple-500/40 font-mono">
+                  100% Independente do Chat
+                </span>
+              </h4>
+              <p className="text-[11px] text-zinc-400">
+                Usado para fotografar cupons fiscais e preencher despesas/despensa com IA multimodal.
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Dedicated Groq Whisper Audio Transcription Section */}
-        <div className="space-y-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 sm:p-5">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
-                <Mic className="h-4 w-4" />
-              </span>
-              <div>
-                <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
-                  Transcrição por Voz com IA (Groq Whisper)
-                </h4>
-                <p className="text-[11px] text-zinc-400">
-                  Transcreve áudios do Life-Log com pontuação perfeita e sem limites de silêncio.
-                </p>
-              </div>
-            </div>
-
-            <a
-              href="https://console.groq.com/keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium hover:underline flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20"
-            >
-              Criar chave Groq grátis <ExternalLink className="h-3 w-3" />
-            </a>
+        {/* Tip showing independence from Chat */}
+        <div className="p-3 rounded-xl bg-purple-900/20 border border-purple-500/30 text-xs text-purple-200 flex items-start gap-2">
+          <Sparkles className="h-4 w-4 text-purple-400 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-semibold text-purple-100">
+              Combinação Ideal: Groq para o Chat + OpenRouter ou NVIDIA para o Scanner!
+            </p>
+            <p className="text-[11px] text-purple-300/80">
+              A Groq descontinuou o suporte a imagens/visão. Com esta divisão, você pode usar a <strong>Groq</strong> no Chat acima para conversas ultra-rápidas e gratuitas, e usar <strong>OpenRouter (Gemini Flash)</strong> ou <strong>NVIDIA (Llama 3.2 Vision)</strong> aqui para ler suas fotos sem nenhum erro!
+            </p>
           </div>
+        </div>
 
-          {config.provider === 'groq' && !config.groqApiKey && config.llmApiKey ? (
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800 text-xs text-zinc-300">
-              <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                <Check className="h-3.5 w-3.5" /> Usando a mesma chave Groq configurada acima
-              </span>
-              <button
-                type="button"
-                onClick={() => updateConfig({ groqApiKey: config.llmApiKey })}
-                className="text-[11px] text-zinc-400 hover:text-zinc-200 underline"
-              >
-                Personalizar
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs text-zinc-300 font-medium">
-                  Chave da API da Groq (Whisper Large V3)
-                </label>
+        {/* Vision Provider Selector */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-zinc-300">Selecione o Provedor de Visão:</label>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {VISION_PROVIDERS.map((vId) => {
+              const p = PROVIDERS[vId]
+              const isSelected = activeVisionProvider === vId
+              const isOpenRouter = vId === 'openrouter'
+              const isNvidia = vId === 'nvidia'
+              return (
+                <button
+                  key={vId}
+                  type="button"
+                  onClick={() => {
+                    updateConfig({
+                      visionProvider: vId,
+                      visionModel: p.defaultVisionModel,
+                    })
+                  }}
+                  className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                    isSelected
+                      ? 'border-purple-500 bg-purple-500/15 shadow-lg shadow-purple-500/15 ring-1 ring-purple-500/30'
+                      : 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900'
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className="font-medium text-xs text-zinc-100">{p.name}</span>
+                    {isSelected && <Check className="h-3.5 w-3.5 text-purple-400" />}
+                  </div>
+                  {isOpenRouter && (
+                    <span className="mt-1 text-[10px] text-emerald-400 font-medium">
+                      ⭐ Recomendado (Gemini 2.0 Flash / Mais Preciso)
+                    </span>
+                  )}
+                  {isNvidia && (
+                    <span className="mt-1 text-[10px] text-indigo-400 font-medium">
+                      ⚡ Meta Llama 3.2 11B Vision
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Vision API Key Input */}
+        {activeVisionProvider !== 'vps' && (
+          <div className="space-y-2 p-3.5 rounded-xl border border-purple-500/30 bg-purple-950/30">
+            <div className="flex items-center justify-between flex-wrap gap-1">
+              <label className="text-xs font-semibold text-purple-200 flex items-center gap-1.5">
+                <Key className="h-3.5 w-3.5 text-purple-400" />
+                <span>Chave de API de Visão ({currentVisionProvider.name})</span>
+              </label>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={async () => {
                     try {
                       const text = await navigator.clipboard.readText()
                       if (text) {
-                        updateConfig({ groqApiKey: text.trim() })
-                        toast.success('Chave Groq colada com sucesso! 📋')
+                        handleVisionApiKeyChange(text.trim())
+                        toast.success('Chave de visão colada com sucesso! 📋')
                       }
                     } catch {
-                      toast.info('Cole sua chave Groq diretamente no campo.')
+                      toast.info('Cole sua chave diretamente no campo abaixo.')
                     }
                   }}
-                  className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                  className="text-[11px] text-purple-300 hover:text-purple-200 flex items-center gap-1 bg-purple-500/20 px-2 py-0.5 rounded-md border border-purple-500/30"
                 >
                   <ClipboardPaste className="h-3 w-3" />
                   <span>Colar</span>
                 </button>
-              </div>
-
-              <div className="relative">
-                <input
-                  type={showGroqKey ? 'text' : 'password'}
-                  placeholder="gsk_..."
-                  value={config.groqApiKey || (config.provider === 'groq' ? config.llmApiKey : '')}
-                  onChange={(e) => updateConfig({ groqApiKey: e.target.value })}
-                  className="input-base pr-20 font-mono text-xs py-2.5 bg-zinc-950/80 border-emerald-500/20 focus:border-emerald-500/50"
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-zinc-400">
-                  <button
-                    type="button"
-                    onClick={() => setShowGroqKey(!showGroqKey)}
-                    className="p-1 hover:text-zinc-200"
-                    title={showGroqKey ? 'Ocultar chave' : 'Mostrar chave'}
+                {currentVisionProvider.docsUrl && (
+                  <a
+                    href={currentVisionProvider.docsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-purple-400 hover:underline flex items-center gap-1"
                   >
-                    {showGroqKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-zinc-500" />}
-                  </button>
-                </div>
+                    Obter chave <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
               </div>
             </div>
-          )}
 
-          <div className="flex items-center justify-between pt-1">
-            <p className="text-[10px] text-zinc-500 flex items-center gap-1">
-              <Sparkles className="h-3 w-3 text-emerald-400" /> Modelo ativo: whisper-large-v3-turbo (Latência &lt;400ms)
-            </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleTestGroqKey}
-              disabled={testingGroq}
-              className="h-7 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 gap-1.5"
-            >
-              {testingGroq ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-              <span>Testar Chave Groq</span>
-            </Button>
-          </div>
-        </div>
+            {/* Same key info if matching chat provider */}
+            {activeVisionProvider === config.provider && activeChatApiKey ? (
+              <p className="text-[11px] text-purple-300/80">
+                ✓ Usando a mesma chave configurada na Seção 1 acima (ou você pode alterá-la abaixo):
+              </p>
+            ) : null}
 
-        {/* VPS & Cloudflare Tunnel Settings */}
-        <div className="space-y-4 border-t border-zinc-800 pt-4">
-          <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide flex items-center gap-1.5">
-            <Globe className="h-3.5 w-3.5 text-cyan-400" />
-            Sua VPS Hermes (Cloudflare Tunnel & Webhook)
-          </h4>
-
-          <div className="space-y-1.5">
-            <label className="text-xs text-zinc-400">URL do Domínio Cloudflare</label>
-            <input
-              type="url"
-              placeholder="https://hermes.seu-dominio.com"
-              value={config.vpsUrl}
-              onChange={(e) => updateConfig({ vpsUrl: e.target.value })}
-              className="input-base text-xs font-mono"
-            />
-            <p className="text-[11px] text-zinc-500">
-              Endereço HTTPS público apontando para o seu túnel cloudflared na VPS.
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs text-zinc-400">Token Secreto / Chave do Webhook</label>
             <div className="relative">
               <input
-                type="password"
-                placeholder="Token de segurança (enviado em X-Hermes-Signature)"
-                value={config.vpsSecret}
-                onChange={(e) => updateConfig({ vpsSecret: e.target.value })}
-                className="input-base pr-10 text-xs font-mono"
+                type={showVisionKey ? 'text' : 'password'}
+                placeholder={
+                  activeVisionProvider === 'openrouter'
+                    ? 'sk-or-v1-...'
+                    : activeVisionProvider === 'nvidia'
+                      ? 'nvapi-...'
+                      : 'sk-...'
+                }
+                value={activeVisionApiKey}
+                onChange={(e) => handleVisionApiKeyChange(e.target.value)}
+                className="input-base pr-20 font-mono text-xs py-2.5 border-purple-500/30 focus:border-purple-400"
               />
-              <Key className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-zinc-400">
+                <button
+                  type="button"
+                  onClick={() => setShowVisionKey(!showVisionKey)}
+                  className="p-1 hover:text-zinc-200"
+                  title={showVisionKey ? 'Ocultar chave' : 'Mostrar chave'}
+                >
+                  {showVisionKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-zinc-500" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Dedicated Test Vision Button */}
+            <div className="flex items-center justify-between pt-2 border-t border-purple-500/20">
+              <div className="flex items-center gap-2">
+                {visionStatus === 'success' && (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400">
+                    <Check className="h-3.5 w-3.5" /> Visão Operacional {visionLatency ? `(${visionLatency}ms)` : ''}
+                  </span>
+                )}
+                {visionStatus === 'error' && (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-400">
+                    <AlertCircle className="h-3.5 w-3.5" /> Falha no leitor
+                  </span>
+                )}
+              </div>
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleTestVisionModel}
+                disabled={testingVision || !activeVisionApiKey}
+                className="text-xs h-7 gap-1.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-md shadow-purple-900/30"
+              >
+                {testingVision ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3 text-purple-200" />}
+                <span>Testar Scanner de Visão (OCR)</span>
+              </Button>
+            </div>
+
+            {visionMessage && (
+              <p className={`text-[11px] p-2 rounded-lg border ${
+                visionStatus === 'success'
+                  ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-300'
+                  : 'bg-rose-950/30 border-rose-500/30 text-rose-300'
+              }`}>
+                {visionMessage}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Vision Model Selector */}
+        <div className="space-y-1.5 p-3.5 rounded-xl border border-purple-500/30 bg-purple-950/30">
+          <label className="text-xs font-semibold text-purple-300 flex items-center gap-1.5">
+            <Camera className="h-3.5 w-3.5 text-purple-400" /> Modelo de Visão Ativo ({currentVisionProvider.name})
+          </label>
+
+          <select
+            value={normalizedVisionModel}
+            onChange={(e) => updateConfig({ visionModel: e.target.value })}
+            className="input-base text-xs font-mono border-purple-500/30 focus:border-purple-400"
+          >
+            {visionPresetModels.map((m) => (
+              <option key={m.id} value={m.id}>
+                📸 {m.id} {m.name !== m.id ? `(${m.name})` : ''}
+              </option>
+            ))}
+          </select>
+          <p className="text-[10px] text-zinc-400">
+            Modelo multimodal que receberá a foto do cupom para ler data, valor, estabelecimento e itens.
+          </p>
+        </div>
+      </div>
+
+      {/* SEÇÃO 3: GROQ WHISPER TRANSCRIÇÃO DE ÁUDIO */}
+      <div className="space-y-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 sm:p-5">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+              <Mic className="h-4 w-4" />
+            </span>
+            <div>
+              <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
+                3. Transcrição por Voz com IA (Groq Whisper)
+              </h4>
+              <p className="text-[11px] text-zinc-400">
+                Transcreve áudios do Life-Log com pontuação perfeita e sem limites de silêncio.
+              </p>
             </div>
           </div>
 
+          <a
+            href="https://console.groq.com/keys"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium hover:underline flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20"
+          >
+            Criar chave Groq grátis <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+
+        {config.provider === 'groq' && !config.groqApiKey && config.llmApiKey ? (
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800 text-xs text-zinc-300">
+            <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+              <Check className="h-3.5 w-3.5" /> Usando a mesma chave Groq configurada na Seção 1
+            </span>
+            <button
+              type="button"
+              onClick={() => updateConfig({ groqApiKey: config.llmApiKey })}
+              className="text-[11px] text-zinc-400 hover:text-zinc-200 underline"
+            >
+              Personalizar
+            </button>
+          </div>
+        ) : (
           <div className="space-y-1.5">
-            <label className="text-xs text-zinc-400">Link do Bot no Telegram (Opcional)</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-zinc-300 font-medium">
+                Chave da API da Groq (Whisper Large V3)
+              </label>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const text = await navigator.clipboard.readText()
+                    if (text) {
+                      updateConfig({ groqApiKey: text.trim() })
+                      toast.success('Chave Groq colada com sucesso! 📋')
+                    }
+                  } catch {
+                    toast.info('Cole sua chave Groq diretamente no campo.')
+                  }
+                }}
+                className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+              >
+                <ClipboardPaste className="h-3 w-3" />
+                <span>Colar</span>
+              </button>
+            </div>
+
+            <div className="relative">
+              <input
+                type={showGroqKey ? 'text' : 'password'}
+                placeholder="gsk_..."
+                value={config.groqApiKey || (config.provider === 'groq' ? config.llmApiKey : '')}
+                onChange={(e) => updateConfig({ groqApiKey: e.target.value })}
+                className="input-base pr-20 font-mono text-xs py-2.5 bg-zinc-950/80 border-emerald-500/20 focus:border-emerald-500/50"
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-zinc-400">
+                <button
+                  type="button"
+                  onClick={() => setShowGroqKey(!showGroqKey)}
+                  className="p-1 hover:text-zinc-200"
+                  title={showGroqKey ? 'Ocultar chave' : 'Mostrar chave'}
+                >
+                  {showGroqKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-zinc-500" />}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between pt-1">
+          <p className="text-[10px] text-zinc-500 flex items-center gap-1">
+            <Sparkles className="h-3 w-3 text-emerald-400" /> Modelo ativo: whisper-large-v3-turbo (Latência &lt;400ms)
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleTestGroqKey}
+            disabled={testingGroq}
+            className="h-7 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 gap-1.5"
+          >
+            {testingGroq ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+            <span>Testar Chave Groq</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* SEÇÃO 4: VPS & CLOUDFLARE TUNNEL */}
+      <div className="space-y-4 border-t border-zinc-800 pt-4">
+        <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide flex items-center gap-1.5">
+          <Globe className="h-3.5 w-3.5 text-cyan-400" />
+          4. Sua VPS Hermes (Cloudflare Tunnel & Webhook)
+        </h4>
+
+        <div className="space-y-1.5">
+          <label className="text-xs text-zinc-400">URL do Domínio Cloudflare</label>
+          <input
+            type="url"
+            placeholder="https://hermes.seu-dominio.com"
+            value={config.vpsUrl}
+            onChange={(e) => updateConfig({ vpsUrl: e.target.value })}
+            className="input-base text-xs font-mono"
+          />
+          <p className="text-[11px] text-zinc-500">
+            Endereço HTTPS público apontando para o seu túnel cloudflared na VPS.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs text-zinc-400">Token Secreto / Chave do Webhook</label>
+          <div className="relative">
             <input
-              type="url"
-              placeholder="https://t.me/seu_hermes_bot"
-              value={config.telegramBotUrl}
-              onChange={(e) => updateConfig({ telegramBotUrl: e.target.value })}
+              type="password"
+              placeholder="Token de segurança (enviado em X-Hermes-Signature)"
+              value={config.vpsSecret}
+              onChange={(e) => updateConfig({ vpsSecret: e.target.value })}
+              className="input-base pr-10 text-xs font-mono"
+            />
+            <Key className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs text-zinc-400">Link do Bot no Telegram (Opcional)</label>
+          <input
+            type="url"
+            placeholder="https://t.me/seu_hermes_bot"
+            value={config.telegramBotUrl}
+            onChange={(e) => updateConfig({ telegramBotUrl: e.target.value })}
+            className="input-base text-xs font-mono"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <div className="space-y-1.5">
+            <label className="text-xs text-zinc-400">Token do Bot Telegram (@BotFather)</label>
+            <input
+              type="password"
+              placeholder="123456789:ABCdef..."
+              value={config.telegramBotToken || ''}
+              onChange={(e) => updateConfig({ telegramBotToken: e.target.value })}
               className="input-base text-xs font-mono"
             />
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            <div className="space-y-1.5">
-              <label className="text-xs text-zinc-400">Token do Bot Telegram (@BotFather)</label>
-              <input
-                type="password"
-                placeholder="123456789:ABCdef..."
-                value={config.telegramBotToken || ''}
-                onChange={(e) => updateConfig({ telegramBotToken: e.target.value })}
-                className="input-base text-xs font-mono"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs text-zinc-400">Seu Chat ID Telegram (via @userinfobot)</label>
-              <input
-                type="text"
-                placeholder="Ex: 123456789"
-                value={config.telegramChatId || ''}
-                onChange={(e) => updateConfig({ telegramChatId: e.target.value })}
-                className="input-base text-xs font-mono"
-              />
-            </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-zinc-400">Seu Chat ID Telegram (via @userinfobot)</label>
+            <input
+              type="text"
+              placeholder="Ex: 123456789"
+              value={config.telegramChatId || ''}
+              onChange={(e) => updateConfig({ telegramChatId: e.target.value })}
+              className="input-base text-xs font-mono"
+            />
           </div>
         </div>
+      </div>
 
-        {/* Voz do Hermes (TTS) */}
-        <div className="space-y-3 border-t border-zinc-800 pt-4">
-          <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide flex items-center gap-1.5">
-            <Mic className="h-3.5 w-3.5 text-purple-400" />
-            Voz do Hermes (Locução & Leitura por Voz)
-          </h4>
+      {/* SEÇÃO 5: VOZ DO HERMES */}
+      <div className="space-y-3 border-t border-zinc-800 pt-4">
+        <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide flex items-center gap-1.5">
+          <Mic className="h-3.5 w-3.5 text-purple-400" />
+          5. Voz do Hermes (Locução & Leitura por Voz)
+        </h4>
 
-          <div className="space-y-2">
-            <label className="text-xs text-zinc-300">Escolha o gênero da voz para narrações e briefings:</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  import('@/lib/speechSynthesis').then((m) => {
-                    m.setVoiceGender('female')
-                    m.speakText('Olá! Esta é a voz feminina do Hermes para o seu dia.')
-                  })
-                  toast.success('Voz definida como Feminina 👩')
-                }}
-                className="p-2.5 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:bg-purple-900/30 text-left transition-all flex flex-col gap-0.5"
-              >
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
-                  <span>👩 Feminina</span>
-                </div>
-                <span className="text-[10px] text-zinc-400">Tom claro e dinâmico</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  import('@/lib/speechSynthesis').then((m) => {
-                    m.setVoiceGender('male')
-                    m.speakText('Olá! Esta é a voz masculina do Hermes para o seu dia.')
-                  })
-                  toast.success('Voz definida como Masculina 👨')
-                }}
-                className="p-2.5 rounded-xl border border-indigo-500/30 bg-indigo-950/20 hover:bg-indigo-900/30 text-left transition-all flex flex-col gap-0.5"
-              >
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-300">
-                  <span>👨 Masculina</span>
-                </div>
-                <span className="text-[10px] text-zinc-400">Tom encorpado e executivo</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  import('@/lib/speechSynthesis').then((m) => {
-                    m.setVoiceGender('auto')
-                    m.speakText('Olá! Esta é a voz padrão do sistema operacional.')
-                  })
-                  toast.success('Voz definida como Padrão do Sistema 🤖')
-                }}
-                className="p-2.5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/40 text-left transition-all flex flex-col gap-0.5 col-span-2 sm:col-span-1"
-              >
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
-                  <span>🤖 Padrão do Sistema</span>
-                </div>
-                <span className="text-[10px] text-zinc-400">Voz nativa do aparelho</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Action & Test buttons */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-zinc-800">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleTestChat}
-              disabled={testStatus === 'testing'}
-              className="flex items-center gap-2"
+        <div className="space-y-2">
+          <label className="text-xs text-zinc-300">Escolha o gênero da voz para narrações e briefings:</label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                import('@/lib/speechSynthesis').then((m) => {
+                  m.setVoiceGender('female')
+                  m.speakText('Olá! Esta é a voz feminina do Hermes para o seu dia.')
+                })
+                toast.success('Voz definida como Feminina 👩')
+              }}
+              className="p-2.5 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:bg-purple-900/30 text-left transition-all flex flex-col gap-0.5"
             >
-              <Zap className="h-3.5 w-3.5" />
-              {testStatus === 'testing' ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Testando IA...
-                </>
-              ) : (
-                'Testar Comunicação com a IA'
-              )}
-            </Button>
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
+                <span>👩 Feminina</span>
+              </div>
+              <span className="text-[10px] text-zinc-400">Tom claro e dinâmico</span>
+            </button>
 
-            {config.vpsUrl && (
-              <Button variant="ghost" size="sm" onClick={handleTestWebhook} className="flex items-center gap-2">
-                <Send className="h-3.5 w-3.5" />
-                Testar Webhook VPS
-              </Button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                import('@/lib/speechSynthesis').then((m) => {
+                  m.setVoiceGender('male')
+                  m.speakText('Olá! Esta é a voz masculina do Hermes para o seu dia.')
+                })
+                toast.success('Voz definida como Masculina 👨')
+              }}
+              className="p-2.5 rounded-xl border border-indigo-500/30 bg-indigo-950/20 hover:bg-indigo-900/30 text-left transition-all flex flex-col gap-0.5"
+            >
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-300">
+                <span>👨 Masculina</span>
+              </div>
+              <span className="text-[10px] text-zinc-400">Tom encorpado e executivo</span>
+            </button>
 
-            {testStatus === 'success' && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-300">
-                <Check className="h-3.5 w-3.5" /> Conectado {latencyMs ? `(${latencyMs}ms)` : ''}
-              </span>
-            )}
-            {testStatus === 'error' && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-300">
-                <AlertCircle className="h-3.5 w-3.5" /> Falha no teste
-              </span>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                import('@/lib/speechSynthesis').then((m) => {
+                  m.setVoiceGender('auto')
+                  m.speakText('Olá! Esta é a voz padrão do sistema operacional.')
+                })
+                toast.success('Voz definida como Padrão do Sistema 🤖')
+              }}
+              className="p-2.5 rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/40 text-left transition-all flex flex-col gap-0.5 col-span-2 sm:col-span-1"
+            >
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
+                <span>🤖 Padrão do Sistema</span>
+              </div>
+              <span className="text-[10px] text-zinc-400">Voz nativa do aparelho</span>
+            </button>
           </div>
+        </div>
+      </div>
 
+      {/* Action & Test buttons */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-zinc-800">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="primary"
             size="sm"
-            onClick={handleManualSave}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-md shadow-emerald-900/30"
+            onClick={handleTestChat}
+            disabled={testStatus === 'testing'}
+            className="flex items-center gap-2"
           >
-            <Save className="h-3.5 w-3.5" />
-            <span>Salvar Configurações</span>
+            <Zap className="h-3.5 w-3.5" />
+            {testStatus === 'testing' ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Testando IA...
+              </>
+            ) : (
+              'Testar Chat Completo com Hermes'
+            )}
           </Button>
+
+          {config.vpsUrl && (
+            <Button variant="ghost" size="sm" onClick={handleTestWebhook} className="flex items-center gap-2">
+              <Send className="h-3.5 w-3.5" />
+              Testar Webhook VPS
+            </Button>
+          )}
+
+          {testStatus === 'success' && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-300">
+              <Check className="h-3.5 w-3.5" /> Conectado {latencyMs ? `(${latencyMs}ms)` : ''}
+            </span>
+          )}
+          {testStatus === 'error' && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-300">
+              <AlertCircle className="h-3.5 w-3.5" /> Falha no teste
+            </span>
+          )}
         </div>
 
-        {testMessage && (
-          <div className="p-3 bg-zinc-950/70 border border-zinc-800 rounded-xl space-y-1">
-            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide">
-              Resposta do Hermes:
-            </span>
-            <p className="text-xs text-zinc-200 leading-relaxed font-mono">{testMessage}</p>
-          </div>
-        )}
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleManualSave}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-md shadow-emerald-900/30"
+        >
+          <Save className="h-3.5 w-3.5" />
+          <span>Salvar Configurações</span>
+        </Button>
       </div>
+
+      {testMessage && (
+        <div className="p-3 bg-zinc-950/70 border border-zinc-800 rounded-xl space-y-1">
+          <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide">
+            Resposta do Hermes:
+          </span>
+          <p className="text-xs text-zinc-300 whitespace-pre-wrap">{testMessage}</p>
+        </div>
+      )}
     </Card>
   )
 }

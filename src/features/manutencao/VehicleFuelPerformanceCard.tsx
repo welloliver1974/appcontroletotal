@@ -25,7 +25,7 @@ export function VehicleFuelPerformanceCard({
     return calculateVehicleFuelSummary(asset.id, records)
   }, [asset.id, records, isVehicle])
 
-  const fuelRecords = fuelSummary?.fuelRecords || []
+  const fuelRecords = useMemo(() => fuelSummary?.fuelRecords ?? [], [fuelSummary])
 
   // Autonomia e tanque
   const autonomy = useMemo(() => {
