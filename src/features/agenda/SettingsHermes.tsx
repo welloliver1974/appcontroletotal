@@ -25,7 +25,6 @@ import {
   PROVIDERS,
   CHAT_PROVIDERS,
   VISION_PROVIDERS,
-  DEFAULT_GOOGLE_MODELS,
   DEFAULT_NVIDIA_MODELS,
   DEFAULT_OPENROUTER_MODELS,
   fetchProviderModels,
@@ -92,8 +91,7 @@ export function SettingsHermes() {
 
   const handleChatApiKeyChange = (val: string) => {
     const patch: Partial<HermesAdvancedConfig> = { llmApiKey: val }
-    if (config.provider === 'google') patch.googleApiKey = val
-    else if (config.provider === 'groq') patch.groqApiKey = val
+    if (config.provider === 'groq') patch.groqApiKey = val
     else if (config.provider === 'openrouter') patch.openRouterApiKey = val
     else if (config.provider === 'nvidia') patch.nvidiaApiKey = val
     else if (config.provider === 'custom') patch.customApiKey = val
@@ -103,8 +101,7 @@ export function SettingsHermes() {
   const handleVisionApiKeyChange = (val: string) => {
     const vProvider = config.visionProvider || 'openrouter'
     const patch: Partial<HermesAdvancedConfig> = {}
-    if (vProvider === 'google') patch.googleApiKey = val
-    else if (vProvider === 'openrouter') patch.openRouterApiKey = val
+    if (vProvider === 'openrouter') patch.openRouterApiKey = val
     else if (vProvider === 'nvidia') patch.nvidiaApiKey = val
     else if (vProvider === 'custom') patch.customApiKey = val
     updateConfig(patch)
@@ -297,12 +294,10 @@ export function SettingsHermes() {
   const normalizedVisionModel = normalizeVisionModelForProvider(activeVisionProvider, config.visionModel)
 
   // Vision options for selected vision provider
-    const visionPresetModels =
-    activeVisionProvider === 'google'
-      ? DEFAULT_GOOGLE_MODELS
-      : activeVisionProvider === 'nvidia'
-        ? DEFAULT_NVIDIA_MODELS.filter((m) => m.isVision)
-        : DEFAULT_OPENROUTER_MODELS.filter((m) => m.isVision)
+      const visionPresetModels =
+    activeVisionProvider === 'nvidia'
+      ? DEFAULT_NVIDIA_MODELS.filter((m) => m.isVision)
+      : DEFAULT_OPENROUTER_MODELS.filter((m) => m.isVision)
 
   return (
     <Card className="space-y-6 p-5">
@@ -448,10 +443,8 @@ export function SettingsHermes() {
               <input
                 type={showChatKey ? 'text' : 'password'}
                 placeholder={
-                  config.provider === 'google'
-                    ? 'AIzaSy...'
-                    : config.provider === 'groq'
-                      ? 'gsk_...'
+                  config.provider === 'groq'
+                    ? 'gsk_...'
                     : config.provider === 'openrouter'
                       ? 'sk-or-v1-...'
                       : config.provider === 'nvidia'
@@ -685,10 +678,8 @@ export function SettingsHermes() {
               <input
                 type={showVisionKey ? 'text' : 'password'}
                 placeholder={
-                  activeVisionProvider === 'google'
-                    ? 'AIzaSy... (Chave Grátis Google AI Studio)'
-                    : activeVisionProvider === 'openrouter'
-                      ? 'sk-or-v1-...'
+                  activeVisionProvider === 'openrouter'
+                    ? 'sk-or-v1-...'
                     : activeVisionProvider === 'nvidia'
                       ? 'nvapi-...'
                       : 'sk-...'

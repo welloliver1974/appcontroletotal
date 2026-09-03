@@ -38,13 +38,9 @@ export function getDefaultVisionModel(provider: ProviderId): string {
 
 export function normalizeVisionModelForProvider(providerId: ProviderId, modelId?: string): string {
   const m = (modelId || '').trim()
-  if (providerId === 'google') {
-    if (!m || !m.startsWith('gemini-')) return 'gemini-2.0-flash'
-    return m
-  }
   if (providerId === 'openrouter') {
     if (!m || m.includes(':free') || m === 'meta/llama-3.2-11b-vision-instruct') {
-      return 'google/gemini-2.5-flash'
+      return 'google/gemini-2.0-flash'
     }
     return m
   }
@@ -55,17 +51,13 @@ export function normalizeVisionModelForProvider(providerId: ProviderId, modelId?
     return m
   }
   if (providerId === 'groq') {
-    return 'gemini-2.0-flash'
+    return 'google/gemini-2.0-flash'
   }
   return m || getDefaultVisionModel(providerId)
 }
 
 export function normalizeModelForProvider(providerId: ProviderId, modelId?: string): string {
   const m = (modelId || '').trim()
-  if (providerId === 'google') {
-    if (!m || !m.startsWith('gemini-')) return 'gemini-2.0-flash'
-    return m
-  }
   if (providerId === 'nvidia') {
     if (
       !m ||
@@ -96,12 +88,6 @@ export function normalizeModelForProvider(providerId: ProviderId, modelId?: stri
 }
 
 export function getApiKeyForProvider(config: HermesAdvancedConfig, providerId: ProviderId): string {
-  if (providerId === 'google') {
-    if (config.googleApiKey?.trim()) return config.googleApiKey.trim()
-    if (config.provider === 'google' && config.llmApiKey?.startsWith('AIza')) return config.llmApiKey.trim()
-    if (import.meta.env.VITE_GEMINI_API_KEY) return import.meta.env.VITE_GEMINI_API_KEY.trim()
-    return ''
-  }
   if (providerId === 'groq') {
     if (config.groqApiKey?.trim()) return config.groqApiKey.trim()
     if (config.provider === 'groq' && config.llmApiKey?.startsWith('gsk_')) return config.llmApiKey.trim()

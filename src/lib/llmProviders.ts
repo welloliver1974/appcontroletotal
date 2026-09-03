@@ -1,6 +1,6 @@
 // src/lib/llmProviders.ts
 
-export type ProviderId = 'groq' | 'google' | 'openrouter' | 'nvidia' | 'custom' | 'vps'
+export type ProviderId = 'groq' | 'openrouter' | 'nvidia' | 'custom' | 'vps'
 
 export interface ProviderConfig {
   id: ProviderId
@@ -26,17 +26,6 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     defaultVisionModel: '',
     supportsVision: false,
   },
-  google: {
-    id: 'google',
-    name: 'Google Gemini (AI Studio Grátis)',
-    defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    modelsEndpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/models',
-    chatEndpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-    docsUrl: 'https://aistudio.google.com/apikey',
-    defaultModel: 'gemini-2.0-flash',
-    defaultVisionModel: 'gemini-2.0-flash',
-    supportsVision: true,
-  },
   openrouter: {
     id: 'openrouter',
     name: 'OpenRouter',
@@ -45,7 +34,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     chatEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
     docsUrl: 'https://openrouter.ai/keys',
     defaultModel: 'meta-llama/llama-3.3-70b-instruct',
-    defaultVisionModel: 'google/gemini-2.5-flash',
+    defaultVisionModel: 'google/gemini-2.0-flash',
     supportsVision: true,
   },
   nvidia: {
@@ -133,38 +122,17 @@ export const DEFAULT_GROQ_MODELS: ModelItem[] = [
   { id: 'groq/compound-mini', name: 'Groq Compound Mini', description: 'Versão compacta' },
 ]
 
-export const DEFAULT_GOOGLE_MODELS: ModelItem[] = [
-  {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash (Recomendado OCR & Chat)',
-    description: '100% Grátis no Google AI Studio (15 req/min) com leitura perfeita de cupons',
-    isVision: true,
-  },
-  {
-    id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash (Super Estável)',
-    description: 'Ultra rápido e gratuito para visão e OCR',
-    isVision: true,
-  },
-  {
-    id: 'gemini-2.0-flash-lite',
-    name: 'Gemini 2.0 Flash Lite',
-    description: 'Leve e de baixa latência',
-    isVision: true,
-  },
-]
-
 export const DEFAULT_OPENROUTER_MODELS: ModelItem[] = [
   {
-    id: 'google/gemini-2.5-flash',
-    name: 'Google Gemini 2.5 Flash',
-    description: 'Modelo de visão mais recente e de altíssima precisão',
+    id: 'google/gemini-2.0-flash',
+    name: 'Gemini 2.0 Flash (Recomendado OCR)',
+    description: 'Leitura multimodal e OCR de cupons com altíssima velocidade e precisão',
     isVision: true,
   },
   {
-    id: 'google/gemini-2.0-flash',
-    name: 'Google Gemini 2.0 Flash',
-    description: 'Visão instantânea para leitura de notas',
+    id: 'google/gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    description: 'Modelo de visão avançado para leitura de notas',
     isVision: true,
   },
   {
@@ -220,7 +188,6 @@ export async function fetchProviderModels(
   apiKey: string,
   customBaseUrl?: string,
 ): Promise<{ ok: boolean; models: ModelItem[]; error?: string }> {
-  // 1. Try Serverless Proxy first
   if (providerId !== 'vps') {
     try {
       const proxyRes = await fetch('/api/llm/proxy', {
@@ -241,12 +208,9 @@ export async function fetchProviderModels(
           return { ok: true, models: parsed }
         }
       }
-    } catch {
-      // Proxy fallback
-    }
+    } catch {}
   }
 
-  // 2. Try Direct Fetch
   const provider = PROVIDERS[providerId]
   let url = ''
 
@@ -285,7 +249,6 @@ export async function fetchProviderModels(
     clearTimeout(timeout)
 
     if (!res.ok) {
-      if (providerId === 'google') return { ok: true, models: DEFAULT_GOOGLE_MODELS }
       if (providerId === 'nvidia') return { ok: true, models: DEFAULT_NVIDIA_MODELS }
       if (providerId === 'groq') return { ok: true, models: DEFAULT_GROQ_MODELS }
       if (providerId === 'openrouter') return { ok: true, models: DEFAULT_OPENROUTER_MODELS }
@@ -305,14 +268,12 @@ export async function fetchProviderModels(
       return { ok: true, models }
     }
 
-    if (providerId === 'google') return { ok: true, models: DEFAULT_GOOGLE_MODELS }
     if (providerId === 'nvidia') return { ok: true, models: DEFAULT_NVIDIA_MODELS }
     if (providerId === 'groq') return { ok: true, models: DEFAULT_GROQ_MODELS }
     if (providerId === 'openrouter') return { ok: true, models: DEFAULT_OPENROUTER_MODELS }
 
     return { ok: true, models: [] }
   } catch {
-    if (providerId === 'google') return { ok: true, models: DEFAULT_GOOGLE_MODELS }
     if (providerId === 'nvidia') return { ok: true, models: DEFAULT_NVIDIA_MODELS }
     if (providerId === 'groq') return { ok: true, models: DEFAULT_GROQ_MODELS }
     if (providerId === 'openrouter') return { ok: true, models: DEFAULT_OPENROUTER_MODELS }
@@ -325,5 +286,5 @@ export async function fetchProviderModels(
   }
 }
 
-export const CHAT_PROVIDERS: ProviderId[] = ['groq', 'google', 'openrouter', 'nvidia', 'vps']
-export const VISION_PROVIDERS: ProviderId[] = ['google', 'openrouter', 'nvidia', 'custom', 'vps']
+export const CHAT_PROVIDERS: ProviderId[] = ['groq', 'openrouter', 'nvidia', 'vps']
+export const VISION_PROVIDERS: ProviderId[] = ['openrouter', 'nvidia', 'custom', 'vps']
