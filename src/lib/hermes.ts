@@ -372,8 +372,17 @@ export async function testProviderConnection(
       try {
         const parsed = JSON.parse(errText)
         if (parsed?.error) cleanMsg = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error)
+        else if (parsed?.data?.detail) cleanMsg = parsed.data.detail
+        else if (parsed?.data?.title) cleanMsg = parsed.data.title
       } catch {}
-      return { ok: false, latencyMs: 0, reply: '', error: cleanMsg.slice(0, 160) || `HTTP ${proxyRes.status}` }
+
+      if (cleanMsg.includes('Not found for account') || cleanMsg.includes('Function')) {
+        cleanMsg = 'Sua chave NVIDIA é válida, mas este modelo ainda não foi ativado na sua conta. No portal build.nvidia.com, abra o modelo desejado e clique em "Get API Key" para aceitar os termos da Meta, ou escolha o modelo NVIDIA Nemotron.'
+      } else if (cleanMsg.includes('Authorization failed') || cleanMsg.includes('403')) {
+        cleanMsg = 'Chave da NVIDIA inválida ou sem permissão. Verifique se a chave começa com "nvapi-" e foi criada em build.nvidia.com.'
+      }
+
+      return { ok: false, latencyMs: 0, reply: '', error: cleanMsg || `HTTP ${proxyRes.status}` }
     }
   } catch (err: any) {
     return { ok: false, latencyMs: 0, reply: '', error: err?.message || 'Falha ao conectar com o provedor' }

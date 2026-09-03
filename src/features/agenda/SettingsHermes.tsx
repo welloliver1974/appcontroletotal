@@ -467,17 +467,27 @@ export function SettingsHermes() {
               </div>
             </div>
 
-            {/* Test Connection Button */}
-            <div className="flex items-center justify-between pt-1 border-t border-zinc-800/60">
-              <div className="flex items-center gap-2">
+            {/* Error Message Box */}
+            {testStatus === 'error' && testMessage && (
+              <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/30 text-[11px] text-rose-200 leading-relaxed">
+                <p className="font-semibold text-rose-300 flex items-center gap-1 mb-0.5">
+                  <AlertCircle className="h-3 w-3 shrink-0" /> Diagnóstico do Teste:
+                </p>
+                {testMessage}
+              </div>
+            )}
+
+            {/* Test Connection Button - 100% Mobile Responsive */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-zinc-800/60">
+              <div className="flex items-center gap-1.5 min-h-[22px]">
                 {testStatus === 'success' && (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400">
-                    <Check className="h-3.5 w-3.5" /> Online {latencyMs ? `(${latencyMs}ms)` : ''}
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+                    <Check className="h-3.5 w-3.5 shrink-0" /> Conexão OK {latencyMs ? `(${latencyMs}ms)` : ''}
                   </span>
                 )}
                 {testStatus === 'error' && (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-400">
-                    <AlertCircle className="h-3.5 w-3.5" /> Falha no teste
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-400">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" /> Falha no teste
                   </span>
                 )}
               </div>
@@ -487,10 +497,10 @@ export function SettingsHermes() {
                 size="sm"
                 onClick={handleTestChatProvider}
                 disabled={testingChat || !activeChatApiKey}
-                className="text-xs h-7 gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
+                className="w-full sm:w-auto text-xs h-8 sm:h-7 px-3 gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold justify-center shrink-0"
               >
-                {testingChat ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3 text-amber-300" />}
-                <span>Testar Chave & Conexão com {currentChatProvider.name}</span>
+                {testingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 text-amber-300" />}
+                <span>Testar Conexão</span>
               </Button>
             </div>
           </div>
@@ -690,17 +700,17 @@ export function SettingsHermes() {
               </div>
             </div>
 
-            {/* Dedicated Test Vision Button */}
-            <div className="flex items-center justify-between pt-2 border-t border-purple-500/20">
-              <div className="flex items-center gap-2">
+            {/* Dedicated Test Vision Button - 100% Mobile Responsive */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-purple-500/20">
+              <div className="flex items-center gap-1.5 min-h-[22px]">
                 {visionStatus === 'success' && (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400">
-                    <Check className="h-3.5 w-3.5" /> Visão Operacional {visionLatency ? `(${visionLatency}ms)` : ''}
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+                    <Check className="h-3.5 w-3.5 shrink-0" /> Visão Operacional {visionLatency ? `(${visionLatency}ms)` : ''}
                   </span>
                 )}
                 {visionStatus === 'error' && (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-400">
-                    <AlertCircle className="h-3.5 w-3.5" /> Falha no leitor
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-400">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" /> Falha no scanner
                   </span>
                 )}
               </div>
@@ -710,10 +720,10 @@ export function SettingsHermes() {
                 size="sm"
                 onClick={handleTestVisionModel}
                 disabled={testingVision || !activeVisionApiKey}
-                className="text-xs h-7 gap-1.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-md shadow-purple-900/30"
+                className="w-full sm:w-auto text-xs h-8 sm:h-7 px-3 gap-1.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-md shadow-purple-900/30 justify-center shrink-0"
               >
-                {testingVision ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3 text-purple-200" />}
-                <span>Testar Scanner de Visão (OCR)</span>
+                {testingVision ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5 text-purple-200" />}
+                <span>Testar Visão (OCR)</span>
               </Button>
             </div>
 
