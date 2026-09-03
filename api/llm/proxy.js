@@ -79,7 +79,11 @@ export default async function handler(req, res) {
           targetModel = 'openai/gpt-oss-120b';
         }
       } else if (provider === 'openrouter') {
-        if (!targetModel || targetModel.startsWith('meta/')) {
+        if (!targetModel) {
+          targetModel = 'google/gemini-2.0-flash-exp:free';
+        } else if (targetModel === 'meta/llama-3.2-11b-vision-instruct') {
+          targetModel = 'meta-llama/llama-3.2-11b-vision-instruct:free';
+        } else if (targetModel === 'meta/llama-3.3-70b-instruct') {
           targetModel = 'meta-llama/llama-3.3-70b-instruct';
         }
       }

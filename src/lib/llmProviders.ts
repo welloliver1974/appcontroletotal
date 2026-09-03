@@ -36,7 +36,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     chatEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
     docsUrl: 'https://openrouter.ai/keys',
     defaultModel: 'meta-llama/llama-3.3-70b-instruct',
-    defaultVisionModel: 'google/gemini-2.0-flash-001',
+    defaultVisionModel: 'google/gemini-2.0-flash-exp:free',
     supportsVision: true,
   },
   groq: {
@@ -128,13 +128,46 @@ export const DEFAULT_GROQ_MODELS: ModelItem[] = [
 ]
 
 export const DEFAULT_OPENROUTER_MODELS: ModelItem[] = [
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Recomendado OCR)', description: 'Visão instantânea e leitura precisa de cupons', isVision: true },
-  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash Grátis', description: 'Visão e leitura de notas grátis', isVision: true },
-  { id: 'google/gemini-flash-1.5-8b', name: 'Gemini Flash 1.5 8B', description: 'Ultra-econômico com visão', isVision: true },
-  { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Meta Llama 3.3 70B Instruct (Recomendado Chat)', description: 'Chat rápido e inteligente' },
-  { id: 'meta-llama/llama-3.2-11b-vision-instruct:free', name: 'Llama 3.2 11B Vision Grátis', description: 'OCR de cupons e documentos', isVision: true },
-  { id: 'qwen/qwen-2.5-vl-72b-instruct:free', name: 'Qwen 2.5 VL 72B Grátis', description: 'Multimodal de alta capacidade', isVision: true },
-  { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', description: 'Raciocínio analítico avançado' },
+  {
+    id: 'google/gemini-2.0-flash-exp:free',
+    name: 'Gemini 2.0 Flash (100% Grátis & Rápido)',
+    description: 'Leitura multimodal e OCR de cupons com alta velocidade sem custo',
+    isVision: true,
+  },
+  {
+    id: 'google/gemini-2.0-flash-001',
+    name: 'Gemini 2.0 Flash (Oficial / Alta Estabilidade)',
+    description: 'Visão instantânea e leitura ultra precisa de notas e cupons',
+    isVision: true,
+  },
+  {
+    id: 'meta-llama/llama-3.2-11b-vision-instruct:free',
+    name: 'Meta Llama 3.2 11B Vision (100% Grátis)',
+    description: 'OCR gratuito da Meta hospedado no OpenRouter',
+    isVision: true,
+  },
+  {
+    id: 'qwen/qwen-2.5-vl-72b-instruct:free',
+    name: 'Qwen 2.5 VL 72B (100% Grátis - Visão Avançada)',
+    description: 'Excelente para reconhecimento de textos em português',
+    isVision: true,
+  },
+  {
+    id: 'google/gemini-flash-1.5-8b',
+    name: 'Gemini Flash 1.5 8B',
+    description: 'Ultra-econômico com visão',
+    isVision: true,
+  },
+  {
+    id: 'meta-llama/llama-3.3-70b-instruct',
+    name: 'Meta Llama 3.3 70B Instruct (Chat Inteligente)',
+    description: 'Chat de texto de alto raciocínio',
+  },
+  {
+    id: 'deepseek/deepseek-r1',
+    name: 'DeepSeek R1',
+    description: 'Raciocínio analítico avançado',
+  },
 ]
 
 function parseModelList(json: unknown): ModelItem[] {

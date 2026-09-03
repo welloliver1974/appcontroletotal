@@ -38,19 +38,19 @@ export function getDefaultVisionModel(provider: ProviderId): string {
 export function normalizeVisionModelForProvider(providerId: ProviderId, modelId?: string): string {
   const m = (modelId || '').trim()
   if (providerId === 'openrouter') {
-    if (!m || m.startsWith('meta/') || m.includes('gpt-oss') || m.includes('vision-preview')) {
-      return 'google/gemini-2.0-flash-001'
+    if (!m || m === 'meta/llama-3.2-11b-vision-instruct') {
+      return 'google/gemini-2.0-flash-exp:free'
     }
     return m
   }
   if (providerId === 'nvidia') {
-    if (!m || m.startsWith('google/') || m.startsWith('meta-llama/') || m.includes('gemini') || m.includes('gpt-oss') || !m.includes('/')) {
+    if (!m || m.startsWith('google/') || m.startsWith('meta-llama/') || m.includes('gemini') || !m.includes('/')) {
       return 'meta/llama-3.2-11b-vision-instruct'
     }
     return m
   }
   if (providerId === 'groq') {
-    return 'google/gemini-2.0-flash-001'
+    return 'google/gemini-2.0-flash-exp:free'
   }
   return m || getDefaultVisionModel(providerId)
 }
@@ -403,7 +403,7 @@ export async function testVisionModel(
   }
 
   if (!token && providerId !== 'vps') {
-    return { ok: false, latencyMs: 0, reply: '', error: 'Chave da API do leitor de visão não informada.' }
+    return { ok: false, latencyMs: 0, reply: '', error: `Chave da API (${PROVIDERS[providerId]?.name || providerId}) não informada.` }
   }
 
   const testImageUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
@@ -429,6 +429,7 @@ export async function testVisionModel(
     endpoint = `${customUrl.replace(/\/+$/, '')}/chat/completions`
   }
 
+  // 1. Direct fetch (if not blocked by browser CORS)
   if (endpoint && token && providerId !== 'vps') {
     try {
       const controller = new AbortController()
@@ -437,10 +438,6 @@ export async function testVisionModel(
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
-      }
-      if (providerId === 'openrouter') {
-        headers['HTTP-Referer'] = 'https://appcontroletotal.local'
-        headers['X-Title'] = 'Life OS Hub - Vision Test'
       }
 
       const res = await fetch(endpoint, {
@@ -461,10 +458,17 @@ export async function testVisionModel(
         const reply = data.choices?.[0]?.message?.content || 'Visão OK'
         const latencyMs = Math.round(performance.now() - start)
         return { ok: true, latencyMs, reply }
+      } else {
+        const errJson = await res.json().catch(() => ({}))
+        const errMsg = errJson?.error?.message || errJson?.message || `HTTP ${res.status}`
+        if (res.status === 401 || res.status === 402 || res.status === 404) {
+          return { ok: false, latencyMs: 0, reply: '', error: `[${PROVIDERS[providerId]?.name}] ${errMsg}` }
+        }
       }
     } catch {}
   }
 
+  // 2. Serverless Proxy fallback
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 15000)
@@ -496,29 +500,31 @@ export async function testVisionModel(
       let cleanMsg = errText
       try {
         const parsed = JSON.parse(errText)
-        if (parsed?.error) cleanMsg = typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error)
+        if (parsed?.error) cleanMsg = typeof parsed.error === 'string' ? parsed.error : (parsed.error.message || JSON.stringify(parsed.error))
         else if (parsed?.data?.detail) cleanMsg = parsed.data.detail
         else if (parsed?.data?.title) cleanMsg = parsed.data.title
       } catch {}
 
       if (providerId === 'nvidia') {
-        if (cleanMsg.includes('Not found for account') || cleanMsg.includes('Function') || cleanMsg.includes('404')) {
-          cleanMsg = 'Sua chave NVIDIA é válida, mas este modelo de visão precisa ser ativado na sua conta. Acesse build.nvidia.com, abra o modelo (ex: Meta Llama 3.2 11B Vision) e clique em "Get API Key" para aceitar os termos da Meta.'
+        if (cleanMsg.includes('Not found for account') || cleanMsg.includes('Function')) {
+          cleanMsg = 'Sua chave NVIDIA é válida, mas este modelo precisa ser ativado na sua conta. Acesse build.nvidia.com, abra o modelo e clique em "Get API Key" para aceitar os termos da Meta.'
         } else if (cleanMsg.includes('Authorization failed') || cleanMsg.includes('403')) {
           cleanMsg = 'Chave da NVIDIA inválida ou sem permissão. Verifique se começa com "nvapi-" e foi gerada em build.nvidia.com.'
         }
       } else if (providerId === 'openrouter') {
-        if (cleanMsg.includes('401') || cleanMsg.includes('auth') || cleanMsg.includes('User key')) {
-          cleanMsg = 'Chave da OpenRouter inválida ou não informada. Cole sua chave "sk-or-v1-..." no campo de chave de visão.'
-        } else if (cleanMsg.includes('404') || cleanMsg.includes('not found')) {
-          cleanMsg = 'Modelo da OpenRouter não encontrado. Recomendamos selecionar "google/gemini-2.0-flash-001".'
+        if (cleanMsg.includes('401') || cleanMsg.includes('auth') || cleanMsg.includes('User key') || cleanMsg.includes('Unauthorized')) {
+          cleanMsg = 'Chave da OpenRouter inválida. Obtenha sua chave em openrouter.ai/keys e cole no campo de chave de visão.'
+        } else if (cleanMsg.includes('402') || cleanMsg.includes('credits') || cleanMsg.includes('payment')) {
+          cleanMsg = 'Créditos insuficientes no OpenRouter para este modelo pago. Escolha um modelo GRÁTIS como "google/gemini-2.0-flash-exp:free" ou "meta-llama/llama-3.2-11b-vision-instruct:free".'
+        } else if (cleanMsg.includes('404') || cleanMsg.includes('not found') || cleanMsg.includes('No available')) {
+          cleanMsg = `Modelo "${modelToUse}" não encontrado no OpenRouter. Selecione "google/gemini-2.0-flash-exp:free".`
         }
       }
 
-      return { ok: false, latencyMs: 0, reply: '', error: cleanMsg.slice(0, 180) || `HTTP ${proxyRes.status}` }
+      return { ok: false, latencyMs: 0, reply: '', error: cleanMsg.slice(0, 220) || `HTTP ${proxyRes.status}` }
     }
   } catch (err: any) {
-    return { ok: false, latencyMs: 0, reply: '', error: err?.message || 'Falha ao testar modelo de visão' }
+    return { ok: false, latencyMs: 0, reply: '', error: err?.message || 'Falha ao conectar com o serviço de visão' }
   }
 }
 
