@@ -54,17 +54,31 @@ export const SHARED_COLLECTIONS = new Set([
   'doc_vault',
 ])
 
-/** Personal collections: Life-Log, Reading, Media, Facts (isolated per user) */
+/** Personal collections: Life-Log, Reading, Media, Facts, Events (isolated per user) */
 export const PERSONAL_COLLECTIONS = new Set([
   'lifeLog',
   'life_log',
   'reading',
   'media',
   'facts',
+  'events',
 ])
 
 export function isPersonalCollection(collection: string): boolean {
   return PERSONAL_COLLECTIONS.has(collection)
+}
+
+/** Primary account list (owner of all historical/legacy unassigned data) */
+export const PRIMARY_ACCOUNTS = new Set([
+  'welloliver@gmail.com',
+  'welloliver1974@gmail.com',
+  'welloliver',
+])
+
+export function isPrimaryUser(email: string | null | undefined): boolean {
+  if (!email) return false
+  const normalized = email.toLowerCase().trim()
+  return PRIMARY_ACCOUNTS.has(normalized) || normalized.startsWith('welloliver')
 }
 
 /** Get the currently logged-in user email */
@@ -79,39 +93,23 @@ export function getCurrentUserEmail(): string | null {
   return null
 }
 
-/** Get or set the primary account (the original owner of all pre-existing legacy data) */
-export function getPrimaryUserEmail(): string | null {
-  try {
-    let primary = localStorage.getItem('act.primary_account')
-    const current = getCurrentUserEmail()
-    if (!primary && current) {
-      primary = current
-      localStorage.setItem('act.primary_account', current)
-    }
-    return primary
-  } catch {
-    return null
-  }
-}
-
-/** Filters personal collections so each user only sees their own notes/diaries, while preserving 100% legacy data for primary user */
+/** Filters personal collections so each user only sees their own notes/diaries/events, while preserving 100% legacy data for welloliver@gmail.com */
 export function filterRowsForUser<T>(collection: string, rows: T[]): T[] {
   if (!isPersonalCollection(collection)) return rows
   const currentEmail = getCurrentUserEmail()
   if (!currentEmail) return rows
 
-  const primaryEmail = getPrimaryUserEmail()
-  const isPrimary = !primaryEmail || primaryEmail.toLowerCase() === currentEmail.toLowerCase()
+  const isPrimary = isPrimaryUser(currentEmail)
 
   return rows.filter((r: unknown) => {
     const row = r as Record<string, unknown>
     const rowEmail = (row.userEmail || row.user_email || row.authorEmail || row.author_email) as string | undefined
 
     if (rowEmail) {
-      return rowEmail.toLowerCase() === currentEmail.toLowerCase()
+      return rowEmail.toLowerCase().trim() === currentEmail.toLowerCase().trim()
     }
 
-    // Row has no user assigned (legacy data created prior to multi-user separation) -> Preserved for the primary account
+    // Row has no user assigned (legacy data created prior to multi-user separation) -> Preserved ONLY for welloliver@gmail.com
     return isPrimary
   })
 }

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { supabase } from '@/lib/db'
+import { useFitStore } from './fitStore'
 import type { Session, User } from '@supabase/supabase-js'
 
 export const HERMES_CODE = '2468'
@@ -41,26 +42,30 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { data } = await supabase.auth.getSession()
           if (data.session) {
+            const email = data.session.user.email || null
             set({
               session: data.session,
               user: data.session.user,
-              userEmail: data.session.user.email || null,
+              userEmail: email,
               isTrusted: true,
               loading: false,
             })
+            useFitStore.getState().switchUserProfile(email)
           } else {
             set({ loading: false })
           }
 
           supabase.auth.onAuthStateChange((_event, session) => {
             if (session) {
+              const email = session.user.email || null
               set({
                 session,
                 user: session.user,
-                userEmail: session.user.email || null,
+                userEmail: email,
                 isTrusted: true,
                 loading: false,
               })
+              useFitStore.getState().switchUserProfile(email)
             } else {
               // Only reset if user explicitly logged out
               set({
@@ -77,15 +82,17 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signInWithEmail: async (email: string, pass: string) => {
+        const cleanEmail = email.trim()
         if (!supabase) {
           // Local fallback
-          set({ isTrusted: true, userEmail: email })
+          set({ isTrusted: true, userEmail: cleanEmail })
+          useFitStore.getState().switchUserProfile(cleanEmail)
           return { ok: true }
         }
 
         try {
           const { data, error } = await supabase.auth.signInWithPassword({
-            email: email.trim(),
+            email: cleanEmail,
             password: pass,
           })
 
@@ -94,12 +101,14 @@ export const useAuthStore = create<AuthState>()(
           }
 
           if (data.session) {
+            const userEmail = data.session.user.email || cleanEmail
             set({
               session: data.session,
               user: data.session.user,
-              userEmail: data.session.user.email || null,
+              userEmail,
               isTrusted: true,
             })
+            useFitStore.getState().switchUserProfile(userEmail)
             return { ok: true }
           }
 
@@ -110,14 +119,16 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signUpWithEmail: async (email: string, pass: string, name?: string) => {
+        const cleanEmail = email.trim()
         if (!supabase) {
-          set({ isTrusted: true, userEmail: email })
+          set({ isTrusted: true, userEmail: cleanEmail })
+          useFitStore.getState().switchUserProfile(cleanEmail)
           return { ok: true }
         }
 
         try {
           const { data, error } = await supabase.auth.signUp({
-            email: email.trim(),
+            email: cleanEmail,
             password: pass,
             options: {
               data: {
@@ -131,12 +142,14 @@ export const useAuthStore = create<AuthState>()(
           }
 
           if (data.session) {
+            const userEmail = data.session.user.email || cleanEmail
             set({
               session: data.session,
               user: data.session.user,
-              userEmail: data.session.user.email || null,
+              userEmail,
               isTrusted: true,
             })
+            useFitStore.getState().switchUserProfile(userEmail)
           }
 
           return { ok: true }
@@ -171,6 +184,7 @@ export const useAuthStore = create<AuthState>()(
             await supabase.auth.signOut()
           } catch {}
         }
+        useFitStore.getState().switchUserProfile(null)
         set({
           user: null,
           session: null,
@@ -181,19 +195,24 @@ export const useAuthStore = create<AuthState>()(
 
       verifyEmergencyCode: (code: string) => code.trim() === HERMES_CODE,
 
-      trustThisDevice: (email?: string) =>
+      trustThisDevice: (email?: string) => {
+        const targetEmail = email || get().userEmail || 'welloliver@gmail.com'
         set({
           isTrusted: true,
-          userEmail: email || get().userEmail || 'usuario@lifeos.local',
-        }),
+          userEmail: targetEmail,
+        })
+        useFitStore.getState().switchUserProfile(targetEmail)
+      },
 
-      untrustThisDevice: () =>
+      untrustThisDevice: () => {
+        useFitStore.getState().switchUserProfile(null)
         set({
           isTrusted: false,
           user: null,
           session: null,
           userEmail: null,
-        }),
+        })
+      },
     }),
     {
       name: 'act.auth.v2',

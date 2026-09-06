@@ -87,6 +87,7 @@ interface FitState {
 
   // Actions
   initFitAuth: () => Promise<void>
+  switchUserProfile: (email: string | null) => void
   setupAutoSync: () => () => void
   setUserHeightCm: (cm: number) => void
   setMeasurementGoal: (label: string, goalCm: number) => void
@@ -135,9 +136,78 @@ export const useFitStore = create<FitState>()(
       fitUserEmail: null,
       isFitAuthenticated: false,
 
+      switchUserProfile: (email: string | null) => {
+        const currentEmail = email?.toLowerCase().trim() || null
+        if (!currentEmail) return
+
+        // Save current state into previous user's profile key
+        const prevEmail = get().fitUserEmail || 'welloliver@gmail.com'
+        try {
+          const currentState = {
+            weights: get().weights,
+            measurements: get().measurements,
+            bioimpedance: get().bioimpedance,
+            templates: get().templates,
+            sessions: get().sessions,
+            userHeightCm: get().userHeightCm,
+            measurementGoals: get().measurementGoals,
+          }
+          localStorage.setItem(`act.fit_profile_${prevEmail}`, JSON.stringify(currentState))
+        } catch {}
+
+        // Load target profile
+        try {
+          const raw = localStorage.getItem(`act.fit_profile_${currentEmail}`)
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            set({
+              weights: parsed.weights || [],
+              measurements: parsed.measurements || [],
+              bioimpedance: parsed.bioimpedance || [],
+              templates: parsed.templates?.length ? parsed.templates : DEFAULT_TEMPLATES,
+              sessions: parsed.sessions || [],
+              userHeightCm: parsed.userHeightCm || (currentEmail.includes('silvinha') ? 165 : 175),
+              measurementGoals: parsed.measurementGoals || {},
+              fitUserEmail: currentEmail,
+            })
+            return
+          }
+        } catch {}
+
+        // If no saved profile for this user:
+        if (currentEmail === 'welloliver@gmail.com' || currentEmail.startsWith('welloliver')) {
+          set({ fitUserEmail: currentEmail })
+        } else {
+          // New user (e.g. silvinhamsa@gmail.com) starts with a clean slate!
+          set({
+            weights: [],
+            measurements: [],
+            bioimpedance: [],
+            templates: DEFAULT_TEMPLATES,
+            sessions: [],
+            userHeightCm: 165,
+            measurementGoals: {},
+            fitUserEmail: currentEmail,
+            isFitAuthenticated: false,
+          })
+        }
+      },
+
       initFitAuth: async () => {
+        let currentAuthEmail: string | null = null
+        try {
+          const rawAuth = localStorage.getItem('act.auth.v2')
+          if (rawAuth) {
+            currentAuthEmail = JSON.parse(rawAuth)?.state?.userEmail || null
+          }
+        } catch {}
+
+        if (currentAuthEmail) {
+          get().switchUserProfile(currentAuthEmail)
+        }
+
         const session = await getFitwellSession()
-        if (session?.user) {
+        if (session?.user && (!currentAuthEmail || session.user.email?.toLowerCase() === currentAuthEmail.toLowerCase())) {
           set({
             fitUserEmail: session.user.email || null,
             isFitAuthenticated: true,
