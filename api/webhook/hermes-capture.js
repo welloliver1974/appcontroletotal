@@ -356,12 +356,39 @@ export default async function handler(req, res) {
       const weightVal = Number(weightMatch[1].replace(',', '.'));
       const logDate = todayDateIso();
 
+      // Gravação na Nuvem (app_settings no Supabase Principal)
+      if (supabase) {
+        try {
+          const settingId = `fit_profile_${userEmail}`;
+          const { data: existing } = await supabase.from('app_settings').select('data').eq('id', settingId).maybeSingle();
+          const profile = existing?.data || { weights: [], measurements: [], sessions: [], bioimpedance: [] };
+          profile.weights = profile.weights || [];
+          // Evita duplicata da mesma data ou insere nova
+          profile.weights = profile.weights.filter((w) => w.log_date !== logDate);
+          profile.weights.unshift({
+            id: genId(),
+            weight_kg: weightVal,
+            log_date: logDate,
+            created_at: nowIso(),
+          });
+          await supabase.from('app_settings').upsert({
+            id: settingId,
+            data: profile,
+            updated_at: nowIso(),
+          });
+        } catch (e) {
+          console.warn('[Fit app_settings sync error]:', e);
+        }
+      }
+
       if (fitSupabase) {
-        await fitSupabase.from('body_weights').insert({
-          weight_kg: weightVal,
-          log_date: logDate,
-          created_at: nowIso(),
-        });
+        try {
+          await fitSupabase.from('body_weights').insert({
+            weight_kg: weightVal,
+            log_date: logDate,
+            created_at: nowIso(),
+          });
+        } catch {}
       }
 
       const responseMessage = `${voicePrefix}⚖️ Peso de ${weightVal} kg registrado com sucesso no seu perfil Fit! 💪`;
@@ -385,13 +412,39 @@ export default async function handler(req, res) {
       const formattedLabel = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1).toLowerCase();
       const logDate = todayDateIso();
 
+      // Gravação na Nuvem (app_settings no Supabase Principal)
+      if (supabase) {
+        try {
+          const settingId = `fit_profile_${userEmail}`;
+          const { data: existing } = await supabase.from('app_settings').select('data').eq('id', settingId).maybeSingle();
+          const profile = existing?.data || { weights: [], measurements: [], sessions: [], bioimpedance: [] };
+          profile.measurements = profile.measurements || [];
+          profile.measurements.unshift({
+            id: genId(),
+            label: formattedLabel,
+            value_cm: valCm,
+            log_date: logDate,
+            created_at: nowIso(),
+          });
+          await supabase.from('app_settings').upsert({
+            id: settingId,
+            data: profile,
+            updated_at: nowIso(),
+          });
+        } catch (e) {
+          console.warn('[Fit app_settings sync error]:', e);
+        }
+      }
+
       if (fitSupabase) {
-        await fitSupabase.from('body_measurements').insert({
-          label: formattedLabel,
-          value_cm: valCm,
-          log_date: logDate,
-          created_at: nowIso(),
-        });
+        try {
+          await fitSupabase.from('body_measurements').insert({
+            label: formattedLabel,
+            value_cm: valCm,
+            log_date: logDate,
+            created_at: nowIso(),
+          });
+        } catch {}
       }
 
       const responseMessage = `${voicePrefix}📏 Medida de ${formattedLabel} (${valCm} cm) salva no seu histórico do Fit! ✨`;
@@ -414,12 +467,37 @@ export default async function handler(req, res) {
       const workoutName = workoutMatch[1].trim();
       const formattedName = workoutName.charAt(0).toUpperCase() + workoutName.slice(1);
 
+      // Gravação na Nuvem (app_settings no Supabase Principal)
+      if (supabase) {
+        try {
+          const settingId = `fit_profile_${userEmail}`;
+          const { data: existing } = await supabase.from('app_settings').select('data').eq('id', settingId).maybeSingle();
+          const profile = existing?.data || { weights: [], measurements: [], sessions: [], bioimpedance: [] };
+          profile.sessions = profile.sessions || [];
+          profile.sessions.unshift({
+            id: genId(),
+            name: formattedName,
+            completed_at: nowIso(),
+            created_at: nowIso(),
+          });
+          await supabase.from('app_settings').upsert({
+            id: settingId,
+            data: profile,
+            updated_at: nowIso(),
+          });
+        } catch (e) {
+          console.warn('[Fit app_settings sync error]:', e);
+        }
+      }
+
       if (fitSupabase) {
-        await fitSupabase.from('workout_sessions').insert({
-          name: formattedName,
-          completed_at: nowIso(),
-          created_at: nowIso(),
-        });
+        try {
+          await fitSupabase.from('workout_sessions').insert({
+            name: formattedName,
+            completed_at: nowIso(),
+            created_at: nowIso(),
+          });
+        } catch {}
       }
 
       const responseMessage = `${voicePrefix}🔥 Treino "${formattedName}" concluído e registrado no seu Fit! Parabéns! 🏋️‍♀️`;

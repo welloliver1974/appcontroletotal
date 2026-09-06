@@ -22,7 +22,31 @@ import {
   logoutFitwell,
   FITWELL_APP_URL,
 } from '@/lib/fitwellClient'
+import { supabase } from '@/lib/db'
 import { toast } from './toastStore'
+
+async function saveProfileToCloud(email: string, state: any) {
+  if (!supabase || !email) return
+  try {
+    const settingId = `fit_profile_${email.toLowerCase().trim()}`
+    const payload = {
+      weights: state.weights || [],
+      measurements: state.measurements || [],
+      bioimpedance: state.bioimpedance || [],
+      sessions: state.sessions || [],
+      templates: state.templates || [],
+      userHeightCm: state.userHeightCm,
+      measurementGoals: state.measurementGoals || {},
+    }
+    await supabase.from('app_settings').upsert({
+      id: settingId,
+      data: payload,
+      updated_at: new Date().toISOString(),
+    })
+  } catch (e) {
+    console.warn('[FitStore] Erro ao sincronizar perfil com app_settings:', e)
+  }
+}
 
 export interface WeeklyStreakDay {
   dayLabel: string
@@ -289,26 +313,63 @@ export const useFitStore = create<FitState>()(
       fetchData: async (silent = false) => {
         if (!silent) set({ loading: true })
         set({ isSyncing: true })
-        try {
-          const isFitAuth = get().isFitAuthenticated
-          const [weights, measurements, bioimpedance, templates, sessions] = await Promise.all([
-            fetchFitWeights(30),
-            fetchFitMeasurements(50),
-            fetchFitBioimpedance(10),
-            fetchFitWorkoutTemplates(),
-            fetchFitWorkoutSessions(20),
-          ])
+        const currentEmail = get().fitUserEmail || 'welloliver@gmail.com'
 
-          set((state) => ({
-            weights: isFitAuth ? weights : (weights.length > 0 ? weights : state.weights),
-            measurements: isFitAuth ? measurements : (measurements.length > 0 ? measurements : state.measurements),
-            bioimpedance: isFitAuth ? bioimpedance : (bioimpedance.length > 0 ? bioimpedance : state.bioimpedance),
-            templates: templates.length > 0 ? templates : state.templates,
-            sessions: isFitAuth ? sessions : (sessions.length > 0 ? sessions : state.sessions),
-            lastSync: new Date().toISOString(),
-            loading: false,
-            isSyncing: false,
-          }))
+        try {
+          // 1. Carregar perfil da Nuvem (app_settings no Supabase Principal)
+          if (supabase) {
+            try {
+              const settingId = `fit_profile_${currentEmail.toLowerCase().trim()}`
+              const { data: cloudRes } = await supabase
+                .from('app_settings')
+                .select('data')
+                .eq('id', settingId)
+                .maybeSingle()
+
+              if (cloudRes?.data) {
+                const p = cloudRes.data
+                set((state) => ({
+                  weights: p.weights || state.weights,
+                  measurements: p.measurements || state.measurements,
+                  bioimpedance: p.bioimpedance || state.bioimpedance,
+                  sessions: p.sessions || state.sessions,
+                  templates: p.templates?.length ? p.templates : state.templates,
+                  userHeightCm: p.userHeightCm || state.userHeightCm,
+                  measurementGoals: p.measurementGoals || state.measurementGoals,
+                  lastSync: new Date().toISOString(),
+                }))
+                try {
+                  localStorage.setItem(`act.fit_profile_${currentEmail}`, JSON.stringify(cloudRes.data))
+                } catch {}
+              }
+            } catch (e) {
+              console.warn('[FitStore] Erro ao buscar app_settings:', e)
+            }
+          }
+
+          // 2. Se for o Wellington ou tiver conta FitWell autenticada, tenta puxar do FitWell
+          if (get().isFitAuthenticated || currentEmail.startsWith('welloliver')) {
+            const [weights, measurements, bioimpedance, templates, sessions] = await Promise.all([
+              fetchFitWeights(30),
+              fetchFitMeasurements(50),
+              fetchFitBioimpedance(10),
+              fetchFitWorkoutTemplates(),
+              fetchFitWorkoutSessions(20),
+            ])
+
+            if (weights.length > 0 || measurements.length > 0) {
+              set((state) => ({
+                weights: weights.length > 0 ? weights : state.weights,
+                measurements: measurements.length > 0 ? measurements : state.measurements,
+                bioimpedance: bioimpedance.length > 0 ? bioimpedance : state.bioimpedance,
+                templates: templates.length > 0 ? templates : state.templates,
+                sessions: sessions.length > 0 ? sessions : state.sessions,
+                lastSync: new Date().toISOString(),
+              }))
+            }
+          }
+
+          set({ loading: false, isSyncing: false })
         } catch (err) {
           console.warn('[FitStore] Falha ao sincronizar dados com FitWell:', err)
           set({ loading: false, isSyncing: false })
@@ -316,6 +377,7 @@ export const useFitStore = create<FitState>()(
       },
 
       logWeight: async (weightKg: number, date?: string) => {
+        const currentEmail = get().fitUserEmail || 'welloliver@gmail.com'
         const logDate = date || new Date().toISOString().slice(0, 10)
         const localEntry: FitWeight = {
           id: `w-${Date.now()}`,
@@ -330,18 +392,24 @@ export const useFitStore = create<FitState>()(
           return { weights: [localEntry, ...filtered].sort((a, b) => b.log_date.localeCompare(a.log_date)) }
         })
 
-        // Cloud insert
-        const remote = await insertFitWeight(weightKg, logDate)
-        if (remote) {
-          set((state) => ({
-            weights: state.weights.map((w) => (w.id === localEntry.id ? remote : w)),
-          }))
+        // Cloud sync (app_settings)
+        await saveProfileToCloud(currentEmail, get())
+
+        // Optional FitWell remote insert
+        if (get().isFitAuthenticated || currentEmail.startsWith('welloliver')) {
+          const remote = await insertFitWeight(weightKg, logDate)
+          if (remote) {
+            set((state) => ({
+              weights: state.weights.map((w) => (w.id === localEntry.id ? remote : w)),
+            }))
+          }
         }
         toast.success(`Peso de ${weightKg} kg registrado com sucesso! ⚖️`)
         return true
       },
 
       logMeasurement: async (label: string, valueCm: number, date?: string) => {
+        const currentEmail = get().fitUserEmail || 'welloliver@gmail.com'
         const logDate = date || new Date().toISOString().slice(0, 10)
         const localEntry: FitMeasurement = {
           id: `m-${Date.now()}`,
@@ -355,17 +423,24 @@ export const useFitStore = create<FitState>()(
           measurements: [localEntry, ...state.measurements],
         }))
 
-        const remote = await insertFitMeasurement(label, valueCm, logDate)
-        if (remote) {
-          set((state) => ({
-            measurements: state.measurements.map((m) => (m.id === localEntry.id ? remote : m)),
-          }))
+        // Cloud sync (app_settings)
+        await saveProfileToCloud(currentEmail, get())
+
+        // Optional FitWell remote insert
+        if (get().isFitAuthenticated || currentEmail.startsWith('welloliver')) {
+          const remote = await insertFitMeasurement(label, valueCm, logDate)
+          if (remote) {
+            set((state) => ({
+              measurements: state.measurements.map((m) => (m.id === localEntry.id ? remote : m)),
+            }))
+          }
         }
         toast.success(`Medida ${label} (${valueCm} cm) salva no FitWell! 📏`)
         return true
       },
 
       logWorkoutSession: async (name: string, templateId?: string, notes?: string) => {
+        const currentEmail = get().fitUserEmail || 'welloliver@gmail.com'
         const completedAt = new Date().toISOString()
         const localEntry: FitWorkoutSession = {
           id: `s-${Date.now()}`,
@@ -379,17 +454,24 @@ export const useFitStore = create<FitState>()(
           sessions: [localEntry, ...state.sessions],
         }))
 
-        const remote = await insertFitWorkoutSession(name, templateId, completedAt, notes)
-        if (remote) {
-          set((state) => ({
-            sessions: state.sessions.map((s) => (s.id === localEntry.id ? remote : s)),
-          }))
+        // Cloud sync (app_settings)
+        await saveProfileToCloud(currentEmail, get())
+
+        // Optional FitWell remote insert
+        if (get().isFitAuthenticated || currentEmail.startsWith('welloliver')) {
+          const remote = await insertFitWorkoutSession(name, templateId, completedAt, notes)
+          if (remote) {
+            set((state) => ({
+              sessions: state.sessions.map((s) => (s.id === localEntry.id ? remote : s)),
+            }))
+          }
         }
         toast.success(`Treino "${name}" concluído e sincronizado! 💪🔥`)
         return true
       },
 
       logBioimpedance: async (data: Partial<FitBioimpedance>) => {
+        const currentEmail = get().fitUserEmail || 'welloliver@gmail.com'
         const logDate = data.log_date || new Date().toISOString().slice(0, 10)
         const localEntry: FitBioimpedance = {
           id: `bio-${Date.now()}`,
@@ -410,28 +492,38 @@ export const useFitStore = create<FitState>()(
           bioimpedance: [localEntry, ...state.bioimpedance],
         }))
 
-        const remote = await insertFitBioimpedance(data)
-        if (remote) {
-          set((state) => ({
-            bioimpedance: state.bioimpedance.map((b) => (b.id === localEntry.id ? remote : b)),
-          }))
+        // Cloud sync (app_settings)
+        await saveProfileToCloud(currentEmail, get())
+
+        // Optional FitWell remote insert
+        if (get().isFitAuthenticated || currentEmail.startsWith('welloliver')) {
+          const remote = await insertFitBioimpedance(data)
+          if (remote) {
+            set((state) => ({
+              bioimpedance: state.bioimpedance.map((b) => (b.id === localEntry.id ? remote : b)),
+            }))
+          }
         }
         toast.success('Bioimpedância registrada com sucesso!')
         return true
       },
 
       deleteWeightLocal: (id: string) => {
+        const currentEmail = get().fitUserEmail || 'welloliver@gmail.com'
         set((state) => ({
           weights: state.weights.filter((w) => w.id !== id),
         }))
-        toast.info('Registro de peso removido localmente.')
+        saveProfileToCloud(currentEmail, get())
+        toast.info('Registro de peso removido.')
       },
 
       deleteMeasurementLocal: (id: string) => {
+        const currentEmail = get().fitUserEmail || 'welloliver@gmail.com'
         set((state) => ({
           measurements: state.measurements.filter((m) => m.id !== id),
         }))
-        toast.info('Medida removida localmente.')
+        saveProfileToCloud(currentEmail, get())
+        toast.info('Medida removida.')
       },
 
       deleteWorkoutSession: async (id: string) => {
