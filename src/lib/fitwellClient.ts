@@ -377,3 +377,21 @@ export async function deleteFitWorkoutSession(id: string): Promise<boolean> {
   }
 }
 
+/** Subscribe to Realtime events on FitWell tables */
+export function subscribeToFitRealtime(onChange: () => void) {
+  if (!fitwellSupabase) return () => {}
+
+  const channel = fitwellSupabase
+    .channel('fitwell_realtime_sync')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'workout_sessions' }, () => onChange())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'body_weights' }, () => onChange())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'body_measurements' }, () => onChange())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bioimpedance_logs' }, () => onChange())
+    .subscribe()
+
+  return () => {
+    fitwellSupabase.removeChannel(channel)
+  }
+}
+
+

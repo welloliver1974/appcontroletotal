@@ -1152,6 +1152,33 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## ⚡ 64. Painel Executivo de Saúde & Fit com Sincronização 100% Automática em Tempo Real (06/09/2026)
+
+* **Contexto & Motivação:**
+  - O usuário sugeriu uma arquitetura mais limpa e executiva para a integração do FitWellHub com o AppControleTotal: em vez do Controle Total tentar simular fichas de treino ou executar treinos (gerando registros falsos ou confusão), o Controle Total funciona como uma **Central Executiva de Leitura e Estatísticas (Life OS Hub)** que apenas puxa e consolida o que é realizado no FitWellHub.
+  - Havia também a solicitação de tornar a sincronização **100% automática** sem exigir que o usuário clique em botões para atualizar.
+
+* **Soluções Implementadas:**
+  1. **⚡ Sincronização Automática em 3 Camadas ([fitwellClient.ts](file:///e:/Apps/AppControleTotal/src/lib/fitwellClient.ts) & [fitStore.ts](file:///e:/Apps/AppControleTotal/src/stores/fitStore.ts)):**
+     - **Supabase Realtime Channel (`subscribeToFitRealtime`):** O app assina alterações (`INSERT`, `UPDATE`, `DELETE`) em tempo real nas tabelas `workout_sessions`, `body_weights`, `body_measurements` e `bioimpedance_logs`. No momento em que o usuário finaliza um treino ou pesagem no FitWellHub, o Controle Total atualiza na mesma fração de segundo.
+     - **Auto-Focus / Visibility Change:** Ao trocar de aba ou retornar ao app, um listener recarrega os dados silenciosamente.
+     - **Polling de Fundo:** Atualização periódica silenciosa a cada 60s.
+  2. **🌟 Bento Grid Executivo de Saúde ([FitPage.tsx](file:///e:/Apps/AppControleTotal/src/features/fit/FitPage.tsx)):**
+     - **Consistência Semanal (Streak 7 Dias):** Pílulas de Segunda a Domingo com chamas de treino concluído e progresso rumo à meta semanal (ex: 3 de 4 treinos).
+     - **Último Treino Realizado:** Card de destaque com o nome da ficha/sessão, tempo relativo (*"Hoje há 2h"*, *"Ontem"*), notas e atalho para o FitWellHub.
+     - **Peso & Tendência:** Peso atual em destaque com variação vs última pesagem (*+ / - kg*), menor peso, maior peso e média histórica.
+     - **Circunferências em Foco:** Mini cards com comparação delta de medidas (ex: *Cintura: 82cm (-1.5cm)*).
+  3. **🤖 Hermes Fit Radar Insights:**
+     - Card executivo no topo com resumo dinâmico e inteligente do momento físico da semana.
+  4. **🎛️ Navegação Customizada por Abas:**
+     - **Visão Geral:** Bento Grid completo + Gráfico de peso compacto + Timeline recente.
+     - **Treinos Realizados:** Lista cronológica limpa com opção de exclusão manual e banner direto para abrir o FitWellHub.
+     - **Evolução do Peso:** Filtro de período (*7D, 30D, 90D, ALL*), curva de área gradiente esmeralda e histórico.
+     - **Medidas Corporais:** Grade de circunferências com deltas calculados.
+     - **Bioimpedância:** Cards com métricas de composição corporal.
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 

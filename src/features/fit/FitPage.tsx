@@ -1,19 +1,26 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
   Activity,
+  Bot,
+  Calendar,
   CheckCircle2,
-  ChevronRight,
+  Clock,
   Dumbbell,
   ExternalLink,
   Flame,
+  LayoutGrid,
   LogIn,
   LogOut,
+  Minus,
   Plus,
   RefreshCw,
   Ruler,
   Scale,
   ShieldCheck,
+  Sparkles,
   Trash2,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react'
 import {
   Area,
@@ -36,104 +43,145 @@ import { WorkoutModal } from './WorkoutModal'
 import { FitLoginModal } from './FitLoginModal'
 import { cn } from '@/lib/utils'
 
+type TabType = 'geral' | 'treinos' | 'peso' | 'medidas' | 'bioimpedancia'
+type WeightRange = '7d' | '30d' | '90d' | 'all'
+
 export function FitPage() {
   const module = MODULE_BY_ID['fit']
   const {
     weights,
     measurements,
     bioimpedance,
-    templates,
     sessions,
     isSyncing,
     fitUserEmail,
     isFitAuthenticated,
-    initFitAuth,
+    setupAutoSync,
     fetchData,
     logout,
-    logWorkoutSession,
     deleteWorkoutSession,
     deleteWeightLocal,
     deleteMeasurementLocal,
     getLatestWeight,
     getWeightDelta,
-    getLatestMeasurementsByLabel,
+    getWeightStats,
+    getWeeklyStreak,
+    getLatestWorkoutSession,
+    getMeasurementDeltas,
     appUrl,
   } = useFitStore()
 
-  const [activeTab, setActiveTab] = useState<'treinos' | 'peso' | 'medidas' | 'bioimpedancia'>('treinos')
+  const [activeTab, setActiveTab] = useState<TabType>('geral')
+  const [weightRange, setWeightRange] = useState<WeightRange>('30d')
   const [weightModalOpen, setWeightModalOpen] = useState(false)
   const [measurementModalOpen, setMeasurementModalOpen] = useState(false)
   const [workoutModalOpen, setWorkoutModalOpen] = useState(false)
   const [loginModalOpen, setLoginModalOpen] = useState(false)
 
+  // Sincronização 100% automática (Realtime + Focus + Background)
   useEffect(() => {
-    initFitAuth()
-  }, [initFitAuth])
+    const cleanup = setupAutoSync()
+    return cleanup
+  }, [setupAutoSync])
 
   const latestWeight = getLatestWeight()
   const weightDelta = getWeightDelta()
-  const latestMeasurements = getLatestMeasurementsByLabel()
+  const weightStats = getWeightStats()
+  const streak = getWeeklyStreak()
+  const { session: latestSession, relativeTime: latestSessionTime } = getLatestWorkoutSession()
+  const measurementDeltas = getMeasurementDeltas()
   const latestBio = bioimpedance.length > 0 ? bioimpedance[0] : null
 
-  // Calculate workouts this week
-  const workoutsThisWeek = useMemo(() => {
-    const today = new Date()
-    const firstDayOfWeek = new Date(today)
-    firstDayOfWeek.setDate(today.getDate() - today.getDay())
-    firstDayOfWeek.setHours(0, 0, 0, 0)
-
-    return sessions.filter((s) => new Date(s.completed_at) >= firstDayOfWeek).length
-  }, [sessions])
-
-  // Weight chart data sorted chronologically
+  // Weight chart data filtered by range
   const chartData = useMemo(() => {
-    return [...weights]
-      .sort((a, b) => a.log_date.localeCompare(b.log_date))
-      .map((w) => {
-        const parts = w.log_date.split('-')
-        const dayMonth = parts.length === 3 ? `${parts[2]}/${parts[1]}` : w.log_date
-        return {
-          date: dayMonth,
-          rawDate: w.log_date,
-          peso: w.weight_kg,
-        }
-      })
-  }, [weights])
+    const sorted = [...weights].sort((a, b) => a.log_date.localeCompare(b.log_date))
+    if (sorted.length === 0) return []
 
-  const minWeight = useMemo(() => {
+    const now = new Date()
+    let cutoff = new Date()
+    if (weightRange === '7d') cutoff.setDate(now.getDate() - 7)
+    else if (weightRange === '30d') cutoff.setDate(now.getDate() - 30)
+    else if (weightRange === '90d') cutoff.setDate(now.getDate() - 90)
+    else cutoff = new Date('2000-01-01')
+
+    const cutoffStr = cutoff.toISOString().slice(0, 10)
+    const filtered = sorted.filter((w) => w.log_date >= cutoffStr)
+    const baseList = filtered.length > 0 ? filtered : sorted.slice(-10)
+
+    return baseList.map((w) => {
+      const parts = w.log_date.split('-')
+      const dayMonth = parts.length === 3 ? `${parts[2]}/${parts[1]}` : w.log_date
+      return {
+        date: dayMonth,
+        rawDate: w.log_date,
+        peso: w.weight_kg,
+      }
+    })
+  }, [weights, weightRange])
+
+  const minChart = useMemo(() => {
     if (chartData.length === 0) return 60
     const min = Math.min(...chartData.map((d) => d.peso))
-    return Math.floor(min - 2)
+    return Math.floor(min - 1)
   }, [chartData])
 
-  const maxWeight = useMemo(() => {
+  const maxChart = useMemo(() => {
     if (chartData.length === 0) return 100
     const max = Math.max(...chartData.map((d) => d.peso))
-    return Math.ceil(max + 2)
+    return Math.ceil(max + 1)
   }, [chartData])
+
+  // Hermes Fit Insight dinâmico
+  const hermesInsight = useMemo(() => {
+    const parts: string[] = []
+
+    if (streak.count === 0) {
+      parts.push('Nenhum treino registrado ainda nesta semana. Que tal agendar a primeira sessão no FitWellHub?')
+    } else if (streak.isGoalMet) {
+      parts.push(`🔥 Excelente! Meta semanal batida com ${streak.count} treinos concluídos!`)
+    } else {
+      parts.push(`Você já concluiu ${streak.count} de ${streak.goal} treinos previstos para esta semana. Mantenha o ritmo!`)
+    }
+
+    if (latestWeight) {
+      if (weightDelta && weightDelta.diff !== 0) {
+        const diffStr = weightDelta.diff > 0 ? `+${weightDelta.diff} kg` : `${weightDelta.diff} kg`
+        parts.push(`Peso atual em ${latestWeight.weight_kg} kg (${diffStr} vs última pesagem).`)
+      } else {
+        parts.push(`Peso estável em ${latestWeight.weight_kg} kg.`)
+      }
+    }
+
+    return parts.join(' ')
+  }, [streak, latestWeight, weightDelta])
 
   return (
     <div className="space-y-6">
-      {/* Header com ações rápidas */}
+      {/* Header com ações rápidas e indicador de sincronização */}
       <PageHeader module={module}>
-        <button
+        {/* Status de Sincronização Automática */}
+        <div
           onClick={() => fetchData()}
-          disabled={isSyncing}
-          className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-2 text-zinc-400 hover:text-zinc-100 active:scale-95 transition-all"
-          title="Sincronizar com FitWellHub"
+          className="cursor-pointer inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/20 transition-all"
+          title="Clique para forçar atualização agora"
         >
-          <RefreshCw className={cn('h-4 w-4', isSyncing && 'animate-spin text-emerald-400')} />
-        </button>
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="hidden sm:inline font-medium">Sincronização Ativa</span>
+          <RefreshCw className={cn('h-3.5 w-3.5 text-emerald-400', isSyncing && 'animate-spin')} />
+        </div>
 
         {isFitAuthenticated ? (
-          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
+          <div className="hidden md:flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-1 text-xs text-zinc-300">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
             <span className="truncate max-w-[120px] font-medium" title={fitUserEmail || 'Conectado'}>
               {fitUserEmail ? fitUserEmail.split('@')[0] : 'Conectado'}
             </span>
             <button
               onClick={() => logout()}
-              className="text-zinc-400 hover:text-rose-400 p-0.5 ml-1 transition-colors"
+              className="text-zinc-500 hover:text-rose-400 p-0.5 ml-1 transition-colors"
               title="Desconectar conta FitWell"
             >
               <LogOut className="h-3 w-3" />
@@ -144,10 +192,10 @@ export function FitPage() {
             variant="soft"
             size="sm"
             onClick={() => setLoginModalOpen(true)}
-            className="gap-1.5 border-emerald-500/40 text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20"
+            className="gap-1.5 border-amber-500/40 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20"
           >
             <LogIn className="h-3.5 w-3.5" />
-            <span>Conectar Conta</span>
+            <span>Conectar FitWell</span>
           </Button>
         )}
 
@@ -155,11 +203,11 @@ export function FitPage() {
           href={appUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden md:inline-flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-all"
-          title="Abrir aplicativo FitWellHub"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-700/80 bg-zinc-900/90 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 hover:text-emerald-300 transition-all shadow-sm"
+          title="Abrir aplicativo FitWellHub para treinar"
         >
-          <span>FitWellHub</span>
-          <ExternalLink className="h-3.5 w-3.5" />
+          <span>Abrir FitWell</span>
+          <ExternalLink className="h-3.5 w-3.5 text-emerald-400" />
         </a>
 
         <Button
@@ -175,11 +223,11 @@ export function FitPage() {
         <Button
           variant="primary"
           size="sm"
-          onClick={() => setWorkoutModalOpen(true)}
+          onClick={() => setMeasurementModalOpen(true)}
           className="gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/20"
         >
-          <Dumbbell className="h-4 w-4" />
-          <span>Treinar</span>
+          <Ruler className="h-4 w-4" />
+          <span className="hidden sm:inline">Medir</span>
         </Button>
       </PageHeader>
 
@@ -187,7 +235,7 @@ export function FitPage() {
       {!isFitAuthenticated && (
         <div
           onClick={() => setLoginModalOpen(true)}
-          className="cursor-pointer rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-transparent p-4 transition-all hover:border-emerald-500/60"
+          className="cursor-pointer rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-transparent p-4 transition-all hover:border-emerald-500/60 shadow-lg shadow-amber-950/10"
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -199,7 +247,7 @@ export function FitPage() {
                   Conecte sua conta do FitWellHub
                 </p>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Clique aqui para entrar com seu e-mail e senha do FitWell e sincronizar seus treinos, pesos e medidas em tempo real.
+                  Entre com seu e-mail e senha do FitWell para puxar seus treinos, pesos e medidas em tempo real automaticamente.
                 </p>
               </div>
             </div>
@@ -210,162 +258,438 @@ export function FitPage() {
         </div>
       )}
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div onClick={() => setWeightModalOpen(true)} className="cursor-pointer">
-          <KpiCard
-            label="Peso Atual"
-            value={latestWeight ? `${latestWeight.weight_kg} kg` : '—'}
-            hint={
-              weightDelta
-                ? weightDelta.diff === 0
-                  ? 'Estável'
-                  : weightDelta.diff > 0
-                  ? `+${weightDelta.diff} kg vs ant.`
-                  : `${weightDelta.diff} kg vs ant.`
-                : 'Sem histórico'
-            }
-            icon={Scale}
-            soft="border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-          />
+      {/* Card Inteligente: Hermes Fit Insights */}
+      <Card className="relative overflow-hidden border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-zinc-900/70 to-teal-950/30 p-4 sm:p-5 shadow-lg shadow-emerald-950/20">
+        <div className="flex items-start gap-3.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
+            <Bot className="h-5 w-5" />
+          </div>
+          <div className="space-y-1 min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-xs sm:text-sm text-zinc-100">Hermes Fit Radar</h3>
+              <span className="chip py-0 px-2 text-[9px] sm:text-[10px] text-emerald-300 border-emerald-500/30 bg-emerald-500/10">
+                <Sparkles className="h-2.5 w-2.5 mr-1 text-emerald-400" />
+                Live Sync
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed max-w-3xl">
+              {hermesInsight}
+            </p>
+          </div>
         </div>
+      </Card>
 
-        <div onClick={() => setWorkoutModalOpen(true)} className="cursor-pointer">
-          <KpiCard
-            label="Treinos na Semana"
-            value={`${workoutsThisWeek} sessões`}
-            hint={workoutsThisWeek >= 4 ? '🔥 Meta batida!' : 'Em andamento'}
-            icon={Flame}
-            soft="border-orange-500/30 bg-orange-500/10 text-orange-300"
-          />
-        </div>
-
-        <div onClick={() => setMeasurementModalOpen(true)} className="cursor-pointer">
-          <KpiCard
-            label="Cintura / Abdômen"
-            value={
-              latestMeasurements['cintura']
-                ? `${latestMeasurements['cintura'].value_cm} cm`
-                : latestMeasurements['abdômen']
-                ? `${latestMeasurements['abdômen'].value_cm} cm`
-                : '—'
-            }
-            hint={
-              latestMeasurements['cintura']
-                ? `Em ${latestMeasurements['cintura'].log_date.slice(5)}`
-                : 'Medir agora'
-            }
-            icon={Ruler}
-            soft="border-cyan-500/30 bg-cyan-500/10 text-cyan-300"
-          />
-        </div>
-
-        <div onClick={() => setActiveTab('bioimpedancia')} className="cursor-pointer">
-          <KpiCard
-            label="Composição Corporal"
-            value={latestBio?.body_fat_pct ? `${latestBio.body_fat_pct}% BF` : 'FitWell'}
-            hint={
-              latestBio?.muscle_mass_kg
-                ? `${latestBio.muscle_mass_kg} kg MM`
-                : isFitAuthenticated
-                ? 'Nuvem ativa'
-                : 'Desconectado'
-            }
-            icon={Activity}
-            soft="border-violet-500/30 bg-violet-500/10 text-violet-300"
-          />
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-1.5 border-b border-zinc-800/80 pb-2 overflow-x-auto no-scrollbar">
+      {/* Navegação por Abas / Seletor de Visualização */}
+      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none">
         {[
-          { id: 'treinos', label: 'Treinos & Sessões', icon: Dumbbell },
-          { id: 'peso', label: 'Evolução do Peso', icon: Scale },
-          { id: 'medidas', label: 'Medidas Corporais', icon: Ruler },
-          { id: 'bioimpedancia', label: 'Bioimpedância', icon: Activity },
+          { id: 'geral', label: 'Visão Geral', icon: LayoutGrid },
+          { id: 'treinos', label: 'Treinos Realizados', icon: Dumbbell, count: sessions.length },
+          { id: 'peso', label: 'Evolução do Peso', icon: Scale, count: weights.length },
+          { id: 'medidas', label: 'Medidas Corporais', icon: Ruler, count: measurements.length },
+          { id: 'bioimpedancia', label: 'Bioimpedância', icon: Activity, count: bioimpedance.length },
         ].map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as TabType)}
               className={cn(
-                'flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap',
+                'flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold whitespace-nowrap transition-all',
                 isActive
-                  ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60',
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                  : 'bg-zinc-900/60 text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200 border border-zinc-800/60',
               )}
             >
-              <Icon className={cn('h-4 w-4', isActive ? 'text-emerald-400' : 'text-zinc-500')} />
+              <Icon className="h-3.5 w-3.5" />
               <span>{tab.label}</span>
+              {typeof tab.count === 'number' && tab.count > 0 && (
+                <span
+                  className={cn(
+                    'rounded-md px-1.5 py-0.2 text-[10px] font-bold',
+                    isActive ? 'bg-white/20 text-white' : 'bg-zinc-800 text-zinc-400',
+                  )}
+                >
+                  {tab.count}
+                </span>
+              )}
             </button>
           )
         })}
       </div>
 
-      {/* TAB 1: Treinos & Sessões */}
-      {activeTab === 'treinos' && (
+      {/* TAB 1: VISÃO GERAL (BENTO GRID EXECUTIVO) */}
+      {activeTab === 'geral' && (
         <div className="space-y-6">
-          {/* Fichas / Rotinas de Treino */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-400">
-                Rotinas de Treino Cadastradas
-              </h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setWorkoutModalOpen(true)}
-                className="gap-1 text-emerald-400 hover:text-emerald-300"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Registrar Sessão</span>
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {templates.map((tpl) => (
-                <div
-                  key={tpl.id}
-                  className="group relative flex flex-col justify-between rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4 hover:border-emerald-500/40 hover:bg-zinc-900/80 transition-all"
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        <Dumbbell className="h-4 w-4" />
-                      </span>
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">
-                        Rotina
-                      </span>
-                    </div>
-                    <h3 className="font-semibold text-zinc-100 group-hover:text-emerald-300 transition-colors">
-                      {tpl.name}
-                    </h3>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-zinc-800/50 flex items-center justify-between">
-                    <button
-                      onClick={() => logWorkoutSession(tpl.name, tpl.id)}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 active:scale-95 transition-all"
-                      title="Registrar que realizou este treino agora"
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      <span>Registrar Treino</span>
-                    </button>
-                    <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
-                  </div>
+          {/* Top Bento Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 1. Streak Semanal */}
+            <Card className="p-4 flex flex-col justify-between border-zinc-800 bg-zinc-900/40 hover:border-emerald-500/30 transition-all">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                    Consistência Semanal
+                  </span>
+                  <Flame className={cn('h-4 w-4', streak.count > 0 ? 'text-orange-400' : 'text-zinc-600')} />
                 </div>
-              ))}
-            </div>
+
+                <div className="grid grid-cols-7 gap-1.5 my-2">
+                  {streak.days.map((day) => (
+                    <div
+                      key={day.dateStr}
+                      className={cn(
+                        'flex flex-col items-center justify-center p-1.5 rounded-xl border text-center transition-all',
+                        day.trained
+                          ? 'bg-orange-500/20 border-orange-500/50 text-orange-300 font-bold'
+                          : day.isToday
+                          ? 'bg-zinc-800 border-zinc-600 text-zinc-200 font-semibold'
+                          : 'bg-zinc-950/40 border-zinc-800/60 text-zinc-600',
+                      )}
+                      title={day.workoutName ? `${day.dayLabel}: ${day.workoutName}` : `${day.dayLabel} (${day.dateStr})`}
+                    >
+                      <span className="text-[9px] uppercase font-bold">{day.dayLabel}</span>
+                      <span className="text-xs mt-0.5">{day.dayNumber}</span>
+                      {day.trained ? (
+                        <Flame className="h-3 w-3 mt-1 text-orange-400 fill-orange-400/30" />
+                      ) : (
+                        <Minus className="h-3 w-3 mt-1 text-zinc-700" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-zinc-800/60 flex items-center justify-between text-xs">
+                <span className="text-zinc-400">
+                  {streak.count} de {streak.goal} treinos
+                </span>
+                <span className={cn('font-bold', streak.isGoalMet ? 'text-emerald-400' : 'text-orange-400')}>
+                  {streak.isGoalMet ? '🔥 Meta Batida!' : `${streak.goal - streak.count} restantes`}
+                </span>
+              </div>
+            </Card>
+
+            {/* 2. Último Treino Realizado */}
+            <Card className="p-4 flex flex-col justify-between border-zinc-800 bg-zinc-900/40 hover:border-emerald-500/30 transition-all">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                    Último Treino
+                  </span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <Dumbbell className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+
+                {latestSession ? (
+                  <div className="mt-1">
+                    <p className="font-bold text-base text-zinc-100 line-clamp-1">
+                      {latestSession.name}
+                    </p>
+                    <p className="text-xs text-emerald-400 font-medium mt-0.5 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      <span>{latestSessionTime}</span>
+                    </p>
+                    {latestSession.notes && (
+                      <p className="text-xs text-zinc-400 mt-2 line-clamp-2 italic bg-zinc-950/40 p-2 rounded-lg border border-zinc-800/40">
+                        "{latestSession.notes}"
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="py-4 text-center text-zinc-500 text-xs">
+                    <p>Nenhum treino concluído ainda.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-zinc-800/60 flex items-center justify-between">
+                <a
+                  href={appUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1 transition-colors"
+                >
+                  <span>Abrir FitWell</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+                <span className="text-[11px] text-zinc-500">
+                  {sessions.length} total
+                </span>
+              </div>
+            </Card>
+
+            {/* 3. Peso Atual & Tendência */}
+            <Card className="p-4 flex flex-col justify-between border-zinc-800 bg-zinc-900/40 hover:border-emerald-500/30 transition-all cursor-pointer" onClick={() => setWeightModalOpen(true)}>
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                    Peso Atual
+                  </span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    <Scale className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+
+                <div className="mt-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-3xl font-black text-zinc-100 tracking-tight">
+                      {latestWeight ? latestWeight.weight_kg : '—'}
+                    </span>
+                    <span className="text-sm font-bold text-zinc-400">kg</span>
+                  </div>
+
+                  {weightDelta && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-xs">
+                      {weightDelta.diff === 0 ? (
+                        <span className="chip py-0 px-2 text-[10px] text-zinc-400 border-zinc-700 bg-zinc-800">
+                          Estável
+                        </span>
+                      ) : weightDelta.diff < 0 ? (
+                        <span className="chip py-0 px-2 text-[10px] text-emerald-300 border-emerald-500/30 bg-emerald-500/10 flex items-center gap-0.5">
+                          <TrendingDown className="h-3 w-3" />
+                          <span>{weightDelta.diff} kg</span>
+                        </span>
+                      ) : (
+                        <span className="chip py-0 px-2 text-[10px] text-amber-300 border-amber-500/30 bg-amber-500/10 flex items-center gap-0.5">
+                          <TrendingUp className="h-3 w-3" />
+                          <span>+{weightDelta.diff} kg</span>
+                        </span>
+                      )}
+                      <span className="text-[11px] text-zinc-500">vs pesagem anterior</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-zinc-800/60 flex items-center justify-between text-xs text-zinc-400">
+                <span>{latestWeight ? `Data: ${latestWeight.log_date}` : 'Sem registros'}</span>
+                <span className="text-emerald-400 font-semibold">+ Pesar</span>
+              </div>
+            </Card>
+
+            {/* 4. Medidas em Foco */}
+            <Card className="p-4 flex flex-col justify-between border-zinc-800 bg-zinc-900/40 hover:border-emerald-500/30 transition-all cursor-pointer" onClick={() => setMeasurementModalOpen(true)}>
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                    Circunferências
+                  </span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                    <Ruler className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+
+                <div className="space-y-2 mt-2">
+                  {measurementDeltas.slice(0, 2).map((m) => (
+                    <div key={m.label} className="flex items-center justify-between text-xs">
+                      <span className="text-zinc-300 capitalize font-medium">{m.label}:</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-zinc-100">{m.current} cm</span>
+                        {typeof m.diff === 'number' && (
+                          <span
+                            className={cn(
+                              'text-[10px] font-semibold',
+                              m.diff === 0 ? 'text-zinc-500' : m.diff < 0 ? 'text-emerald-400' : 'text-amber-400',
+                            )}
+                          >
+                            ({m.diff > 0 ? `+${m.diff}` : m.diff}cm)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {measurementDeltas.length === 0 && (
+                    <p className="text-zinc-500 text-xs py-2 text-center">Nenhuma medida salva</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-zinc-800/60 flex items-center justify-between text-xs text-zinc-400">
+                <span>{measurementDeltas.length} regiões salvas</span>
+                <span className="text-emerald-400 font-semibold">+ Medir</span>
+              </div>
+            </Card>
           </div>
 
-          {/* Histórico Recente de Treinos Concluídos */}
+          {/* Gráfico Rápido de Peso + Timeline de Treinos */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Gráfico Curva de Peso */}
+            <Card className="lg:col-span-2">
+              <CardHeader
+                title="Curva de Peso Corporal"
+                subtitle={latestWeight ? `Peso atual: ${latestWeight.weight_kg} kg` : undefined}
+                action={
+                  <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 p-1 rounded-xl">
+                    {(['7d', '30d', '90d', 'all'] as WeightRange[]).map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => setWeightRange(r)}
+                        className={cn(
+                          'px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all',
+                          weightRange === r
+                            ? 'bg-emerald-500 text-white shadow-sm'
+                            : 'text-zinc-400 hover:text-zinc-200',
+                        )}
+                      >
+                        {r.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                }
+              />
+              <div className="p-4 pt-2">
+                {chartData.length < 2 ? (
+                  <div className="h-60 flex flex-col items-center justify-center text-zinc-500 text-sm">
+                    <Scale className="h-8 w-8 mb-2 text-zinc-600" />
+                    <p>Adicione pelo menos 2 registros para visualizar a curva gráfica.</p>
+                  </div>
+                ) : (
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="weightGradOverview" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                        <XAxis dataKey="date" stroke="#71717a" fontSize={11} tickLine={false} />
+                        <YAxis domain={[minChart, maxChart]} stroke="#71717a" fontSize={11} tickLine={false} />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null
+                            const d = payload[0].payload
+                            return (
+                              <div className="rounded-xl border border-zinc-700 bg-zinc-900/95 p-2.5 text-xs shadow-xl">
+                                <p className="font-bold text-emerald-400">{d.peso} kg</p>
+                                <p className="text-zinc-500">{d.rawDate}</p>
+                              </div>
+                            )
+                          }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="peso"
+                          stroke="#10b981"
+                          strokeWidth={3}
+                          fillOpacity={1}
+                          fill="url(#weightGradOverview)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Últimos Treinos Concluídos */}
+            <Card className="flex flex-col justify-between">
+              <CardHeader
+                title="Treinos Recentes"
+                subtitle="Sincronizados do FitWellHub"
+                action={
+                  <a
+                    href={appUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1"
+                  >
+                    <span>Treinar ↗</span>
+                  </a>
+                }
+              />
+
+              <div className="divide-y divide-zinc-800/60 overflow-y-auto max-h-72 flex-1">
+                {sessions.slice(0, 5).map((s) => (
+                  <div key={s.id} className="p-3.5 hover:bg-white/[0.02] flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-xs text-zinc-100 truncate">{s.name}</p>
+                        <p className="text-[11px] text-zinc-500">
+                          {new Date(s.completed_at).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => deleteWorkoutSession(s.id)}
+                      className="text-zinc-600 hover:text-rose-400 p-1 transition-colors"
+                      title="Excluir treino"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+                {sessions.length === 0 && (
+                  <div className="p-6 text-center text-zinc-500 text-xs">
+                    <Dumbbell className="h-6 w-6 mx-auto mb-1.5 text-zinc-600" />
+                    <p>Nenhum treino concluído ainda.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 border-t border-zinc-800/60 bg-zinc-950/20 text-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveTab('treinos')}
+                  className="text-xs text-zinc-400 hover:text-zinc-200 w-full justify-center"
+                >
+                  Ver Histórico Completo de Treinos ({sessions.length})
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: TREINOS REALIZADOS (HISTÓRICO SINCRONIZADO) */}
+      {activeTab === 'treinos' && (
+        <div className="space-y-6">
+          {/* Banner Chamada para o FitWellHub */}
+          <div className="rounded-2xl border border-zinc-800 bg-gradient-to-r from-zinc-900 via-zinc-900/80 to-emerald-950/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <Dumbbell className="h-6 w-6" />
+              </span>
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-zinc-100">
+                  Execução de Treinos no FitWellHub
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5 max-w-xl">
+                  Para iniciar um treino, registrar cargas, séries e repetições com cronômetro, abra o FitWellHub. Quando você clicar em "Finalizar Treino" lá, o registro cairá aqui automaticamente em tempo real!
+                </p>
+              </div>
+            </div>
+
+            <a
+              href={appUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-semibold text-xs px-4 py-2.5 transition-all shadow-lg shadow-emerald-500/20 shrink-0"
+            >
+              <span>Abrir FitWellHub</span>
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
+
+          {/* Histórico Completo de Treinos */}
           <Card>
             <CardHeader
-              title="Histórico de Treinos Realizados"
-              subtitle={`${sessions.length} sessões registradas`}
+              title="Histórico de Treinos Sincronizados"
+              subtitle={`${sessions.length} sessões concluídas`}
               action={
                 <Button
                   variant="soft"
@@ -374,17 +698,17 @@ export function FitPage() {
                   className="gap-1.5"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  <span>Novo Treino</span>
+                  <span>Registrar Manual</span>
                 </Button>
               }
             />
 
             {sessions.length === 0 ? (
-              <div className="p-8 text-center text-zinc-500">
-                <Dumbbell className="h-8 w-8 mx-auto mb-2 text-zinc-600" />
-                <p className="text-sm font-medium">Nenhum treino registrado ainda.</p>
+              <div className="p-12 text-center text-zinc-500">
+                <Dumbbell className="h-10 w-10 mx-auto mb-3 text-zinc-600" />
+                <p className="text-sm font-medium">Nenhum treino concluído registrado ainda.</p>
                 <p className="text-xs mt-1 text-zinc-600">
-                  Clique em "Registrar Treino" em uma rotina acima ou fale com o Hermes!
+                  Abra o FitWellHub para iniciar sua ficha de treino!
                 </p>
               </div>
             ) : (
@@ -392,22 +716,25 @@ export function FitPage() {
                 {sessions.map((session) => (
                   <div
                     key={session.id}
-                    className="flex items-center justify-between p-3.5 sm:p-4 hover:bg-white/[0.02] transition-colors"
+                    className="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                        <CheckCircle2 className="h-4 w-4" />
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <CheckCircle2 className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-zinc-100 truncate">{session.name}</p>
+                        <p className="font-bold text-sm text-zinc-100 truncate">{session.name}</p>
                         {session.notes && (
                           <p className="text-xs text-zinc-400 truncate mt-0.5">{session.notes}</p>
                         )}
-                        <p className="text-[11px] text-zinc-500 mt-0.5">
-                          {new Date(session.completed_at).toLocaleString('pt-BR', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                          })}
+                        <p className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>
+                            {new Date(session.completed_at).toLocaleString('pt-BR', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })}
+                          </span>
                         </p>
                       </div>
                     </div>
@@ -432,51 +759,94 @@ export function FitPage() {
         </div>
       )}
 
-      {/* TAB 2: Peso & Evolução */}
+      {/* TAB 3: PESO & EVOLUÇÃO */}
       {activeTab === 'peso' && (
         <div className="space-y-6">
-          {/* Gráfico de Evolução de Peso */}
+          {/* KPIs Estatísticos do Peso */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KpiCard
+              label="Peso Atual"
+              value={latestWeight ? `${latestWeight.weight_kg} kg` : '—'}
+              hint={latestWeight ? `Em ${latestWeight.log_date}` : 'Sem dados'}
+              icon={Scale}
+              soft="border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+            />
+            <KpiCard
+              label="Menor Peso"
+              value={weightStats.min ? `${weightStats.min} kg` : '—'}
+              hint="Histórico total"
+              icon={TrendingDown}
+              soft="border-cyan-500/30 bg-cyan-500/10 text-cyan-300"
+            />
+            <KpiCard
+              label="Maior Peso"
+              value={weightStats.max ? `${weightStats.max} kg` : '—'}
+              hint="Histórico total"
+              icon={TrendingUp}
+              soft="border-amber-500/30 bg-amber-500/10 text-amber-300"
+            />
+            <KpiCard
+              label="Média Geral"
+              value={weightStats.avg ? `${weightStats.avg} kg` : '—'}
+              hint={`${weightStats.totalEntries} registros`}
+              icon={Activity}
+              soft="border-violet-500/30 bg-violet-500/10 text-violet-300"
+            />
+          </div>
+
+          {/* Gráfico Detalhado de Evolução */}
           <Card>
             <CardHeader
-              title="Curva de Peso Corporal"
-              subtitle={latestWeight ? `Peso atual: ${latestWeight.weight_kg} kg` : undefined}
+              title="Curva Detalhada de Evolução"
               action={
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setWeightModalOpen(true)}
-                  className="gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-white"
-                >
-                  <Scale className="h-3.5 w-3.5" />
-                  <span>Nova Pesagem</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 p-1 rounded-xl">
+                    {(['7d', '30d', '90d', 'all'] as WeightRange[]).map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => setWeightRange(r)}
+                        className={cn(
+                          'px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all',
+                          weightRange === r
+                            ? 'bg-emerald-500 text-white shadow-sm'
+                            : 'text-zinc-400 hover:text-zinc-200',
+                        )}
+                      >
+                        {r.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setWeightModalOpen(true)}
+                    className="gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-white"
+                  >
+                    <Scale className="h-3.5 w-3.5" />
+                    <span>Nova Pesagem</span>
+                  </Button>
+                </div>
               }
             />
             <div className="p-4 pt-2">
               {chartData.length < 2 ? (
-                <div className="h-56 flex flex-col items-center justify-center text-zinc-500 text-sm">
+                <div className="h-64 flex flex-col items-center justify-center text-zinc-500 text-sm">
                   <Scale className="h-8 w-8 mb-2 text-zinc-600" />
-                  <p>Adicione pelo menos 2 registros de peso para visualizar o gráfico de linha.</p>
+                  <p>Adicione pelo menos 2 registros para visualizar o gráfico de linha.</p>
                 </div>
               ) : (
-                <div className="h-64 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                       <defs>
-                        <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id="weightGradDetailed" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
                           <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
                       <XAxis dataKey="date" stroke="#71717a" fontSize={11} tickLine={false} />
-                      <YAxis
-                        domain={[minWeight, maxWeight]}
-                        stroke="#71717a"
-                        fontSize={11}
-                        tickLine={false}
-                        unit="kg"
-                      />
+                      <YAxis domain={[minChart, maxChart]} stroke="#71717a" fontSize={11} tickLine={false} />
                       <Tooltip
                         content={({ active, payload }) => {
                           if (!active || !payload?.length) return null
@@ -495,7 +865,7 @@ export function FitPage() {
                         stroke="#10b981"
                         strokeWidth={3}
                         fillOpacity={1}
-                        fill="url(#weightGrad)"
+                        fill="url(#weightGradDetailed)"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -506,7 +876,7 @@ export function FitPage() {
 
           {/* Tabela de Pesagens */}
           <Card>
-            <CardHeader title="Histórico de Pesagens" subtitle={`${weights.length} registros no FitWell`} />
+            <CardHeader title="Histórico de Pesagens" subtitle={`${weights.length} registros sincronizados`} />
             <div className="divide-y divide-zinc-800/60 max-h-96 overflow-y-auto">
               {weights.map((w) => (
                 <div
@@ -537,7 +907,7 @@ export function FitPage() {
         </div>
       )}
 
-      {/* TAB 3: Medidas Corporais */}
+      {/* TAB 4: MEDIDAS CORPORAIS */}
       {activeTab === 'medidas' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -556,21 +926,38 @@ export function FitPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {Object.values(latestMeasurements).map((m) => (
+            {measurementDeltas.map((m) => (
               <div
-                key={m.id}
+                key={m.label}
                 className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4 hover:border-cyan-500/40 hover:bg-zinc-900/70 transition-all"
               >
-                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider truncate">
-                  {m.label}
-                </p>
+                <div className="flex items-center justify-between gap-1">
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider truncate">
+                    {m.label}
+                  </p>
+                  {typeof m.diff === 'number' && (
+                    <span
+                      className={cn(
+                        'chip py-0 px-1.5 text-[9px] font-bold',
+                        m.diff === 0
+                          ? 'border-zinc-700 bg-zinc-800 text-zinc-400'
+                          : m.diff < 0
+                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                          : 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+                      )}
+                    >
+                      {m.diff > 0 ? `+${m.diff}` : m.diff} cm
+                    </span>
+                  )}
+                </div>
+
                 <div className="mt-2 flex items-baseline gap-1">
                   <span className="text-2xl font-black text-zinc-100 tracking-tight">
-                    {m.value_cm}
+                    {m.current}
                   </span>
                   <span className="text-xs font-semibold text-cyan-400">cm</span>
                 </div>
-                <p className="mt-2 text-[10px] text-zinc-500">Atualizado em {m.log_date}</p>
+                <p className="mt-2 text-[10px] text-zinc-500">Atualizado em {m.logDate}</p>
               </div>
             ))}
           </div>
@@ -585,7 +972,7 @@ export function FitPage() {
                   className="flex items-center justify-between p-3.5 hover:bg-white/[0.02] transition-colors"
                 >
                   <div>
-                    <p className="font-semibold text-zinc-200 text-sm">{m.label}</p>
+                    <p className="font-semibold text-zinc-200 text-sm capitalize">{m.label}</p>
                     <p className="text-[11px] text-zinc-500">{m.log_date}</p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -605,7 +992,7 @@ export function FitPage() {
         </div>
       )}
 
-      {/* TAB 4: Bioimpedância */}
+      {/* TAB 5: BIOIMPEDÂNCIA */}
       {activeTab === 'bioimpedancia' && (
         <div className="space-y-6">
           <Card>
@@ -661,9 +1048,9 @@ export function FitPage() {
               ) : (
                 <div className="text-center py-10 text-zinc-500">
                   <Activity className="h-8 w-8 mx-auto mb-2 text-zinc-600" />
-                  <p className="text-sm font-medium">Nenhum exame de bioimpedância registrado.</p>
-                  <p className="text-xs text-zinc-600 mt-1">
-                    Você pode registrar seus exames no FitWellHub ou ditar os valores para o Hermes!
+                  <p>Nenhum log de bioimpedância cadastrado ainda.</p>
+                  <p className="text-xs mt-1 text-zinc-600">
+                    Você pode importar ou lançar seus exames através do FitWellHub.
                   </p>
                 </div>
               )}
@@ -673,13 +1060,10 @@ export function FitPage() {
       )}
 
       {/* Modais */}
-      <FitLoginModal open={loginModalOpen} onClose={() => setLoginModalOpen(false)} />
       <WeightModal open={weightModalOpen} onClose={() => setWeightModalOpen(false)} />
-      <MeasurementModal
-        open={measurementModalOpen}
-        onClose={() => setMeasurementModalOpen(false)}
-      />
+      <MeasurementModal open={measurementModalOpen} onClose={() => setMeasurementModalOpen(false)} />
       <WorkoutModal open={workoutModalOpen} onClose={() => setWorkoutModalOpen(false)} />
+      <FitLoginModal open={loginModalOpen} onClose={() => setLoginModalOpen(false)} />
     </div>
   )
 }

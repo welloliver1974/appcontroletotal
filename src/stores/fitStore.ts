@@ -16,12 +16,46 @@ import {
   insertFitWeight,
   insertFitWorkoutSession,
   deleteFitWorkoutSession,
+  subscribeToFitRealtime,
   getFitwellSession,
   loginFitwell,
   logoutFitwell,
   FITWELL_APP_URL,
 } from '@/lib/fitwellClient'
 import { toast } from './toastStore'
+
+export interface WeeklyStreakDay {
+  dayLabel: string
+  dayNumber: number
+  dateStr: string
+  isToday: boolean
+  isPast: boolean
+  trained: boolean
+  workoutName?: string
+}
+
+export interface WeeklyStreak {
+  days: WeeklyStreakDay[]
+  count: number
+  goal: number
+  isGoalMet: boolean
+}
+
+export interface MeasurementDelta {
+  label: string
+  current: number
+  previous?: number
+  diff?: number
+  logDate: string
+}
+
+export interface WeightStats {
+  current: number | null
+  min: number | null
+  max: number | null
+  avg: number | null
+  totalEntries: number
+}
 
 interface FitState {
   weights: FitWeight[]
@@ -38,9 +72,10 @@ interface FitState {
 
   // Actions
   initFitAuth: () => Promise<void>
+  setupAutoSync: () => () => void
   login: (email: string, pass: string) => Promise<{ ok: boolean; error?: string }>
   logout: () => Promise<void>
-  fetchData: () => Promise<void>
+  fetchData: (silent?: boolean) => Promise<void>
   logWeight: (weightKg: number, date?: string) => Promise<boolean>
   logMeasurement: (label: string, valueCm: number, date?: string) => Promise<boolean>
   logWorkoutSession: (name: string, templateId?: string, notes?: string) => Promise<boolean>
@@ -50,6 +85,10 @@ interface FitState {
   deleteWorkoutSession: (id: string) => Promise<void>
   getLatestWeight: () => FitWeight | null
   getWeightDelta: () => { current: number; previous: number; diff: number } | null
+  getWeightStats: () => WeightStats
+  getWeeklyStreak: () => WeeklyStreak
+  getLatestWorkoutSession: () => { session: FitWorkoutSession | null; relativeTime: string }
+  getMeasurementDeltas: () => MeasurementDelta[]
   getLatestMeasurementsByLabel: () => Record<string, FitMeasurement>
 }
 
@@ -83,9 +122,46 @@ export const useFitStore = create<FitState>()(
             fitUserEmail: session.user.email || null,
             isFitAuthenticated: true,
           })
-          await get().fetchData()
+          await get().fetchData(true)
         } else {
           set({ isFitAuthenticated: false })
+        }
+      },
+
+      setupAutoSync: () => {
+        // 1. Initial auth and fetch
+        get().initFitAuth()
+
+        // 2. Realtime subscription to FitWell database changes
+        const unsubRealtime = subscribeToFitRealtime(() => {
+          console.log('[FitStore] ⚡ Atualização em tempo real detectada no FitWell!')
+          get().fetchData(true)
+        })
+
+        // 3. Tab Focus / Visibility Change sync
+        const onFocus = () => {
+          get().fetchData(true)
+        }
+        const onVisibilityChange = () => {
+          if (document.visibilityState === 'visible') {
+            get().fetchData(true)
+          }
+        }
+        window.addEventListener('focus', onFocus)
+        document.addEventListener('visibilitychange', onVisibilityChange)
+
+        // 4. Background interval (every 60s)
+        const intervalId = window.setInterval(() => {
+          if (document.visibilityState === 'visible') {
+            get().fetchData(true)
+          }
+        }, 60000)
+
+        return () => {
+          unsubRealtime()
+          window.removeEventListener('focus', onFocus)
+          document.removeEventListener('visibilitychange', onVisibilityChange)
+          clearInterval(intervalId)
         }
       },
 
@@ -115,8 +191,9 @@ export const useFitStore = create<FitState>()(
         toast.info('Desconectado do FitWellHub.')
       },
 
-      fetchData: async () => {
-        set({ loading: true, isSyncing: true })
+      fetchData: async (silent = false) => {
+        if (!silent) set({ loading: true })
+        set({ isSyncing: true })
         try {
           const [weights, measurements, bioimpedance, templates, sessions] = await Promise.all([
             fetchFitWeights(30),
@@ -286,6 +363,121 @@ export const useFitStore = create<FitState>()(
         const previous = weights[1].weight_kg
         const diff = Number((current - previous).toFixed(2))
         return { current, previous, diff }
+      },
+
+      getWeightStats: () => {
+        const weights = get().weights
+        if (!weights || weights.length === 0) {
+          return { current: null, min: null, max: null, avg: null, totalEntries: 0 }
+        }
+        const values = weights.map((w) => w.weight_kg)
+        const current = weights[0].weight_kg
+        const min = Math.min(...values)
+        const max = Math.max(...values)
+        const sum = values.reduce((a, b) => a + b, 0)
+        const avg = Number((sum / values.length).toFixed(1))
+        return { current, min, max, avg, totalEntries: weights.length }
+      },
+
+      getWeeklyStreak: () => {
+        const sessions = get().sessions
+        const now = new Date()
+        const dayOfWeek = now.getDay() // 0 = Sun, 1 = Mon...
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+        const monday = new Date(now)
+        monday.setDate(now.getDate() + mondayOffset)
+        monday.setHours(0, 0, 0, 0)
+
+        const dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+        const days: WeeklyStreakDay[] = []
+        let trainedCount = 0
+
+        for (let i = 0; i < 7; i++) {
+          const currentDay = new Date(monday)
+          currentDay.setDate(monday.getDate() + i)
+          const dateStr = currentDay.toISOString().slice(0, 10)
+          const isToday = dateStr === now.toISOString().slice(0, 10)
+          const isPast = currentDay.getTime() < new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+
+          const sessionOnDay = sessions.find((s) => s.completed_at.slice(0, 10) === dateStr)
+          const trained = !!sessionOnDay
+          if (trained) trainedCount++
+
+          days.push({
+            dayLabel: dayNames[i],
+            dayNumber: currentDay.getDate(),
+            dateStr,
+            isToday,
+            isPast,
+            trained,
+            workoutName: sessionOnDay?.name,
+          })
+        }
+
+        const goal = 4
+        return {
+          days,
+          count: trainedCount,
+          goal,
+          isGoalMet: trainedCount >= goal,
+        }
+      },
+
+      getLatestWorkoutSession: () => {
+        const sessions = get().sessions
+        if (!sessions || sessions.length === 0) {
+          return { session: null, relativeTime: 'Nenhum treino recente' }
+        }
+        const sorted = [...sessions].sort(
+          (a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
+        )
+        const latest = sorted[0]
+        const diffMs = Date.now() - new Date(latest.completed_at).getTime()
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+        const diffDays = Math.floor(diffHours / 24)
+
+        let relativeTime = ''
+        if (diffDays === 0) {
+          if (diffHours === 0) {
+            const diffMins = Math.max(1, Math.floor(diffMs / (1000 * 60)))
+            relativeTime = `Hoje (há ${diffMins} min)`
+          } else {
+            relativeTime = `Hoje (há ${diffHours}h)`
+          }
+        } else if (diffDays === 1) {
+          relativeTime = 'Ontem'
+        } else {
+          relativeTime = `Há ${diffDays} dias`
+        }
+
+        return { session: latest, relativeTime }
+      },
+
+      getMeasurementDeltas: () => {
+        const measurements = get().measurements
+        const groups: Record<string, FitMeasurement[]> = {}
+        for (const m of measurements) {
+          const key = m.label.trim().toLowerCase()
+          if (!groups[key]) groups[key] = []
+          groups[key].push(m)
+        }
+
+        const deltas: MeasurementDelta[] = []
+        for (const [_, list] of Object.entries(groups)) {
+          const sorted = [...list].sort((a, b) => b.log_date.localeCompare(a.log_date))
+          const current = sorted[0]
+          const prev = sorted.length > 1 ? sorted[1] : undefined
+          const diff = prev ? Number((current.value_cm - prev.value_cm).toFixed(1)) : undefined
+
+          deltas.push({
+            label: current.label,
+            current: current.value_cm,
+            previous: prev?.value_cm,
+            diff,
+            logDate: current.log_date,
+          })
+        }
+        return deltas
       },
 
       getLatestMeasurementsByLabel: () => {
