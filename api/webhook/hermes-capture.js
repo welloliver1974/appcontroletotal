@@ -34,6 +34,60 @@ async function sendTelegramReply(chatId, text, customToken) {
   }
 }
 
+async function askHermesAI(userMessage, isSilvia, supabase) {
+  const userName = isSilvia ? 'Silvia' : 'Wellington';
+  const botName = isSilvia ? 'Herculana' : 'Hermes';
+
+  let groqKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
+
+  if (!groqKey && supabase) {
+    try {
+      const { data } = await supabase.from('app_settings').select('data').eq('id', 'hermes_config').maybeSingle();
+      if (data?.data) {
+        groqKey = data.data.groqApiKey || data.data.llmApiKey || '';
+      }
+    } catch {}
+  }
+
+  if (!groqKey) {
+    return isSilvia
+      ? `Olá Silvia! Boa noite! Estou aqui com você. Pode me pedir para anotar compras, registrar seus treinos, peso, medidas ou qualquer coisa que precisar no Life OS Hub! 😊`
+      : `Fala Wellington! Estou online e pronto para agir em qualquer módulo do Life OS Hub.`;
+  }
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: `Você é ${botName}, a assistente e copiloto de alta performance de ${userName} no aplicativo Life OS Hub.
+Você atua em TODO o aplicativo: Finanças, Mercado/Despensa, Fit (treinos, medidas e peso), Agenda/Compromissos, Diário Pessoal e Mídias.
+Fale de forma natural, humana, calorosa, inteligente e elegante. Nunca seja engessado ou robótico.
+Se for uma saudação (como "boa noite", "bom dia", "como vai?"), responda com simpatia e acolhimento em 2 a 3 frases.
+Seja sempre prestativo(a) e demonstre que você está pronto(a) para ajudar no que for preciso.`
+          },
+          { role: 'user', content: userMessage }
+        ],
+        temperature: 0.7,
+        max_tokens: 350,
+      }),
+    });
+
+    const json = await res.json();
+    return json.choices?.[0]?.message?.content || `Olá ${userName}! Como posso te ajudar agora?`;
+  } catch (err) {
+    console.warn('[HermesAI error]:', err);
+    return `Olá ${userName}! Estou aqui conectada ao seu Life OS Hub. Em que posso te ajudar?`;
+  }
+}
+
 function inferPantryCategory(itemName) {
   const t = (itemName || '').toLowerCase();
   if (/(coca|coke|refrigerante|suco|cerveja|vinho|leite|caf[eé]|ch[aá]|água|bebida|energetico|pepsi|guaran[aá])/i.test(t)) return 'bebidas';
@@ -113,29 +167,10 @@ export default async function handler(req, res) {
   ).trim();
 
   const lowerText = rawText.toLowerCase().replace(/[!?.,]/g, '').trim();
+  const isSilviaUser = String(chatId) === SILVIA_CHAT_ID;
+  const userEmail = isSilviaUser ? 'silvinhamsa@gmail.com' : 'welloliver@gmail.com';
 
-  // 2. Respostas para /start, saudações e comandos básicos
-  if (lowerText === '/start' || lowerText === 'start') {
-    const welcome = String(chatId) === SILVIA_CHAT_ID
-      ? `👋 Olá Silvia! Eu sou a Herculana, sua assistente no Life OS Hub.\n\nVocê pode me mandar por aqui:\n• ⚖️ "Pesei 62.5" ou "Meu peso hoje é 63" (grava peso no Fit)\n• 📏 "Cintura 70" ou "Medida braço 28" (salva medidas corporais)\n• 💪 "Treino de perna concluído" (registra treino)\n• 🛒 "Comprar leite e ovos" (adiciona à despensa)\n• 💸 "Gastei 45 no almoço" (registra finanças)\n• 📅 "Consulta dentista amanhã 14h" (agenda evento)\n• 📝 "Diário: Hoje foi um dia produtivo" (salva no seu diário)`
-      : `👋 Olá Wellington! Eu sou o Hermes, seu copiloto no Life OS Hub.\n\nPronto para capturar peso, medidas corporais, treinos, compras, despesas e diários 24/7! 🚀`;
-
-    await sendTelegramReply(chatId, welcome);
-    return res.status(200).json({ ok: true, message: 'Welcome sent' });
-  }
-
-  // Detecção de saudações / conversas simples
-  if (/^(oi|oii|oiii|oiiii|ola|olá|bom dia|boa tarde|boa noite|e ai|e a[ií]|tudo bem|help|ajuda|teste)$/i.test(lowerText)) {
-    const isSilvia = String(chatId) === SILVIA_CHAT_ID;
-    const greeting = isSilvia
-      ? `Olá Silvia! Tudo bem com você? 😊\n\nEstou pronta para te ajudar. Pode me pedir:\n• Registrar seu peso: "Pesei 62.5"\n• Salvar suas medidas: "Cintura 70", "Braço 28", "Quadril 98"\n• Anotar seu treino: "Treino de perna concluído"\n• Compras da despensa: "Comprar leite e café"\n• Gastos e diários pessoais!`
-      : `Olá Wellington! Tudo 100%! 🚀\n\nComo posso te ajudar agora? Pode me mandar peso, medidas, treinos, compras, despesas ou reflexões para o Life-Log.`;
-
-    await sendTelegramReply(chatId, greeting);
-    return res.status(200).json({ ok: true, message: 'Greeting replied' });
-  }
-
-  // 3. Conexão com o Supabase Principal do Life OS
+  // 2. Conexão com o Supabase Principal do Life OS
   const SUPABASE_URL =
     process.env.SUPABASE_URL ||
     process.env.VITE_SUPABASE_URL ||
@@ -158,9 +193,6 @@ export default async function handler(req, res) {
     process.env.VITE_FITWELL_SUPABASE_KEY || 'sb_publishable_Ad2aSiOJKf_53pnMCLhc6A_JkX1vvJ2';
   const fitSupabase = FITWELL_URL && FITWELL_KEY ? createClient(FITWELL_URL, FITWELL_KEY) : null;
 
-  const isSilviaUser = String(chatId) === SILVIA_CHAT_ID;
-  const userEmail = isSilviaUser ? 'silvinhamsa@gmail.com' : 'welloliver@gmail.com';
-
   // Normalização do payload
   const action = body.action || body.event || body.type || '';
   let platform = String(body.platform || body.kind || '').toLowerCase();
@@ -180,10 +212,27 @@ export default async function handler(req, res) {
 
   const workoutMatch = rawText.match(/(?:treino|treinei|fiz treino|conclui treino|conclu[ií] treino)\s*(?:de)?\s*(.+)/i);
 
-  // Detecção de padrões de compras e alimentos
+  // Detecção de compras
   const isGroceryPattern =
     /(coca|coke|batata|leite|doce|arroz|feij[aã]o|caf[eé]|p[aã]o|aç[uú]car|[oó]leo|manteiga|queijo|cerveja|sab[aã]o|shampoo|detergente|frango|carne|banana|maç[aã]|tomate|cebola|alho|[aá]gua|suco|macarr[aã]o|sal|farinha|iogurte|presunto|papel higi[eê]nico|desodorante|pasta de dente)/i.test(lowerText) ||
     tags.some((t) => /pantry|compra|mercado|despensa/i.test(t));
+
+  const isCommand = weightMatch || measureMatch || workoutMatch
+    || /^(comprar|compra|mercado|despensa|preciso de|falta|comprar:|comprar\s+|pegar\s+)/i.test(lowerText)
+    || (isGroceryPattern && rawText.split(/\s+/).length <= 8)
+    || /^(gastei|paguei|despesa|gasto)/i.test(lowerText) || /r\$\s*\d+/i.test(lowerText)
+    || /^(reuni[aã]o|compromisso|consulta|dentista|m[eé]dico|call|agendar)/i.test(lowerText)
+    || /^(di[aá]rio|hoje eu|me sinto|gratid[aã]o|pensamento)/i.test(lowerText)
+    || !!url;
+
+  // -------------------------------------------------------------
+  // CONVERSA NATURAL VIA IA (GROQ / LLM) SE NÃO FOR COMANDO ESPECÍFICO
+  // -------------------------------------------------------------
+  if (!isCommand && !action && !platform) {
+    const aiReply = await askHermesAI(rawText, isSilviaUser, supabase);
+    await sendTelegramReply(chatId, aiReply);
+    return res.status(200).json({ ok: true, message: 'AI replied', text: aiReply });
+  }
 
   if (!platform && !action) {
     if (weightMatch) {
@@ -194,7 +243,6 @@ export default async function handler(req, res) {
       platform = 'fit_workout';
     } else if (
       /^(comprar|compra|mercado|despensa|preciso de|falta|comprar:|comprar\s+|pegar\s+)/i.test(lowerText) ||
-      /(lista de compras|precisamos de)/i.test(lowerText) ||
       (isGroceryPattern && rawText.split(/\s+/).length <= 8)
     ) {
       platform = 'pantry';
