@@ -39,19 +39,23 @@ async function askHermesAI(userMessage, isSilvia, supabase) {
   const botName = isSilvia ? 'Herculana' : 'Hermes';
 
   let groqKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
+  let targetModel = 'openai/gpt-oss-120b';
 
-  if (!groqKey && supabase) {
+  if (supabase) {
     try {
       const { data } = await supabase.from('app_settings').select('data').eq('id', 'hermes_config').maybeSingle();
       if (data?.data) {
-        groqKey = data.data.groqApiKey || data.data.llmApiKey || '';
+        groqKey = data.data.groqApiKey || data.data.llmApiKey || groqKey;
+        if (data.data.llmModel && data.data.provider === 'groq') {
+          targetModel = data.data.llmModel;
+        }
       }
     } catch {}
   }
 
   if (!groqKey) {
     return isSilvia
-      ? `Olá Silvia! Boa noite! Estou aqui com você. Pode me pedir para anotar compras, registrar seus treinos, peso, medidas ou qualquer coisa que precisar no Life OS Hub! 😊`
+      ? `Olá Silvia! Estou aqui com você. Como posso te ajudar hoje no Life OS Hub? 😊`
       : `Fala Wellington! Estou online e pronto para agir em qualquer módulo do Life OS Hub.`;
   }
 
@@ -63,15 +67,14 @@ async function askHermesAI(userMessage, isSilvia, supabase) {
         'Authorization': `Bearer ${groqKey}`,
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: targetModel,
         messages: [
           {
             role: 'system',
-            content: `Você é ${botName}, a assistente e copiloto de alta performance de ${userName} no aplicativo Life OS Hub.
-Você atua em TODO o aplicativo: Finanças, Mercado/Despensa, Fit (treinos, medidas e peso), Agenda/Compromissos, Diário Pessoal e Mídias.
-Fale de forma natural, humana, calorosa, inteligente e elegante. Nunca seja engessado ou robótico.
-Se for uma saudação (como "boa noite", "bom dia", "como vai?"), responda com simpatia e acolhimento em 2 a 3 frases.
-Seja sempre prestativo(a) e demonstre que você está pronto(a) para ajudar no que for preciso.`
+            content: `Você é ${botName}, a assistente e copiloto pessoal de alta performance de ${userName} no aplicativo Life OS Hub.
+Você tem acesso e atua em TODO o aplicativo da família: Finanças, Mercado/Despensa, Fit (treinos, medidas e peso), Agenda/Compromissos, Diário Pessoal e Mídias.
+Fale de forma 100% natural, humana, acolhedora, inteligente, elegante e simpática. Nunca seja engessado, rígido ou robótico.
+Se o usuário mandar uma saudação (como "boa noite", "bom dia", "como vai?", "estou cansada", etc.), responda com empatia, simpatia e acolhimento em 2 a 3 frases. Use emojis com bom gosto.`
           },
           { role: 'user', content: userMessage }
         ],
@@ -81,11 +84,17 @@ Seja sempre prestativo(a) e demonstre que você está pronto(a) para ajudar no q
     });
 
     const json = await res.json();
-    return json.choices?.[0]?.message?.content || `Olá ${userName}! Como posso te ajudar agora?`;
+    if (json.choices?.[0]?.message?.content) {
+      return json.choices[0].message.content.trim();
+    }
+    console.warn('[HermesAI response empty]:', json);
   } catch (err) {
     console.warn('[HermesAI error]:', err);
-    return `Olá ${userName}! Estou aqui conectada ao seu Life OS Hub. Em que posso te ajudar?`;
   }
+
+  return isSilvia
+    ? `Olá Silvia! Estou aqui com você. Como foi o seu dia? Se precisar anotar compras, peso, medidas ou qualquer coisa, é só me falar! ✨`
+    : `Fala Wellington! Estou online e pronto para agir em qualquer módulo do Life OS Hub.`;
 }
 
 function inferPantryCategory(itemName) {
