@@ -87,17 +87,33 @@ export async function getLifeOsSummaryContext(): Promise<LifeOsSummaryContext> {
   // 5. DocVault (Documentos, números, medidas)
   const docVaultSummary = docVault.map((d) => `[${d.category}] ${d.title}: ${d.value}${d.extra ? ` (${d.extra})` : ''}`)
 
-  // 6. Saúde & FitWell Hub
+  // 6. Saúde, Treinos & FitWell Hub
   const fitState = useFitStore.getState()
   const latestWeight = fitState.getLatestWeight()
+  const weightDelta = fitState.getWeightDelta()
+  const streak = fitState.getWeeklyStreak()
+  const { session: lastSession, relativeTime: lastSessionTime } = fitState.getLatestWorkoutSession()
   const latestMeasure = fitState.getLatestMeasurementsByLabel()
+  const healthIndices = fitState.getHealthIndices()
+
   const measureParts = Object.values(latestMeasure)
-    .slice(0, 3)
+    .slice(0, 4)
     .map((m) => `${m.label}: ${m.value_cm}cm`)
     .join(', ')
-  const fitnessSummary = latestWeight
-    ? `Peso atual: ${latestWeight.weight_kg}kg (${latestWeight.log_date}). ${measureParts ? `Medidas: ${measureParts}.` : ''} Treinos registrados: ${fitState.sessions.length} sessões.`
-    : 'Nenhum registro de peso recente no FitWell.'
+
+  const weightPart = latestWeight
+    ? `Peso: ${latestWeight.weight_kg}kg (${latestWeight.log_date}${weightDelta && weightDelta.diff !== 0 ? `, variação: ${weightDelta.diff > 0 ? `+${weightDelta.diff}` : weightDelta.diff}kg` : ''})`
+    : 'Sem pesagem recente'
+
+  const workoutPart = lastSession
+    ? `Treinos na semana: ${streak.count}/${streak.goal} (${streak.isGoalMet ? 'Meta batida!' : 'Em andamento'}). Último treino: "${lastSession.name}" (${lastSessionTime}).`
+    : `Treinos na semana: ${streak.count}/${streak.goal}. Nenhum treino recente.`
+
+  const healthPart = healthIndices.ice
+    ? `Índice Cintura/Estatura: ${healthIndices.ice.value} (${healthIndices.ice.classification}). IMC: ${healthIndices.imc ? healthIndices.imc.value : '—'}.`
+    : ''
+
+  const fitnessSummary = `${weightPart}. ${workoutPart} ${measureParts ? `Medidas: ${measureParts}.` : ''} ${healthPart}`.trim()
 
   return {
     todayFormatted: now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }),
