@@ -121,11 +121,18 @@ export async function logoutFitwell(): Promise<void> {
 export async function fetchFitWeights(limit = 30): Promise<FitWeight[]> {
   if (!fitwellSupabase) return []
   try {
-    const { data, error } = await fitwellSupabase
+    const userId = await getFitUserId()
+    let query = fitwellSupabase
       .from('body_weights')
       .select('*')
       .order('log_date', { ascending: false })
       .limit(limit)
+
+    if (userId) {
+      query = query.eq('user_id', userId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.warn('[FitWell] Erro ao buscar pesos:', error.message)
@@ -174,11 +181,18 @@ export async function insertFitWeight(
 export async function fetchFitMeasurements(limit = 50): Promise<FitMeasurement[]> {
   if (!fitwellSupabase) return []
   try {
-    const { data, error } = await fitwellSupabase
+    const userId = await getFitUserId()
+    let query = fitwellSupabase
       .from('body_measurements')
       .select('*')
       .order('log_date', { ascending: false })
       .limit(limit)
+
+    if (userId) {
+      query = query.eq('user_id', userId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.warn('[FitWell] Erro ao buscar medidas:', error.message)
@@ -229,11 +243,18 @@ export async function insertFitMeasurement(
 export async function fetchFitBioimpedance(limit = 10): Promise<FitBioimpedance[]> {
   if (!fitwellSupabase) return []
   try {
-    const { data, error } = await fitwellSupabase
+    const userId = await getFitUserId()
+    let query = fitwellSupabase
       .from('bioimpedance_logs')
       .select('*')
       .order('log_date', { ascending: false })
       .limit(limit)
+
+    if (userId) {
+      query = query.eq('user_id', userId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.warn('[FitWell] Erro ao buscar bioimpedância:', error.message)
@@ -288,10 +309,17 @@ export async function insertFitBioimpedance(
 export async function fetchFitWorkoutTemplates(): Promise<FitWorkoutTemplate[]> {
   if (!fitwellSupabase) return []
   try {
-    const { data, error } = await fitwellSupabase
+    const userId = await getFitUserId()
+    let query = fitwellSupabase
       .from('workout_templates')
       .select('*')
       .order('name', { ascending: true })
+
+    if (userId) {
+      query = query.eq('user_id', userId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.warn('[FitWell] Erro ao buscar templates de treino:', error.message)
@@ -308,11 +336,18 @@ export async function fetchFitWorkoutTemplates(): Promise<FitWorkoutTemplate[]> 
 export async function fetchFitWorkoutSessions(limit = 20): Promise<FitWorkoutSession[]> {
   if (!fitwellSupabase) return []
   try {
-    const { data, error } = await fitwellSupabase
+    const userId = await getFitUserId()
+    let query = fitwellSupabase
       .from('workout_sessions')
       .select('*')
       .order('completed_at', { ascending: false })
       .limit(limit)
+
+    if (userId) {
+      query = query.eq('user_id', userId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.warn('[FitWell] Erro ao buscar sessões de treino:', error.message)

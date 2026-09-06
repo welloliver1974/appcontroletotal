@@ -1201,6 +1201,35 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## 🚪 66. Botão Sair (Logout) Global & Gestão de Sessões (06/09/2026)
+
+* **Contexto & Motivação:**
+  - O usuário solicitou um botão direto e visível para sair da conta ou bloquear o aplicativo em qualquer dispositivo.
+* **Soluções Implementadas:**
+  1. **Cabeçalho Global ([Header.tsx](file:///e:/Apps/AppControleTotal/src/components/layout/Header.tsx)):**
+     - Adicionado botão de logout (`LogOut`) de fácil visualização com confirmação segura e bloqueio imediato do app.
+  2. **Modal de Configurações ([SettingsModal.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/SettingsModal.tsx)):**
+     - Adicionado botão de ação rápida "Sair" no cabeçalho do modal e integração na aba "Minha Conta".
+
+---
+
+## 👥 67. Arquitetura Híbrida: Gestão Familiar Compartilhada + Espaço Pessoal Isolado (06/09/2026)
+
+* **Contexto & Motivação:**
+  - Ao criar um usuário para a esposa, o aplicativo carregou os dados do usuário principal devido à arquitetura inicial single-tenant e ao cache local unificado. O usuário definiu que **Finanças/Despesas e Manutenção** devem ser compartilhados em família, enquanto **Saúde/Fit, Diário/LifeLog, Leituras e Fatos** devem ser estritamente pessoais de cada usuário, com a exigência mandatória de **preservar 100% dos dados já existentes**.
+* **Soluções Implementadas:**
+  1. **Divisão de Coleções no Banco ([db.ts](file:///e:/Apps/AppControleTotal/src/lib/db.ts)):**
+     - **Módulos Compartilhados (Família/Grupo):** `spending`, `spendingEntries`, `fixedBills`, `maintenance`, `maintMonths`, `assets`, `pantry`, `trips`, `trip_stops`, `places`, `docVault`. Visíveis e editáveis por todos os membros da casa.
+     - **Módulos Pessoais (Por Usuário):** `lifeLog`, `reading`, `media`, `facts`, `events`. Isolados por `userEmail`/`userId`.
+  2. **Preservação Total de Dados Legados ([db.ts](file:///e:/Apps/AppControleTotal/src/lib/db.ts)):**
+     - A função `filterRowsForUser` reconhece a conta principal (`act.primary_account`) e garante que todos os registros históricos sem `user_email` continuam pertencendo integralmente ao usuário principal (zero perda de dados).
+     - Novos usuários iniciam com suas próprias anotações limpas, enquanto já acessam o extrato financeiro da casa e a despensa compartilhada.
+  3. **Isolamento da Aba Fit & Saúde ([fitwellClient.ts](file:///e:/Apps/AppControleTotal/src/lib/fitwellClient.ts) & [fitStore.ts](file:///e:/Apps/AppControleTotal/src/stores/fitStore.ts)):**
+     - Consultas ao Supabase do FitWell agora aplicam filtro por `user_id` em `body_weights`, `body_measurements`, `workout_sessions` e `bioimpedance_logs`.
+     - `fetchData` e o estado local do Zustand respeitam a conta ativa conectada.
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 

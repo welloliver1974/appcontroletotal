@@ -35,6 +35,101 @@ export function tableName(collection: string): string {
   return TABLES[collection] ?? collection
 }
 
+/** Shared collections: Household, Expenses, Maintenance, Pantry, Trips (visible to everyone in the family) */
+export const SHARED_COLLECTIONS = new Set([
+  'spending',
+  'spendingEntries',
+  'spending_entries',
+  'fixedBills',
+  'fixed_bills',
+  'maintenance',
+  'maintMonths',
+  'maint_months',
+  'assets',
+  'pantry',
+  'trips',
+  'trip_stops',
+  'places',
+  'docVault',
+  'doc_vault',
+])
+
+/** Personal collections: Life-Log, Reading, Media, Facts (isolated per user) */
+export const PERSONAL_COLLECTIONS = new Set([
+  'lifeLog',
+  'life_log',
+  'reading',
+  'media',
+  'facts',
+])
+
+export function isPersonalCollection(collection: string): boolean {
+  return PERSONAL_COLLECTIONS.has(collection)
+}
+
+/** Get the currently logged-in user email */
+export function getCurrentUserEmail(): string | null {
+  try {
+    const raw = localStorage.getItem('act.auth.v2')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return parsed?.state?.userEmail || null
+    }
+  } catch {}
+  return null
+}
+
+/** Get or set the primary account (the original owner of all pre-existing legacy data) */
+export function getPrimaryUserEmail(): string | null {
+  try {
+    let primary = localStorage.getItem('act.primary_account')
+    const current = getCurrentUserEmail()
+    if (!primary && current) {
+      primary = current
+      localStorage.setItem('act.primary_account', current)
+    }
+    return primary
+  } catch {
+    return null
+  }
+}
+
+/** Filters personal collections so each user only sees their own notes/diaries, while preserving 100% legacy data for primary user */
+export function filterRowsForUser<T>(collection: string, rows: T[]): T[] {
+  if (!isPersonalCollection(collection)) return rows
+  const currentEmail = getCurrentUserEmail()
+  if (!currentEmail) return rows
+
+  const primaryEmail = getPrimaryUserEmail()
+  const isPrimary = !primaryEmail || primaryEmail.toLowerCase() === currentEmail.toLowerCase()
+
+  return rows.filter((r: unknown) => {
+    const row = r as Record<string, unknown>
+    const rowEmail = (row.userEmail || row.user_email || row.authorEmail || row.author_email) as string | undefined
+
+    if (rowEmail) {
+      return rowEmail.toLowerCase() === currentEmail.toLowerCase()
+    }
+
+    // Row has no user assigned (legacy data created prior to multi-user separation) -> Preserved for the primary account
+    return isPrimary
+  })
+}
+
+/** Enriches newly created personal records with the author user email */
+export function enrichRowWithUser<T>(collection: string, row: T): T {
+  if (!isPersonalCollection(collection)) return row
+  const currentEmail = getCurrentUserEmail()
+  if (!currentEmail) return row
+
+  const r = row as Record<string, unknown>
+  return {
+    ...r,
+    userEmail: r.userEmail || currentEmail,
+    user_email: r.user_email || currentEmail,
+  } as T
+}
+
 function toSnake(key: string): string {
   return key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
 }
@@ -139,10 +234,11 @@ export const db = {
     assertSupabaseConfig()
     if (!supabase) {
       const localRows = localStorageDb.get<T>(collection)
+      const filtered = filterRowsForUser<T>(collection, localRows)
       if (collection === 'events') {
-        return enrichEventsWithCompletion(localRows as unknown as AgendaEvent[]) as unknown as T[]
+        return enrichEventsWithCompletion(filtered as unknown as AgendaEvent[]) as unknown as T[]
       }
-      return localRows
+      return filtered
     }
     try {
       if (collection === 'trips') {
@@ -164,46 +260,49 @@ export const db = {
       const { data, error } = await supabase.from(tableName(collection)).select('*')
       if (error) throw error
       const parsed = fromSupabaseRow<T[]>(data ?? [])
+      const filtered = filterRowsForUser<T>(collection, parsed)
       if (collection === 'events') {
-        return enrichEventsWithCompletion(parsed as unknown as AgendaEvent[]) as unknown as T[]
+        return enrichEventsWithCompletion(filtered as unknown as AgendaEvent[]) as unknown as T[]
       }
-      return parsed
+      return filtered
     } catch (err) {
       const fallbackRows = fallbackOrThrow<T>(collection, err)
+      const filtered = filterRowsForUser<T>(collection, fallbackRows)
       if (collection === 'events') {
-        return enrichEventsWithCompletion(fallbackRows as unknown as AgendaEvent[]) as unknown as T[]
+        return enrichEventsWithCompletion(filtered as unknown as AgendaEvent[]) as unknown as T[]
       }
-      return fallbackRows
+      return filtered
     }
   },
 
   /** Substitui todas as linhas de uma coleção. */
   async set<T = Row>(collection: string, rows: T[]): Promise<T[]> {
     assertSupabaseConfig()
+    const enrichedRows = rows.map((r) => enrichRowWithUser(collection, r))
     if (!supabase) {
-      localStorageDb.set<T>(collection, rows)
-      return rows
+      localStorageDb.set<T>(collection, enrichedRows)
+      return enrichedRows
     }
     try {
       if (collection === 'trips') {
-        for (const row of rows) {
+        for (const row of enrichedRows) {
           const { stops, ...trip } = row as Record<string, unknown>
           const { error } = await supabase.from('trips').upsert(toSupabaseRow(trip) as Record<string, unknown>)
           if (error) throw error
           await replaceTripStops(String(trip.id), Array.isArray(stops) ? stops : [])
         }
-        return rows
+        return enrichedRows
       }
 
-      for (const row of rows) {
+      for (const row of enrichedRows) {
         const { error } = await supabase.from(tableName(collection)).upsert(toSupabaseRow(row) as Record<string, unknown>)
         if (error) throw error
       }
-      return rows
+      return enrichedRows
     } catch (err) {
       if (localFallbackAllowed()) {
-        localStorageDb.set<T>(collection, rows)
-        return rows
+        localStorageDb.set<T>(collection, enrichedRows)
+        return enrichedRows
       }
       throw mapSupabaseError(err)
     }
@@ -212,28 +311,29 @@ export const db = {
   /** Insere uma nova linha e retorna todas as linhas atualizadas. */
   async insert<T = Row>(collection: string, row: T): Promise<T[]> {
     assertSupabaseConfig()
+    const enrichedRow = enrichRowWithUser(collection, row)
     if (!supabase) {
-      const r = row as T & { id: string }
+      const r = enrichedRow as T & { id: string }
       localStorageDb.insert<T & { id: string }>(collection, r)
-      return localStorageDb.get<T>(collection)
+      return await this.get<T>(collection)
     }
     try {
       if (collection === 'trips') {
-        const { stops, ...trip } = row as Record<string, unknown>
+        const { stops, ...trip } = enrichedRow as Record<string, unknown>
         const { error } = await supabase.from('trips').insert(toSupabaseRow(trip) as Record<string, unknown>)
         if (error) throw error
         await replaceTripStops(String(trip.id), Array.isArray(stops) ? stops : [])
         return await this.get<T>(collection)
       }
 
-      const { error } = await supabase.from(tableName(collection)).insert(toSupabaseRow(row) as Record<string, unknown>)
+      const { error } = await supabase.from(tableName(collection)).insert(toSupabaseRow(enrichedRow) as Record<string, unknown>)
       if (error) throw error
       return await this.get<T>(collection)
     } catch (err) {
       if (localFallbackAllowed()) {
-        const r = row as T & { id: string }
+        const r = enrichedRow as T & { id: string }
         localStorageDb.insert<T & { id: string }>(collection, r)
-        return localStorageDb.get<T>(collection)
+        return await this.get<T>(collection)
       }
       throw mapSupabaseError(err)
     }
@@ -242,32 +342,33 @@ export const db = {
   /** Insere ou atualiza uma linha (upsert). */
   async upsert<T = Row>(collection: string, row: T): Promise<T[]> {
     assertSupabaseConfig()
+    const enrichedRow = enrichRowWithUser(collection, row)
     if (!supabase) {
-      const r = row as T & { id: string }
+      const r = enrichedRow as T & { id: string }
       const exists = localStorageDb.get<T & { id: string }>(collection).some((it) => it.id === r.id)
       if (exists) {
         localStorageDb.update<T & { id: string }>(collection, r.id, r)
       } else {
         localStorageDb.insert<T & { id: string }>(collection, r)
       }
-      return localStorageDb.get<T>(collection)
+      return await this.get<T>(collection)
     }
     try {
       const { error } = await supabase
         .from(tableName(collection))
-        .upsert(toSupabaseRow(row) as Record<string, unknown>, { onConflict: 'id' })
+        .upsert(toSupabaseRow(enrichedRow) as Record<string, unknown>, { onConflict: 'id' })
       if (error) throw error
       return await this.get<T>(collection)
     } catch (err) {
       if (localFallbackAllowed()) {
-        const r = row as T & { id: string }
+        const r = enrichedRow as T & { id: string }
         const exists = localStorageDb.get<T & { id: string }>(collection).some((it) => it.id === r.id)
         if (exists) {
           localStorageDb.update<T & { id: string }>(collection, r.id, r)
         } else {
           localStorageDb.insert<T & { id: string }>(collection, r)
         }
-        return localStorageDb.get<T>(collection)
+        return await this.get<T>(collection)
       }
       throw mapSupabaseError(err)
     }
@@ -278,8 +379,10 @@ export const db = {
     assertSupabaseConfig()
     if (rows.length === 0) return await this.get<T>(collection)
 
+    const enrichedRows = rows.map((r) => enrichRowWithUser(collection, r))
+
     if (!supabase) {
-      for (const row of rows) {
+      for (const row of enrichedRows) {
         const r = row as T & { id: string }
         const exists = localStorageDb.get<T & { id: string }>(collection).some((it) => it.id === r.id)
         if (exists) {
@@ -288,10 +391,10 @@ export const db = {
           localStorageDb.insert<T & { id: string }>(collection, r)
         }
       }
-      return localStorageDb.get<T>(collection)
+      return await this.get<T>(collection)
     }
     try {
-      const supabaseRows = rows.map((r) => toSupabaseRow(r) as Record<string, unknown>)
+      const supabaseRows = enrichedRows.map((r) => toSupabaseRow(r) as Record<string, unknown>)
       const { error } = await supabase
         .from(tableName(collection))
         .upsert(supabaseRows, { onConflict: 'id' })
@@ -299,7 +402,7 @@ export const db = {
       return await this.get<T>(collection)
     } catch (err) {
       if (localFallbackAllowed()) {
-        for (const row of rows) {
+        for (const row of enrichedRows) {
           const r = row as T & { id: string }
           const exists = localStorageDb.get<T & { id: string }>(collection).some((it) => it.id === r.id)
           if (exists) {
@@ -308,7 +411,7 @@ export const db = {
             localStorageDb.insert<T & { id: string }>(collection, r)
           }
         }
-        return localStorageDb.get<T>(collection)
+        return await this.get<T>(collection)
       }
       throw mapSupabaseError(err)
     }

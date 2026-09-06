@@ -215,6 +215,7 @@ export const useFitStore = create<FitState>()(
         if (!silent) set({ loading: true })
         set({ isSyncing: true })
         try {
+          const isFitAuth = get().isFitAuthenticated
           const [weights, measurements, bioimpedance, templates, sessions] = await Promise.all([
             fetchFitWeights(30),
             fetchFitMeasurements(50),
@@ -224,11 +225,11 @@ export const useFitStore = create<FitState>()(
           ])
 
           set((state) => ({
-            weights: weights.length > 0 ? weights : state.weights,
-            measurements: measurements.length > 0 ? measurements : state.measurements,
-            bioimpedance: bioimpedance.length > 0 ? bioimpedance : state.bioimpedance,
+            weights: isFitAuth ? weights : (weights.length > 0 ? weights : state.weights),
+            measurements: isFitAuth ? measurements : (measurements.length > 0 ? measurements : state.measurements),
+            bioimpedance: isFitAuth ? bioimpedance : (bioimpedance.length > 0 ? bioimpedance : state.bioimpedance),
             templates: templates.length > 0 ? templates : state.templates,
-            sessions: sessions.length > 0 ? sessions : state.sessions,
+            sessions: isFitAuth ? sessions : (sessions.length > 0 ? sessions : state.sessions),
             lastSync: new Date().toISOString(),
             loading: false,
             isSyncing: false,
