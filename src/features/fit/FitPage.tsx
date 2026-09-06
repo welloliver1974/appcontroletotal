@@ -13,6 +13,7 @@ import {
   Ruler,
   Scale,
   ShieldCheck,
+  Trash2,
 } from 'lucide-react'
 import {
   Area,
@@ -50,6 +51,7 @@ export function FitPage() {
     fetchData,
     logout,
     logWorkoutSession,
+    deleteWorkoutSession,
     deleteWeightLocal,
     deleteMeasurementLocal,
     getLatestWeight,
@@ -335,7 +337,7 @@ export function FitPage() {
                         <Dumbbell className="h-4 w-4" />
                       </span>
                       <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">
-                        Ficha
+                        Rotina
                       </span>
                     </div>
                     <h3 className="font-semibold text-zinc-100 group-hover:text-emerald-300 transition-colors">
@@ -347,9 +349,10 @@ export function FitPage() {
                     <button
                       onClick={() => logWorkoutSession(tpl.name, tpl.id)}
                       className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 active:scale-95 transition-all"
+                      title="Registrar que realizou este treino agora"
                     >
                       <CheckCircle2 className="h-4 w-4" />
-                      <span>Concluir Hoje</span>
+                      <span>Registrar Treino</span>
                     </button>
                     <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
                   </div>
@@ -362,7 +365,7 @@ export function FitPage() {
           <Card>
             <CardHeader
               title="Histórico de Treinos Realizados"
-              subtitle={`${sessions.length} sessões concluídas`}
+              subtitle={`${sessions.length} sessões registradas`}
               action={
                 <Button
                   variant="soft"
@@ -381,7 +384,7 @@ export function FitPage() {
                 <Dumbbell className="h-8 w-8 mx-auto mb-2 text-zinc-600" />
                 <p className="text-sm font-medium">Nenhum treino registrado ainda.</p>
                 <p className="text-xs mt-1 text-zinc-600">
-                  Clique em "Concluir Hoje" em uma ficha acima ou fale com o Hermes!
+                  Clique em "Registrar Treino" em uma rotina acima ou fale com o Hermes!
                 </p>
               </div>
             ) : (
@@ -409,9 +412,18 @@ export function FitPage() {
                       </div>
                     </div>
 
-                    <span className="chip text-[10px] border-emerald-500/30 bg-emerald-500/10 text-emerald-300 shrink-0">
-                      Concluído
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="chip text-[10px] border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
+                        Concluído
+                      </span>
+                      <button
+                        onClick={() => deleteWorkoutSession(session.id)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                        title="Excluir este treino do histórico"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

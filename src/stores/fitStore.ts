@@ -15,6 +15,7 @@ import {
   insertFitMeasurement,
   insertFitWeight,
   insertFitWorkoutSession,
+  deleteFitWorkoutSession,
   getFitwellSession,
   loginFitwell,
   logoutFitwell,
@@ -46,6 +47,7 @@ interface FitState {
   logBioimpedance: (data: Partial<FitBioimpedance>) => Promise<boolean>
   deleteWeightLocal: (id: string) => void
   deleteMeasurementLocal: (id: string) => void
+  deleteWorkoutSession: (id: string) => Promise<void>
   getLatestWeight: () => FitWeight | null
   getWeightDelta: () => { current: number; previous: number; diff: number } | null
   getLatestMeasurementsByLabel: () => Record<string, FitMeasurement>
@@ -257,6 +259,14 @@ export const useFitStore = create<FitState>()(
           measurements: state.measurements.filter((m) => m.id !== id),
         }))
         toast.info('Medida removida localmente.')
+      },
+
+      deleteWorkoutSession: async (id: string) => {
+        set((state) => ({
+          sessions: state.sessions.filter((s) => s.id !== id),
+        }))
+        await deleteFitWorkoutSession(id)
+        toast.info('Treino removido do histórico!')
       },
 
       getLatestWeight: () => {

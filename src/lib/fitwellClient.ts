@@ -360,3 +360,20 @@ export async function insertFitWorkoutSession(
     return null
   }
 }
+
+/** Delete workout session */
+export async function deleteFitWorkoutSession(id: string): Promise<boolean> {
+  if (!fitwellSupabase) return false
+  try {
+    const { error } = await fitwellSupabase.from('workout_sessions').delete().eq('id', id)
+    if (error) {
+      console.warn('[FitWell] Erro ao excluir sessão de treino:', error.message)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.warn('[FitWell] Falha ao excluir sessão:', err)
+    return false
+  }
+}
+
