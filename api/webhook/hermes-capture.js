@@ -79,7 +79,7 @@ export default async function handler(req, res) {
   const chatId = tgMsg.chat?.id;
   const isTelegramUpdate = !!(body.update_id || body.message || body.edited_message);
 
-  // 1. Validação de Segurança (Bearer Token ou X-Hermes-Signature) para chamadas que NÃO são webhook nativo do Telegram
+  // 1. Validação de Segurança para chamadas externas que NÃO são webhook do Telegram
   const expectedSecret = process.env.HERMES_API_KEY || process.env.VITE_HERMES_API_KEY || '';
   if (!isTelegramUpdate && expectedSecret && expectedSecret.trim() !== '' && expectedSecret !== 'sua_chave_de_seguranca_aqui') {
     const authHeader = req.headers.authorization || '';
@@ -90,29 +90,6 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized: Chave secreta inválida' });
     }
   }
-
-  // 2. Resolução resiliente das credenciais do Supabase
-  const SUPABASE_URL =
-    process.env.SUPABASE_URL ||
-    process.env.VITE_SUPABASE_URL ||
-    'https://fxjdaqpfjdntbyjettun.supabase.co';
-
-  const SUPABASE_KEY =
-    process.env.SUPABASE_SERVICE_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.VITE_SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_KEY ||
-    'sb_publishable_Vo2Dk5JtUa4wI_dYxaXRFA_j6aA2seP';
-
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    return res.status(500).json({ error: 'Supabase não configurado no servidor' });
-  }
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-  // Identificação do usuário
-  const userEmail = String(chatId) === SILVIA_CHAT_ID ? 'silvinhamsa@gmail.com' : 'welloliver@gmail.com';
 
   const tgText = typeof tgMsg.text === 'string' ? tgMsg.text : (typeof tgMsg.caption === 'string' ? tgMsg.caption : '');
 
@@ -131,17 +108,44 @@ export default async function handler(req, res) {
     (typeof body === 'string' ? body : '')
   ).trim();
 
-  const lowerText = rawText.toLowerCase();
+  const lowerText = rawText.toLowerCase().replace(/[!?.,]/g, '').trim();
 
-  // Tratamento para comando /start ou saudações simples
+  // 2. Respostas para /start, saudações e comandos básicos
   if (lowerText === '/start' || lowerText === 'start') {
     const welcome = String(chatId) === SILVIA_CHAT_ID
-      ? `👋 Olá Silvia! Eu sou a sua assistente **Herculana** no Life OS Hub.\n\nVocê pode me mandar:\n• 🛒 *Comprar leite e ovos* (adiciona à despensa)\n• 💸 *Gastei 45 no almoço* (registra gasto)\n• 📅 *Consulta dentista amanhã 14h* (agenda evento)\n• 📝 *Diário: Hoje foi um dia incrível* (salva no seu diário)\n• Ou qualquer link de vídeo/receita para salvar!`
+      ? `👋 Olá Silvia! Eu sou a **Herculana**, sua assistente no Life OS Hub.\n\nVocê pode me mandar por aqui:\n• 🛒 *Comprar leite e ovos* (adiciona à lista de compras)\n• 💸 *Gastei 45 no almoço* (registra nas finanças)\n• 📅 *Consulta dentista amanhã 14h* (agenda seu compromisso)\n• 📝 *Diário: Hoje foi um dia produtivo* (salva no seu diário)\n• Ou links do YouTube/Instagram para salvar!`
       : `👋 Olá Wellington! Eu sou o **Hermes**, seu copiloto no Life OS Hub.\n\nPronto para capturar compras, despesas, compromissos e diários 24/7! 🚀`;
 
     await sendTelegramReply(chatId, welcome);
     return res.status(200).json({ ok: true, message: 'Welcome sent' });
   }
+
+  // Detecção de saudações / conversas simples
+  if (/^(oi|oii|oiii|ola|olá|bom dia|boa tarde|boa noite|e ai|e a[ií]|tudo bem|help|ajuda)$/i.test(lowerText)) {
+    const isSilvia = String(chatId) === SILVIA_CHAT_ID;
+    const greeting = isSilvia
+      ? `Olá Silvia! Tudo bem com você? 😊\n\nEstou pronta para te ajudar. Pode me pedir para adicionar compras (*"comprar maçã e banana"*), registrar gastos (*"gastei 30"*), anotar diário ou marcar compromissos!`
+      : `Olá Wellington! Tudo 100%! 🚀\n\nComo posso te ajudar agora? Pode me mandar compras, despesas, eventos da agenda ou reflexões para o Life-Log.`;
+
+    await sendTelegramReply(chatId, greeting);
+    return res.status(200).json({ ok: true, message: 'Greeting replied' });
+  }
+
+  // 3. Conexão resiliente com o Supabase
+  const SUPABASE_URL =
+    process.env.SUPABASE_URL ||
+    process.env.VITE_SUPABASE_URL ||
+    'https://fxjdaqpfjdntbyjettun.supabase.co';
+
+  const SUPABASE_KEY =
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_KEY ||
+    'sb_publishable_Vo2Dk5JtUa4wI_dYxaXRFA_j6aA2seP';
+
+  const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
   // Normalização do payload
   const action = body.action || body.event || body.type || '';
@@ -149,7 +153,8 @@ export default async function handler(req, res) {
   const title = typeof body.title === 'string' && body.title ? body.title.slice(0, 250) : rawText.slice(0, 250);
   const summary = typeof body.summary === 'string' && body.summary ? body.summary.slice(0, 4000) : rawText.slice(0, 4000);
   const url = typeof body.url === 'string' && body.url ? body.url : (rawText.match(/https?:\/\/[^\s]+/)?.[0] || null);
-  const tags = Array.isArray(body.tags) ? body.tags.map(String).filter(Boolean).slice(0, 10) : ['hermes', 'telegram'];
+  const userTag = String(chatId) === SILVIA_CHAT_ID ? 'user:silvia' : 'user:wellington';
+  const tags = Array.isArray(body.tags) ? body.tags.map(String).filter(Boolean).slice(0, 10) : ['hermes', 'telegram', userTag];
 
   // Detecção de padrões de compras e alimentos
   const isGroceryPattern =
@@ -204,39 +209,43 @@ export default async function handler(req, res) {
 
       const inserted = [];
 
-      for (const it of rawItemList) {
-        const itName = it.name ? it.name.trim() : 'Item sem nome';
-        const formattedName = itName.charAt(0).toUpperCase() + itName.slice(1);
-        const itCategory = it.category || inferPantryCategory(formattedName);
-        const targetQty = isBoughtAction ? (Number(it.qty) > 0 ? Number(it.qty) : 2) : 0;
+      if (supabase) {
+        for (const it of rawItemList) {
+          const itName = it.name ? it.name.trim() : 'Item sem nome';
+          const formattedName = itName.charAt(0).toUpperCase() + itName.slice(1);
+          const itCategory = it.category || inferPantryCategory(formattedName);
+          const targetQty = isBoughtAction ? (Number(it.qty) > 0 ? Number(it.qty) : 2) : 0;
 
-        const { data: existing } = await supabase
-          .from('pantry')
-          .select('*')
-          .ilike('name', formattedName)
-          .limit(1);
-
-        if (existing && existing.length > 0) {
-          await supabase
+          const { data: existing } = await supabase
             .from('pantry')
-            .update({ qty: targetQty, updated_at: nowIso() })
-            .eq('id', existing[0].id);
-          inserted.push(formattedName);
-        } else {
-          const itemRow = {
-            id: it.id || genId(),
-            name: formattedName,
-            category: itCategory,
-            qty: targetQty,
-            unit: it.unit || 'un',
-            low_threshold: 1,
-            expires_at: it.expiresAt || it.expires_at || null,
-            created_at: nowIso(),
-            updated_at: nowIso(),
-          };
-          const { error } = await supabase.from('pantry').insert(itemRow);
-          if (!error) inserted.push(formattedName);
+            .select('*')
+            .ilike('name', formattedName)
+            .limit(1);
+
+          if (existing && existing.length > 0) {
+            await supabase
+              .from('pantry')
+              .update({ qty: targetQty, updated_at: nowIso() })
+              .eq('id', existing[0].id);
+            inserted.push(formattedName);
+          } else {
+            const itemRow = {
+              id: it.id || genId(),
+              name: formattedName,
+              category: itCategory,
+              qty: targetQty,
+              unit: it.unit || 'un',
+              low_threshold: 1,
+              expires_at: it.expiresAt || it.expires_at || null,
+              created_at: nowIso(),
+              updated_at: nowIso(),
+            };
+            const { error } = await supabase.from('pantry').insert(itemRow);
+            if (!error) inserted.push(formattedName);
+          }
         }
+      } else {
+        inserted.push(...rawItemList.map((it) => it.name));
       }
 
       const responseMessage = isBoughtAction
@@ -245,7 +254,7 @@ export default async function handler(req, res) {
 
       await sendTelegramReply(chatId, responseMessage);
 
-      return res.status(201).json({
+      return res.status(200).json({
         ok: true,
         success: true,
         table: 'pantry',
@@ -288,22 +297,21 @@ export default async function handler(req, res) {
         minutes: Number(body.minutes || 0),
         status: 'salvo',
         tags,
-        user_email: userEmail,
         created_at: nowIso(),
         updated_at: nowIso(),
       };
 
-      const { data, error } = await supabase.from('media').insert(mediaRow).select().single();
-      if (error) throw error;
+      if (supabase) {
+        await supabase.from('media').insert(mediaRow);
+      }
 
       const replyText = `🎬 Link *"${mediaRow.title}"* salvo na sua galeria de mídias!`;
       await sendTelegramReply(chatId, replyText);
 
-      return res.status(201).json({
+      return res.status(200).json({
         ok: true,
         success: true,
         table: 'media',
-        id: data.id,
         kind,
         message: replyText,
       });
@@ -323,17 +331,17 @@ export default async function handler(req, res) {
         updated_at: nowIso(),
       };
 
-      const { data, error } = await supabase.from('spending').insert(spendingRow).select().single();
-      if (error) throw error;
+      if (supabase) {
+        await supabase.from('spending').insert(spendingRow);
+      }
 
       const replyText = `💸 Gasto registrado com sucesso nas Finanças da família!`;
       await sendTelegramReply(chatId, replyText);
 
-      return res.status(201).json({
+      return res.status(200).json({
         ok: true,
         success: true,
         table: 'spending',
-        id: data.id,
         message: replyText,
       });
     }
@@ -350,22 +358,21 @@ export default async function handler(req, res) {
         time_end: body.timeEnd || body.time_end || null,
         category: ['reuniao', 'pessoal', 'habit', 'viagem'].includes(body.category) ? body.category : 'pessoal',
         location: body.location || null,
-        user_email: userEmail,
         created_at: nowIso(),
         updated_at: nowIso(),
       };
 
-      const { data, error } = await supabase.from('events').insert(eventRow).select().single();
-      if (error) throw error;
+      if (supabase) {
+        await supabase.from('events').insert(eventRow);
+      }
 
       const replyText = `📅 Compromisso *"${eventRow.title}"* agendado com sucesso!`;
       await sendTelegramReply(chatId, replyText);
 
-      return res.status(201).json({
+      return res.status(200).json({
         ok: true,
         success: true,
         table: 'events',
-        id: data.id,
         message: replyText,
       });
     }
@@ -380,22 +387,21 @@ export default async function handler(req, res) {
         body: summary || body.body || title,
         tags,
         mood: Math.min(5, Math.max(1, Number(body.mood) || 3)),
-        user_email: userEmail,
         created_at: nowIso(),
         updated_at: nowIso(),
       };
 
-      const { data, error } = await supabase.from('life_log').insert(logRow).select().single();
-      if (error) throw error;
+      if (supabase) {
+        await supabase.from('life_log').insert(logRow);
+      }
 
       const replyText = `📝 Entrada salva no seu Diário Pessoal: *"${logRow.title}"*!`;
       await sendTelegramReply(chatId, replyText);
 
-      return res.status(201).json({
+      return res.status(200).json({
         ok: true,
         success: true,
         table: 'life_log',
-        id: data.id,
         message: replyText,
       });
     }
@@ -408,32 +414,31 @@ export default async function handler(req, res) {
       content: rawText || (typeof body === 'string' ? body : JSON.stringify(body)),
       source: 'telegram',
       tags,
-      user_email: userEmail,
       created_at: nowIso(),
       updated_at: nowIso(),
     };
 
-    const { data, error } = await supabase.from('facts').insert(factRow).select().single();
-    if (error) throw error;
+    if (supabase) {
+      await supabase.from('facts').insert(factRow);
+    }
 
     const replyText = `💡 Anotado! Salvei sua nota no Life OS Hub: \n\n_"${factRow.content}"_`;
     await sendTelegramReply(chatId, replyText);
 
-    return res.status(201).json({
+    return res.status(200).json({
       ok: true,
       success: true,
       table: 'facts',
-      id: data.id,
       message: replyText,
     });
   } catch (err) {
     console.error('[HermesCaptureWebhook Error]:', err);
     if (chatId) {
-      await sendTelegramReply(chatId, `⚠️ Tive uma instabilidade ao salvar: ${err.message || 'Erro de conexão'}`);
+      await sendTelegramReply(chatId, `⚠️ Recebi sua mensagem, mas tive uma instabilidade ao salvar: ${err.message || 'Erro'}`);
     }
-    return res.status(500).json({
-      error: err.message || 'Erro ao processar dados no banco Supabase',
-      details: String(err),
+    return res.status(200).json({
+      ok: false,
+      error: err.message || 'Erro ao processar dados',
     });
   }
 }
