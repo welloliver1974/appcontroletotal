@@ -1083,4 +1083,18 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## ☀️ 61. Roteamento Padrão Inicial Atualizado para a Central "Hoje" (06/09/2026)
+
+* **Contexto & Problema:**
+  - O aplicativo abria por padrão na rota `/dashboard` ao carregar a raiz (`/`) ou após autenticação do dispositivo/usuário.
+  - Como a central **Hoje** (`/hoje`) foi concebida como o módulo primário do dia a dia (prioridades imediatas, compromissos, hábitos e radar diário), o comportamento esperado era abrir diretamente em `/hoje`.
+
+* **Soluções Implementadas:**
+  - **🗺️ Redirecionamento da Rota Inicial e Fallback ([App.tsx](file:///e:/Apps/AppControleTotal/src/app/App.tsx)):**
+    - A rota index (`<Route index ...>`) agora redireciona com `replace` para `/hoje`.
+    - A rota coringa (`<Route path="*" ...>`) também foi atualizada para redirecionar para `/hoje`.
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+

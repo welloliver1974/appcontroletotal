@@ -54,7 +54,7 @@ export default function App() {
           <Suspense fallback={<PageLoading />}>
             <Routes>
               <Route element={<AppShell />}>
-                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route index element={<Navigate to="/hoje" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/hoje" element={<HojePage />} />
                 <Route path="/life-log" element={<LifeLogPage />} />
@@ -64,7 +64,7 @@ export default function App() {
                 <Route path="/viagens" element={<ViagensPage />} />
                 <Route path="/agenda" element={<AgendaPage />} />
                 <Route path="/share-target" element={<ShareTargetHandler />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                <Route path="*" element={<Navigate to="/hoje" replace />} />
               </Route>
             </Routes>
           </Suspense>
