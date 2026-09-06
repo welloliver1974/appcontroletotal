@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 const nowIso = () => new Date().toISOString();
 const genId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
 
-// Tokens padrão para resposta no Telegram
+// Tokens e Chat IDs padrão
 const SILVIA_CHAT_ID = '8927954331';
 const SILVIA_BOT_TOKEN = '8959661332:AAHwFSeidRmv9dvjnzujFeERKbmV_HQjzwc';
 const WELL_CHAT_ID = '497789001';
@@ -16,15 +16,18 @@ async function sendTelegramReply(chatId, text, customToken) {
   if (!chatId || !text) return;
   const token = customToken || (String(chatId) === SILVIA_CHAT_ID ? SILVIA_BOT_TOKEN : WELL_BOT_TOKEN);
   try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
         text,
-        parse_mode: 'Markdown',
       }),
     });
+    const data = await res.json();
+    if (!data.ok) {
+      console.warn('[TelegramReply warning]:', data);
+    }
   } catch (err) {
     console.warn('[TelegramReply Error]:', err);
   }
@@ -76,7 +79,7 @@ export default async function handler(req, res) {
 
   const body = req.body || {};
   const tgMsg = body.message || body.edited_message || body.channel_post || {};
-  const chatId = tgMsg.chat?.id;
+  const chatId = tgMsg.chat?.id || body.chat_id || body.chatId;
   const isTelegramUpdate = !!(body.update_id || body.message || body.edited_message);
 
   // 1. Validação de Segurança para chamadas externas que NÃO são webhook do Telegram
@@ -113,18 +116,18 @@ export default async function handler(req, res) {
   // 2. Respostas para /start, saudações e comandos básicos
   if (lowerText === '/start' || lowerText === 'start') {
     const welcome = String(chatId) === SILVIA_CHAT_ID
-      ? `👋 Olá Silvia! Eu sou a **Herculana**, sua assistente no Life OS Hub.\n\nVocê pode me mandar por aqui:\n• 🛒 *Comprar leite e ovos* (adiciona à lista de compras)\n• 💸 *Gastei 45 no almoço* (registra nas finanças)\n• 📅 *Consulta dentista amanhã 14h* (agenda seu compromisso)\n• 📝 *Diário: Hoje foi um dia produtivo* (salva no seu diário)\n• Ou links do YouTube/Instagram para salvar!`
-      : `👋 Olá Wellington! Eu sou o **Hermes**, seu copiloto no Life OS Hub.\n\nPronto para capturar compras, despesas, compromissos e diários 24/7! 🚀`;
+      ? `👋 Olá Silvia! Eu sou a Herculana, sua assistente no Life OS Hub.\n\nVocê pode me mandar por aqui:\n• 🛒 Comprar leite e ovos (adiciona à lista de compras)\n• 💸 Gastei 45 no almoço (registra nas finanças)\n• 📅 Consulta dentista amanhã 14h (agenda seu compromisso)\n• 📝 Diário: Hoje foi um dia produtivo (salva no seu diário)\n• Ou links do YouTube/Instagram para salvar!`
+      : `👋 Olá Wellington! Eu sou o Hermes, seu copiloto no Life OS Hub.\n\nPronto para capturar compras, despesas, compromissos e diários 24/7! 🚀`;
 
     await sendTelegramReply(chatId, welcome);
     return res.status(200).json({ ok: true, message: 'Welcome sent' });
   }
 
   // Detecção de saudações / conversas simples
-  if (/^(oi|oii|oiii|ola|olá|bom dia|boa tarde|boa noite|e ai|e a[ií]|tudo bem|help|ajuda)$/i.test(lowerText)) {
+  if (/^(oi|oii|oiii|oiiii|ola|olá|bom dia|boa tarde|boa noite|e ai|e a[ií]|tudo bem|help|ajuda|teste)$/i.test(lowerText)) {
     const isSilvia = String(chatId) === SILVIA_CHAT_ID;
     const greeting = isSilvia
-      ? `Olá Silvia! Tudo bem com você? 😊\n\nEstou pronta para te ajudar. Pode me pedir para adicionar compras (*"comprar maçã e banana"*), registrar gastos (*"gastei 30"*), anotar diário ou marcar compromissos!`
+      ? `Olá Silvia! Tudo bem com você? 😊\n\nEstou pronta para te ajudar. Pode me pedir para adicionar compras ("comprar maçã e banana"), registrar gastos ("gastei 30"), anotar no diário ou marcar compromissos na agenda!`
       : `Olá Wellington! Tudo 100%! 🚀\n\nComo posso te ajudar agora? Pode me mandar compras, despesas, eventos da agenda ou reflexões para o Life-Log.`;
 
     await sendTelegramReply(chatId, greeting);
@@ -249,8 +252,8 @@ export default async function handler(req, res) {
       }
 
       const responseMessage = isBoughtAction
-        ? `✅ *${inserted.join(', ')}* marcado(s) como comprado(s) e despensa atualizada! 🛒`
-        : `🛒 *${inserted.join(', ')}* adicionado(s) à lista de compras da despensa!`;
+        ? `✅ ${inserted.join(', ')} marcado(s) como comprado(s) e despensa atualizada! 🛒`
+        : `🛒 ${inserted.join(', ')} adicionado(s) à lista de compras da despensa!`;
 
       await sendTelegramReply(chatId, responseMessage);
 
@@ -305,7 +308,7 @@ export default async function handler(req, res) {
         await supabase.from('media').insert(mediaRow);
       }
 
-      const replyText = `🎬 Link *"${mediaRow.title}"* salvo na sua galeria de mídias!`;
+      const replyText = `🎬 Link "${mediaRow.title}" salvo na sua galeria de mídias!`;
       await sendTelegramReply(chatId, replyText);
 
       return res.status(200).json({
@@ -366,7 +369,7 @@ export default async function handler(req, res) {
         await supabase.from('events').insert(eventRow);
       }
 
-      const replyText = `📅 Compromisso *"${eventRow.title}"* agendado com sucesso!`;
+      const replyText = `📅 Compromisso "${eventRow.title}" agendado com sucesso!`;
       await sendTelegramReply(chatId, replyText);
 
       return res.status(200).json({
@@ -395,7 +398,7 @@ export default async function handler(req, res) {
         await supabase.from('life_log').insert(logRow);
       }
 
-      const replyText = `📝 Entrada salva no seu Diário Pessoal: *"${logRow.title}"*!`;
+      const replyText = `📝 Entrada salva no seu Diário Pessoal: "${logRow.title}"!`;
       await sendTelegramReply(chatId, replyText);
 
       return res.status(200).json({
@@ -422,7 +425,7 @@ export default async function handler(req, res) {
       await supabase.from('facts').insert(factRow);
     }
 
-    const replyText = `💡 Anotado! Salvei sua nota no Life OS Hub: \n\n_"${factRow.content}"_`;
+    const replyText = `💡 Anotado! Salvei sua nota no Life OS Hub:\n\n"${factRow.content}"`;
     await sendTelegramReply(chatId, replyText);
 
     return res.status(200).json({
