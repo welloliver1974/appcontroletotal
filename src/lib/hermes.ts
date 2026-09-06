@@ -783,11 +783,14 @@ SUA POSTURA:
 - Se os dados mostrarem alertas críticos, avise com gentileza.
 
 AÇÕES AUTOMÁTICAS:
-Se o usuário pedir para cadastrar, adicionar ou comprar algo (despensa/compras, gasto, compromisso ou nota no diário), além da sua resposta em texto amigável, você DEVE anexar ao final da mensagem a tag de ação exata no formato:
+Se o usuário pedir para cadastrar, adicionar ou comprar algo (despensa/compras, gasto, compromisso, nota no diário, pesagem, medida física ou treino), além da sua resposta em texto amigável, você DEVE anexar ao final da mensagem a tag de ação exata no formato:
 - Para Lista de Compras / Despensa: ACTION: {"action": "pantry_add", "payload": {"name": "Coca-Cola", "quantityToBuy": 3, "unit": "un", "category": "Bebidas"}}
 - Para Gasto / Despesa: ACTION: {"action": "spending_add", "payload": {"amount": 50.0, "category": "Alimentação", "note": "Almoço"}}
 - Para Agenda / Compromisso: ACTION: {"action": "event_add", "payload": {"title": "Título", "date": "YYYY-MM-DD", "timeStart": "HH:MM", "category": "pessoal"}}
-- Para Diário / Life-Log: ACTION: {"action": "lifelog_add", "payload": {"title": "Título", "body": "Texto", "mood": 4}}`
+- Para Diário / Life-Log: ACTION: {"action": "lifelog_add", "payload": {"title": "Título", "body": "Texto", "mood": 4}}
+- Para Peso Corporal (FitWell): ACTION: {"action": "fit_weight_add", "payload": {"weight_kg": 78.5, "date": "YYYY-MM-DD"}}
+- Para Medida Corporal (FitWell): ACTION: {"action": "fit_measurement_add", "payload": {"label": "Cintura", "value_cm": 84.0, "date": "YYYY-MM-DD"}}
+- Para Treino Realizado (FitWell): ACTION: {"action": "fit_workout_add", "payload": {"name": "Treino A — Peito e Tríceps", "notes": "Treino concluído com sucesso"}}`
   } catch {
     return 'Você é o HERMES AGENT, o copiloto de Inteligência Artificial do Life OS Hub. Seja direto, amigável e prestativo.'
   }

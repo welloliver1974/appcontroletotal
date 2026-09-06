@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   CalendarClock,
   CircleDollarSign,
+  Dumbbell,
   LayoutDashboard,
   NotebookPen,
   Plane,
@@ -13,6 +14,7 @@ import {
 export type ModuleId =
   | 'dashboard'
   | 'hoje'
+  | 'fit'
   | 'life-log'
   | 'manutencao'
   | 'despensa'
@@ -77,6 +79,22 @@ export const MODULES: ModuleDef[] = [
     gradient: 'from-violet-500 to-purple-500',
     tag: 'Visão geral',
     description: 'KPIs, alertas e insights do seu universo pessoal.',
+  },
+  {
+    id: 'fit',
+    label: 'Saúde & Fit',
+    navLabel: 'Fit',
+    emoji: '🏋️',
+    path: '/fit',
+    icon: Dumbbell,
+    accent: 'emerald',
+    text: 'text-emerald-400',
+    solid: 'bg-emerald-500',
+    soft: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    glow: 'bg-emerald-500/10',
+    gradient: 'from-emerald-500 to-teal-500',
+    tag: 'FitWell Hub',
+    description: 'Treinos do dia, medidas corporais, evolução de peso e bioimpedância.',
   },
   {
     id: 'life-log',

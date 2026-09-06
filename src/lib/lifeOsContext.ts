@@ -2,6 +2,7 @@ import { db } from './db'
 import { isoOffset, isValidIsoDate, todayStr } from './utils'
 import type { AgendaEvent, Asset, DocVaultItem, FixedBill, MaintenanceRecord, PantryItem, SpendingItem } from '@/data/types'
 import { calculateVehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
+import { useFitStore } from '@/stores/fitStore'
 
 export interface LifeOsSummaryContext {
   todayFormatted: string
@@ -13,6 +14,7 @@ export interface LifeOsSummaryContext {
   vehicleSummary: string[]
   docVaultSummary: string[]
   recentNotesCount: number
+  fitnessSummary: string
 }
 
 /**
@@ -85,6 +87,18 @@ export async function getLifeOsSummaryContext(): Promise<LifeOsSummaryContext> {
   // 5. DocVault (Documentos, números, medidas)
   const docVaultSummary = docVault.map((d) => `[${d.category}] ${d.title}: ${d.value}${d.extra ? ` (${d.extra})` : ''}`)
 
+  // 6. Saúde & FitWell Hub
+  const fitState = useFitStore.getState()
+  const latestWeight = fitState.getLatestWeight()
+  const latestMeasure = fitState.getLatestMeasurementsByLabel()
+  const measureParts = Object.values(latestMeasure)
+    .slice(0, 3)
+    .map((m) => `${m.label}: ${m.value_cm}cm`)
+    .join(', ')
+  const fitnessSummary = latestWeight
+    ? `Peso atual: ${latestWeight.weight_kg}kg (${latestWeight.log_date}). ${measureParts ? `Medidas: ${measureParts}.` : ''} Treinos registrados: ${fitState.sessions.length} sessões.`
+    : 'Nenhum registro de peso recente no FitWell.'
+
   return {
     todayFormatted: now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }),
     spendingMonthTotal,
@@ -95,6 +109,7 @@ export async function getLifeOsSummaryContext(): Promise<LifeOsSummaryContext> {
     vehicleSummary,
     docVaultSummary,
     recentNotesCount: lifeLog.length,
+    fitnessSummary,
   }
 }
 
@@ -111,6 +126,7 @@ export async function buildFullLifeOsPromptContext(): Promise<string> {
 - Contas Fixas Pendentes: ${ctx.pendingFixedBills.length > 0 ? ctx.pendingFixedBills.join('; ') : 'Nenhuma conta pendente este mês'}.
 - Próximos Compromissos (3 dias): ${ctx.upcomingEvents.length > 0 ? ctx.upcomingEvents.join('; ') : 'Nenhum compromisso próximo'}.
 - Despensa em Falta: ${ctx.lowPantryItems.length > 0 ? ctx.lowPantryItems.join(', ') : 'Despensa abastecida'}.
+- Saúde, Treinos & FitWell Hub: ${ctx.fitnessSummary}
 - Manutenções Críticas: ${ctx.criticalAssets.length > 0 ? ctx.criticalAssets.join('; ') : 'Todos os ativos em dia'}.
 - Veículos & Estimativas: ${ctx.vehicleSummary.length > 0 ? ctx.vehicleSummary.join('; ') : 'Nenhum veículo cadastrado'}.
 - Cofre de Documentos & Informações Úteis: ${ctx.docVaultSummary.length > 0 ? ctx.docVaultSummary.join(' | ') : 'Cofre vazio'}.

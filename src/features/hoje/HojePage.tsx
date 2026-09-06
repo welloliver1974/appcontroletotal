@@ -11,6 +11,7 @@ import {
   Circle,
   CircleDollarSign,
   Clock,
+  Dumbbell,
   Fuel,
   Mic,
   Plane,
@@ -732,7 +733,7 @@ export function HojePage() {
           </div>
 
           {/* Cartões Rápidos de Status */}
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div
               onClick={() => navigate('/agenda')}
               className="cursor-pointer rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-3 hover:border-rose-500/30 transition-all"
@@ -753,6 +754,17 @@ export function HojePage() {
                 <span className="text-base font-bold">{plan.counts.bills}</span>
               </div>
               <p className="text-[11px] text-zinc-400 font-medium truncate">Contas Pendentes</p>
+            </div>
+
+            <div
+              onClick={() => navigate('/fit')}
+              className="cursor-pointer rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-3 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all col-span-2 sm:col-span-1"
+            >
+              <div className="flex items-center justify-between text-emerald-400 mb-1">
+                <Dumbbell className="h-4 w-4" />
+                <span className="text-base font-bold">FitWell</span>
+              </div>
+              <p className="text-[11px] text-zinc-400 font-medium truncate">Treinos & Medidas</p>
             </div>
 
             <div

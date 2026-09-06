@@ -8,14 +8,16 @@
 
 O **AppControleTotal (Life OS Hub)** é um Sistema Operacional Pessoal moderno no formato **PWA (Progressive Web App)** com interface *Dark Mode Premium* (estilo Linear.app, Vercel e Apple Human Interface Guidelines).
 
-O app centraliza a gestão de 7 áreas da vida:
-1. **📊 Dashboard:** KPIs consolidados, radar de alertas, próximos compromissos, emails urgentes, Life Insights (gráficos Recharts) e Briefing Matinal com IA.
-2. **📝 Life-Log & Leitura:** Diário pessoal, rastreador de livros, cofre de anotações/fatos (*Fact Vault*), captura de mídias (YouTube & Instagram) e consulta semântica ao Hermes AI.
-3. **🛠️ Manutenção & Ativos:** Gestão de patrimônio (veículos, residência, eletrônicos), barras de vida útil, odômetro e histórico de manutenções.
-4. **🛒 Consumo & Despensa:** Controle de estoque de mantimentos, alertas de vencimento (≤ 3 dias), limite mínimo e exportação da lista de compras via Webhook direto para o Hermes / WhatsApp.
-5. **💵 Finanças:** Extrato diário, contas fixas, orçamento mensal, Safe-to-Spend, scanner de cupom e relatórios.
-6. **✈️ Viagens & Experiências:** Roteiros cronológicos dia a dia e lista de locais salvos (*bucket list*).
-7. **📅 Agenda & Inbox (Hermes Bridge):** Calendário mensal/semanal integrado com emails filtrados pelo Hermes e central de configurações avançadas.
+O app centraliza a gestão de 8 áreas da vida:
+1. **☀️ Hoje:** Central do dia, prioridades inteligentes, compromissos imediatos, hábitos e radar diário.
+2. **📊 Dashboard:** KPIs consolidados, radar de alertas, próximos compromissos, emails urgentes, Life Insights (gráficos Recharts) e Briefing Matinal com IA.
+3. **🏋️ Saúde & Fit (FitWell Hub):** Treinos do dia, fichas de exercícios, evolução de peso corporal, medidas físicas e bioimpedância sincronizadas em tempo real.
+4. **📝 Life-Log & Leitura:** Diário pessoal, rastreador de livros, cofre de anotações/fatos (*Fact Vault*), captura de mídias (YouTube & Instagram) e consulta semântica ao Hermes AI.
+5. **🛠️ Manutenção & Ativos:** Gestão de patrimônio (veículos, residência, eletrônicos), barras de vida útil, odômetro e histórico de manutenções.
+6. **🛒 Consumo & Despensa:** Controle de estoque de mantimentos, alertas de vencimento (≤ 3 dias), limite mínimo e exportação da lista de compras via Webhook direto para o Hermes / WhatsApp.
+7. **💵 Finanças:** Extrato diário, contas fixas, orçamento mensal, Safe-to-Spend, scanner de cupom e relatórios.
+8. **✈️ Viagens & Experiências:** Roteiros cronológicos dia a dia e lista de locais salvos (*bucket list*).
+9. **📅 Agenda & Inbox (Hermes Bridge):** Calendário mensal/semanal integrado com emails filtrados pelo Hermes e central de configurações avançadas.
 
 ---
 
@@ -1096,5 +1098,35 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## 🏋️ 62. Integração Nativa do FitWell Hub (Saúde, Treinos, Medidas & Bioimpedância) (06/09/2026)
+
+* **Contexto & Motivação:**
+  - O usuário possui o aplicativo **FitWellHub** (`E:\Apps\fitwell\fitwellhub`) conectado a um Supabase dedicado para controle de treinos, fichas de exercícios, peso corporal e medidas corporais.
+  - Havia a necessidade de integrar essa gestão de saúde dentro do **AppControleTotal (Life OS)**, criando uma central de visualização unificada e permitindo comandos por voz e chat através do Hermes que sincronizam ambos os apps simultaneamente.
+
+* **Soluções Implementadas:**
+  1. **🔌 Cliente de Integração Supabase FitWell ([fitwellClient.ts](file:///e:/Apps/AppControleTotal/src/lib/fitwellClient.ts)):**
+     - Conexão configurada para o Supabase do FitWell (`https://haavrgglnfbchiygspqw.supabase.co`).
+     - Métodos assíncronos e tipados para leitura e gravação nas tabelas `body_weights`, `body_measurements`, `bioimpedance_logs`, `workout_templates` e `workout_sessions`.
+  2. **⚡ Store Global e Persistência Otimista ([fitStore.ts](file:///e:/Apps/AppControleTotal/src/stores/fitStore.ts)):**
+     - Zustand store com suporte a atualizações otimistas na interface e sincronização em segundo plano na nuvem.
+     - Cálculo de delta de peso corporal (variação recente vs. anterior), streak de treinos da semana e mapa das medidas mais recentes.
+  3. **🏋️ Novo Módulo "Saúde & Fit" (`/fit`) ([FitPage.tsx](file:///e:/Apps/AppControleTotal/src/features/fit/FitPage.tsx) & [modules.ts](file:///e:/Apps/AppControleTotal/src/lib/modules.ts)):**
+     - Identidade visual esmeralda com abas:
+       - **Treinos & Sessões:** Visualização das fichas de treino cadastradas e botão rápido de 1 toque "Concluir Hoje", além do histórico de sessões.
+       - **Evolução do Peso:** Gráfico de área gradiente interativo (Recharts) com linha do tempo e tabela de histórico.
+       - **Medidas Corporais:** Grade de cards com as circunferências mais recentes (cintura, bíceps, peitoral, coxa...) e histórico.
+       - **Bioimpedância:** Cards com % de gordura, massa magra, água corporal, gordura visceral, taxa metabólica e idade metabólica.
+       - **Atalho Externo:** Link direto para abrir o app oficial FitWellHub na Vercel.
+  4. **🤖 Ações por Voz & Chat no Hermes ([hermesActions.ts](file:///e:/Apps/AppControleTotal/src/lib/hermesActions.ts), [hermes.ts](file:///e:/Apps/AppControleTotal/src/lib/hermes.ts) & [lifeOsContext.ts](file:///e:/Apps/AppControleTotal/src/lib/lifeOsContext.ts)):**
+     - O Hermes agora entende comandos como *"Hermes, pesei 78.5 kg e cintura deu 84 cm"* ou *"Hermes, finalizei o treino de Peito e Tríceps"*.
+     - Execução das tags `fit_weight_add`, `fit_measurement_add` e `fit_workout_add`, gravando no Supabase do FitWell em tempo real.
+     - O contexto RAG do Hermes agora inclui o peso e histórico físico atual para briefings e conversas.
+  5. **☀️ Card de Acesso na Central "Hoje" ([HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx)):**
+     - Card de atalho para a central FitWell adicionado à grade de status rápidos diários.
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 

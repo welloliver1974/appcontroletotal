@@ -1,9 +1,17 @@
 import { db } from './db'
 import { todayStr } from './utils'
 import type { AgendaEvent, PantryItem } from '@/data/types'
+import { useFitStore } from '@/stores/fitStore'
 
 export interface ExecutedAction {
-  type: 'pantry_add' | 'spending_add' | 'event_add' | 'lifelog_add'
+  type:
+    | 'pantry_add'
+    | 'spending_add'
+    | 'event_add'
+    | 'lifelog_add'
+    | 'fit_weight_add'
+    | 'fit_measurement_add'
+    | 'fit_workout_add'
   description: string
   success: boolean
   data?: unknown
@@ -97,6 +105,37 @@ export async function extractAndExecuteHermesActions(replyText: string): Promise
           description: `Entrada criada no Diário: "${log.title}"`,
           success: true,
           data: log,
+        })
+      } else if (parsed.action === 'fit_weight_add' && parsed.payload?.weight_kg) {
+        const weightKg = Number(parsed.payload.weight_kg)
+        const date = parsed.payload.date || todayStr()
+        await useFitStore.getState().logWeight(weightKg, date)
+        actions.push({
+          type: 'fit_weight_add',
+          description: `Peso gravado no FitWell: ${weightKg} kg (${date})`,
+          success: true,
+          data: { weight_kg: weightKg, date },
+        })
+      } else if (parsed.action === 'fit_measurement_add' && parsed.payload?.label && parsed.payload?.value_cm) {
+        const label = String(parsed.payload.label)
+        const valueCm = Number(parsed.payload.value_cm)
+        const date = parsed.payload.date || todayStr()
+        await useFitStore.getState().logMeasurement(label, valueCm, date)
+        actions.push({
+          type: 'fit_measurement_add',
+          description: `Medida ${label} gravada no FitWell: ${valueCm} cm`,
+          success: true,
+          data: { label, value_cm: valueCm, date },
+        })
+      } else if (parsed.action === 'fit_workout_add' && parsed.payload?.name) {
+        const name = String(parsed.payload.name)
+        const notes = parsed.payload.notes ? String(parsed.payload.notes) : undefined
+        await useFitStore.getState().logWorkoutSession(name, undefined, notes)
+        actions.push({
+          type: 'fit_workout_add',
+          description: `Treino "${name}" registrado no FitWell`,
+          success: true,
+          data: { name, notes },
         })
       }
     } catch (e) {

@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 const VERBS: Record<ModuleId, string> = {
   dashboard: 'Novo atalho',
   hoje: 'Plano do dia / foco',
+  fit: 'Novo treino / peso / medida',
   'life-log': 'Nova anotação / fato',
   manutencao: 'Novo registro de ativo',
   despensa: 'Novo item na despensa',
