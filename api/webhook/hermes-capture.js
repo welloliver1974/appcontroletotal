@@ -111,6 +111,47 @@ Suas diretrizes de comunicação:
     : `Fala Wellington! Estou online e pronto para agir em qualquer módulo do Life OS Hub.`;
 }
 
+async function transcribeTelegramAudio(fileId, botToken, groqKey) {
+  if (!fileId || !botToken || !groqKey) return '';
+  try {
+    const fileRes = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
+    const fileData = await fileRes.json();
+    if (!fileData.ok || !fileData.result?.file_path) {
+      console.warn('[Telegram getFile error]:', fileData);
+      return '';
+    }
+
+    const filePath = fileData.result.file_path;
+    const downloadUrl = `https://api.telegram.org/file/bot${botToken}/${filePath}`;
+
+    const audioRes = await fetch(downloadUrl);
+    const arrayBuffer = await audioRes.arrayBuffer();
+    const audioBlob = new Blob([arrayBuffer], { type: 'audio/ogg' });
+
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'audio.ogg');
+    formData.append('model', 'whisper-large-v3-turbo');
+    formData.append('language', 'pt');
+
+    const whisperRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${groqKey}`,
+      },
+      body: formData,
+    });
+
+    const whisperData = await whisperRes.json();
+    if (whisperData.text) {
+      return whisperData.text.trim();
+    }
+    console.warn('[Groq Whisper response empty]:', whisperData);
+  } catch (err) {
+    console.error('[transcribeTelegramAudio error]:', err);
+  }
+  return '';
+}
+
 function inferPantryCategory(itemName) {
   const t = (itemName || '').toLowerCase();
   if (/(coca|coke|refrigerante|suco|cerveja|vinho|leite|caf[eé]|ch[aá]|água|bebida|energetico|pepsi|guaran[aá])/i.test(t)) return 'bebidas';
@@ -172,26 +213,9 @@ export default async function handler(req, res) {
     }
   }
 
-  const tgText = typeof tgMsg.text === 'string' ? tgMsg.text : (typeof tgMsg.caption === 'string' ? tgMsg.caption : '');
-
-  const rawText = String(
-    body.text ||
-    tgText ||
-    body.content ||
-    body.summary ||
-    body.title ||
-    body.name ||
-    body.body ||
-    body.input ||
-    body.prompt ||
-    body.query ||
-    body.description ||
-    (typeof body === 'string' ? body : '')
-  ).trim();
-
-  const lowerText = rawText.toLowerCase().replace(/[!?.,]/g, '').trim();
   const isSilviaUser = String(chatId) === SILVIA_CHAT_ID;
   const userEmail = isSilviaUser ? 'silvinhamsa@gmail.com' : 'welloliver@gmail.com';
+  const botToken = isSilviaUser ? SILVIA_BOT_TOKEN : WELL_BOT_TOKEN;
 
   // 2. Conexão com o Supabase Principal do Life OS
   const SUPABASE_URL =
@@ -216,6 +240,46 @@ export default async function handler(req, res) {
     process.env.VITE_FITWELL_SUPABASE_KEY || 'sb_publishable_Ad2aSiOJKf_53pnMCLhc6A_JkX1vvJ2';
   const fitSupabase = FITWELL_URL && FITWELL_KEY ? createClient(FITWELL_URL, FITWELL_KEY) : null;
 
+  // Obtenção da Chave Groq
+  let groqKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
+  if (supabase) {
+    try {
+      const { data } = await supabase.from('app_settings').select('data').eq('id', 'hermes_config').maybeSingle();
+      if (data?.data?.groqApiKey) groqKey = data.data.groqApiKey;
+      else if (data?.data?.llmApiKey) groqKey = data.data.llmApiKey;
+    } catch {}
+  }
+
+  // 3. Suporte a Mensagens de Áudio / Voz do Telegram (Whisper IA)
+  const voiceFileId = tgMsg.voice?.file_id || tgMsg.audio?.file_id;
+  let voiceTranscription = '';
+  let isVoice = false;
+
+  if (voiceFileId) {
+    isVoice = true;
+    voiceTranscription = await transcribeTelegramAudio(voiceFileId, botToken, groqKey);
+  }
+
+  const tgText = typeof tgMsg.text === 'string' ? tgMsg.text : (typeof tgMsg.caption === 'string' ? tgMsg.caption : '');
+
+  const rawText = String(
+    voiceTranscription ||
+    body.text ||
+    tgText ||
+    body.content ||
+    body.summary ||
+    body.title ||
+    body.name ||
+    body.body ||
+    body.input ||
+    body.prompt ||
+    body.query ||
+    body.description ||
+    (typeof body === 'string' ? body : '')
+  ).trim();
+
+  const lowerText = rawText.toLowerCase().replace(/[!?.,]/g, '').trim();
+
   // Normalização do payload
   const action = body.action || body.event || body.type || '';
   let platform = String(body.platform || body.kind || '').toLowerCase();
@@ -228,12 +292,13 @@ export default async function handler(req, res) {
   // -------------------------------------------------------------
   // SMART DETECTION: FIT (PESO, MEDIDAS, TREINOS)
   // -------------------------------------------------------------
-  const weightMatch = rawText.match(/(?:pesei|peso|pesando|balan[cç]a)\s*(?:hoje|de)?\s*(?:foi|de|em|:)?\s*(\d+(?:[.,]\d+)?)\s*(?:kg|quilos)?/i)
-    || rawText.match(/^(\d{2,3}(?:[.,]\d+)?)\s*(?:kg|quilos)$/i);
+  const weightMatch = rawText.match(/(?:pesei|peso|pesando|balan[cç]a|estou com|meu peso|peso atual|marcar peso|anotar peso)\s*(?:hoje|de|[eé]|foi|deu|em|:)?\s*(\d+(?:[.,]\d+)?)\s*(?:kg|quilos|kilos)?/i)
+    || rawText.match(/(\d{2,3}(?:[.,]\d+)?)\s*(?:kg|quilos|kilos)/i)
+    || rawText.match(/^(\d{2,3}(?:[.,]\d+)?)$/);
 
-  const measureMatch = rawText.match(/(?:medida|medir)?\s*(cintura|quadril|bra[cç]o|coxa|panturrilha|peito|peitoral|ombro|pesco[cç]o|abd[oô]men|busto)\s*(?:de|em|foi|:)?\s*(\d+(?:[.,]\d+)?)\s*(?:cm|cent[ií]metros)?/i);
+  const measureMatch = rawText.match(/(?:medida|medir|circunfer[eê]ncia)?\s*(?:de|do|da)?\s*(cintura|quadril|bra[cç]o|coxa|panturrilha|peito|peitoral|ombro|pesco[cç]o|abd[oô]men|busto)\s*(?:hoje|de|em|[eé]|foi|deu|t[aá]|est[aá]|:)?\s*(\d+(?:[.,]\d+)?)\s*(?:cm|cent[ií]metros)?/i);
 
-  const workoutMatch = rawText.match(/(?:treino|treinei|fiz treino|conclui treino|conclu[ií] treino)\s*(?:de)?\s*(.+)/i);
+  const workoutMatch = rawText.match(/(?:treino|treinei|fiz\s+treino|conclu[ií]\s+treino|acabei\s+de\s+treinar|hoje\s+treinei)\s*(?:de|do|da)?\s*(.+)/i);
 
   // Detecção de compras
   const isGroceryPattern =
@@ -253,8 +318,9 @@ export default async function handler(req, res) {
   // -------------------------------------------------------------
   if (!isCommand && !action && !platform) {
     const aiReply = await askHermesAI(rawText, isSilviaUser, supabase);
-    await sendTelegramReply(chatId, aiReply);
-    return res.status(200).json({ ok: true, message: 'AI replied', text: aiReply });
+    const finalReply = isVoice ? `🎤 "${rawText}"\n\n${aiReply}` : aiReply;
+    await sendTelegramReply(chatId, finalReply);
+    return res.status(200).json({ ok: true, message: 'AI replied', text: finalReply });
   }
 
   if (!platform && !action) {
@@ -280,6 +346,8 @@ export default async function handler(req, res) {
     }
   }
 
+  const voicePrefix = isVoice && rawText ? `🎤 "${rawText}"\n\n` : '';
+
   try {
     // -------------------------------------------------------------
     // 1. FIT: REGISTRO DE PESO
@@ -296,7 +364,7 @@ export default async function handler(req, res) {
         });
       }
 
-      const responseMessage = `⚖️ Peso de ${weightVal} kg registrado com sucesso no seu perfil Fit! 💪`;
+      const responseMessage = `${voicePrefix}⚖️ Peso de ${weightVal} kg registrado com sucesso no seu perfil Fit! 💪`;
       await sendTelegramReply(chatId, responseMessage);
 
       return res.status(200).json({
@@ -326,7 +394,7 @@ export default async function handler(req, res) {
         });
       }
 
-      const responseMessage = `📏 Medida de ${formattedLabel} (${valCm} cm) salva no seu histórico do Fit! ✨`;
+      const responseMessage = `${voicePrefix}📏 Medida de ${formattedLabel} (${valCm} cm) salva no seu histórico do Fit! ✨`;
       await sendTelegramReply(chatId, responseMessage);
 
       return res.status(200).json({
@@ -354,7 +422,7 @@ export default async function handler(req, res) {
         });
       }
 
-      const responseMessage = `🔥 Treino "${formattedName}" concluído e registrado no seu Fit! Parabéns! 🏋️‍♀️`;
+      const responseMessage = `${voicePrefix}🔥 Treino "${formattedName}" concluído e registrado no seu Fit! Parabéns! 🏋️‍♀️`;
       await sendTelegramReply(chatId, responseMessage);
 
       return res.status(200).json({
