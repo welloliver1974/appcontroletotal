@@ -159,29 +159,30 @@ export function FitPage() {
     <div className="space-y-6">
       {/* Header com ações rápidas e indicador de sincronização */}
       <PageHeader module={module}>
-        {/* Status de Sincronização Automática */}
-        <div
+        {/* Status de Sincronização Automática Compacto */}
+        <button
+          type="button"
           onClick={() => fetchData()}
-          className="cursor-pointer inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/20 transition-all"
-          title="Clique para forçar atualização agora"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2 sm:px-2.5 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/20 active:scale-95 transition-all shrink-0"
+          title="Sincronização em tempo real ativa. Clique para forçar atualização agora."
         >
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <span className="hidden sm:inline font-medium">Sincronização Ativa</span>
-          <RefreshCw className={cn('h-3.5 w-3.5 text-emerald-400', isSyncing && 'animate-spin')} />
-        </div>
+          <span className="hidden lg:inline font-medium">Sincronizado</span>
+          <RefreshCw className={cn('h-3.5 w-3.5 text-emerald-400 shrink-0', isSyncing && 'animate-spin')} />
+        </button>
 
         {isFitAuthenticated ? (
-          <div className="hidden md:flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-1 text-xs text-zinc-300">
+          <div className="hidden xl:flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-1 text-xs text-zinc-300 shrink-0">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="truncate max-w-[120px] font-medium" title={fitUserEmail || 'Conectado'}>
+            <span className="truncate max-w-[100px] font-medium" title={fitUserEmail || 'Conectado'}>
               {fitUserEmail ? fitUserEmail.split('@')[0] : 'Conectado'}
             </span>
             <button
               onClick={() => logout()}
-              className="text-zinc-500 hover:text-rose-400 p-0.5 ml-1 transition-colors"
+              className="text-zinc-500 hover:text-rose-400 p-0.5 ml-0.5 transition-colors"
               title="Desconectar conta FitWell"
             >
               <LogOut className="h-3 w-3" />
@@ -192,10 +193,10 @@ export function FitPage() {
             variant="soft"
             size="sm"
             onClick={() => setLoginModalOpen(true)}
-            className="gap-1.5 border-amber-500/40 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20"
+            className="hidden sm:inline-flex gap-1.5 border-amber-500/40 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 shrink-0 text-xs px-2 sm:px-3"
           >
             <LogIn className="h-3.5 w-3.5" />
-            <span>Conectar FitWell</span>
+            <span>Conectar</span>
           </Button>
         )}
 
@@ -203,10 +204,10 @@ export function FitPage() {
           href={appUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-700/80 bg-zinc-900/90 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 hover:text-emerald-300 transition-all shadow-sm"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-700/80 bg-zinc-900/90 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 hover:text-emerald-300 transition-all shadow-sm shrink-0"
           title="Abrir aplicativo FitWellHub para treinar"
         >
-          <span>Abrir FitWell</span>
+          <span className="hidden xs:inline sm:inline">FitWellHub</span>
           <ExternalLink className="h-3.5 w-3.5 text-emerald-400" />
         </a>
 
@@ -214,9 +215,9 @@ export function FitPage() {
           variant="soft"
           size="sm"
           onClick={() => setWeightModalOpen(true)}
-          className="gap-1.5"
+          className="gap-1.5 shrink-0 px-2.5 sm:px-3"
         >
-          <Scale className="h-4 w-4 text-emerald-400" />
+          <Scale className="h-3.5 w-3.5 text-emerald-400" />
           <span className="hidden sm:inline">Pesar</span>
         </Button>
 
@@ -224,9 +225,9 @@ export function FitPage() {
           variant="primary"
           size="sm"
           onClick={() => setMeasurementModalOpen(true)}
-          className="gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/20"
+          className="gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/20 shrink-0 px-2.5 sm:px-3"
         >
-          <Ruler className="h-4 w-4" />
+          <Ruler className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Medir</span>
         </Button>
       </PageHeader>
