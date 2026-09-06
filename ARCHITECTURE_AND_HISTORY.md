@@ -1122,11 +1122,15 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
      - O Hermes agora entende comandos como *"Hermes, pesei 78.5 kg e cintura deu 84 cm"* ou *"Hermes, finalizei o treino de Peito e Tríceps"*.
      - Execução das tags `fit_weight_add`, `fit_measurement_add` e `fit_workout_add`, gravando no Supabase do FitWell em tempo real.
      - O contexto RAG do Hermes agora inclui o peso e histórico físico atual para briefings e conversas.
-  5. **☀️ Card de Acesso na Central "Hoje" ([HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx)):**
+  5. **🔑 Modal de Conexão de Conta FitWell ([FitLoginModal.tsx](file:///e:/Apps/AppControleTotal/src/features/fit/FitLoginModal.tsx) & [FitPage.tsx](file:///e:/Apps/AppControleTotal/src/features/fit/FitPage.tsx)):**
+     - Para respeitar o RLS (Row Level Security) nativo do Supabase do FitWell, foi criado o modal de autenticação por e-mail/senha.
+     - Ao conectar, a sessão é salva no navegador (`fitwell_auth_session`), puxando automaticamente todos os dados existentes de treinos, pesos e medidas gravados na conta.
+  6. **☀️ Card de Acesso na Central "Hoje" ([HojePage.tsx](file:///e:/Apps/AppControleTotal/src/features/hoje/HojePage.tsx)):**
      - Card de atalho para a central FitWell adicionado à grade de status rápidos diários.
 
 ---
 
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 
 

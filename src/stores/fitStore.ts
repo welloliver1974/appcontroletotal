@@ -15,6 +15,9 @@ import {
   insertFitMeasurement,
   insertFitWeight,
   insertFitWorkoutSession,
+  getFitwellSession,
+  loginFitwell,
+  logoutFitwell,
   FITWELL_APP_URL,
 } from '@/lib/fitwellClient'
 import { toast } from './toastStore'
@@ -29,8 +32,13 @@ interface FitState {
   isSyncing: boolean
   lastSync: string | null
   appUrl: string
+  fitUserEmail: string | null
+  isFitAuthenticated: boolean
 
   // Actions
+  initFitAuth: () => Promise<void>
+  login: (email: string, pass: string) => Promise<{ ok: boolean; error?: string }>
+  logout: () => Promise<void>
   fetchData: () => Promise<void>
   logWeight: (weightKg: number, date?: string) => Promise<boolean>
   logMeasurement: (label: string, valueCm: number, date?: string) => Promise<boolean>
@@ -63,6 +71,47 @@ export const useFitStore = create<FitState>()(
       isSyncing: false,
       lastSync: null,
       appUrl: FITWELL_APP_URL,
+      fitUserEmail: null,
+      isFitAuthenticated: false,
+
+      initFitAuth: async () => {
+        const session = await getFitwellSession()
+        if (session?.user) {
+          set({
+            fitUserEmail: session.user.email || null,
+            isFitAuthenticated: true,
+          })
+          await get().fetchData()
+        } else {
+          set({ isFitAuthenticated: false })
+        }
+      },
+
+      login: async (email: string, pass: string) => {
+        set({ isSyncing: true })
+        const res = await loginFitwell(email, pass)
+        if (res.ok && res.user) {
+          set({
+            fitUserEmail: res.user.email || email,
+            isFitAuthenticated: true,
+            isSyncing: false,
+          })
+          toast.success(`Conectado à conta FitWell (${res.user.email})! 🏋️‍♂️`)
+          await get().fetchData()
+          return { ok: true }
+        }
+        set({ isSyncing: false })
+        return { ok: false, error: res.error || 'Credenciais inválidas no FitWellHub.' }
+      },
+
+      logout: async () => {
+        await logoutFitwell()
+        set({
+          fitUserEmail: null,
+          isFitAuthenticated: false,
+        })
+        toast.info('Desconectado do FitWellHub.')
+      },
 
       fetchData: async () => {
         set({ loading: true, isSyncing: true })
@@ -250,6 +299,8 @@ export const useFitStore = create<FitState>()(
         templates: state.templates,
         sessions: state.sessions,
         lastSync: state.lastSync,
+        fitUserEmail: state.fitUserEmail,
+        isFitAuthenticated: state.isFitAuthenticated,
       }),
     },
   ),

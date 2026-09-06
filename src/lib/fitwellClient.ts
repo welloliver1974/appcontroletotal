@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type User, type Session } from '@supabase/supabase-js'
 
 export interface FitWeight {
   id: string
@@ -71,12 +71,50 @@ export const fitwellSupabase =
 
 export const isFitwellConnected = !!fitwellSupabase
 
-/** Helper to get anonymous or authenticated user ID fallback */
-function getFitUserId(): string {
-  const sessionUser = fitwellSupabase?.auth?.getSession?.()
-  // @ts-ignore
-  if (sessionUser?.data?.session?.user?.id) return sessionUser.data.session.user.id
-  return '00000000-0000-0000-0000-000000000000'
+/** Get currently authenticated FitWell user ID */
+export async function getFitUserId(): Promise<string | null> {
+  if (!fitwellSupabase) return null
+  try {
+    const { data } = await fitwellSupabase.auth.getSession()
+    return data.session?.user?.id ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Get session */
+export async function getFitwellSession(): Promise<Session | null> {
+  if (!fitwellSupabase) return null
+  try {
+    const { data } = await fitwellSupabase.auth.getSession()
+    return data.session
+  } catch {
+    return null
+  }
+}
+
+/** Login to FitWell account */
+export async function loginFitwell(
+  email: string,
+  pass: string,
+): Promise<{ ok: boolean; error?: string; user?: User }> {
+  if (!fitwellSupabase) return { ok: false, error: 'Supabase FitWell não inicializado.' }
+  try {
+    const { data, error } = await fitwellSupabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: pass,
+    })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true, user: data.user }
+  } catch (err: any) {
+    return { ok: false, error: err?.message || 'Erro ao conectar no FitWell' }
+  }
+}
+
+/** Logout from FitWell */
+export async function logoutFitwell(): Promise<void> {
+  if (!fitwellSupabase) return
+  await fitwellSupabase.auth.signOut()
 }
 
 /** Fetch recent weights */
@@ -107,14 +145,17 @@ export async function insertFitWeight(
 ): Promise<FitWeight | null> {
   if (!fitwellSupabase) return null
   try {
+    const userId = await getFitUserId()
     const date = logDate || new Date().toISOString().slice(0, 10)
+    const payload: any = {
+      weight_kg: Number(weightKg),
+      log_date: date,
+    }
+    if (userId) payload.user_id = userId
+
     const { data, error } = await fitwellSupabase
       .from('body_weights')
-      .insert({
-        user_id: getFitUserId(),
-        weight_kg: Number(weightKg),
-        log_date: date,
-      })
+      .insert(payload)
       .select()
       .single()
 
@@ -158,15 +199,18 @@ export async function insertFitMeasurement(
 ): Promise<FitMeasurement | null> {
   if (!fitwellSupabase) return null
   try {
+    const userId = await getFitUserId()
     const date = logDate || new Date().toISOString().slice(0, 10)
+    const payload: any = {
+      label: label.trim(),
+      value_cm: Number(valueCm),
+      log_date: date,
+    }
+    if (userId) payload.user_id = userId
+
     const { data, error } = await fitwellSupabase
       .from('body_measurements')
-      .insert({
-        user_id: getFitUserId(),
-        label: label.trim(),
-        value_cm: Number(valueCm),
-        log_date: date,
-      })
+      .insert(payload)
       .select()
       .single()
 
@@ -199,6 +243,44 @@ export async function fetchFitBioimpedance(limit = 10): Promise<FitBioimpedance[
   } catch (err) {
     console.warn('[FitWell] Falha de conexão com bioimpedância:', err)
     return []
+  }
+}
+
+/** Log bioimpedance */
+export async function insertFitBioimpedance(
+  data: Partial<FitBioimpedance>,
+): Promise<FitBioimpedance | null> {
+  if (!fitwellSupabase) return null
+  try {
+    const userId = await getFitUserId()
+    const payload: any = {
+      log_date: data.log_date || new Date().toISOString().slice(0, 10),
+      weight_kg: data.weight_kg ?? null,
+      body_fat_pct: data.body_fat_pct ?? null,
+      muscle_mass_kg: data.muscle_mass_kg ?? null,
+      bone_mass_kg: data.bone_mass_kg ?? null,
+      body_water_pct: data.body_water_pct ?? null,
+      visceral_fat: data.visceral_fat ?? null,
+      bmr_machine: data.bmr_machine ?? null,
+      metabolic_age: data.metabolic_age ?? null,
+      notes: data.notes ?? null,
+    }
+    if (userId) payload.user_id = userId
+
+    const { data: result, error } = await fitwellSupabase
+      .from('bioimpedance_logs')
+      .insert(payload)
+      .select()
+      .single()
+
+    if (error) {
+      console.warn('[FitWell] Erro ao inserir bioimpedância:', error.message)
+      return null
+    }
+    return result as FitBioimpedance
+  } catch (err) {
+    console.warn('[FitWell] Falha ao gravar bioimpedância:', err)
+    return null
   }
 }
 
@@ -252,16 +334,19 @@ export async function insertFitWorkoutSession(
 ): Promise<FitWorkoutSession | null> {
   if (!fitwellSupabase) return null
   try {
+    const userId = await getFitUserId()
     const time = completedAt || new Date().toISOString()
+    const payload: any = {
+      name: name.trim(),
+      workout_id: workoutId || null,
+      completed_at: time,
+      notes: notes || null,
+    }
+    if (userId) payload.user_id = userId
+
     const { data, error } = await fitwellSupabase
       .from('workout_sessions')
-      .insert({
-        user_id: getFitUserId(),
-        name: name.trim(),
-        workout_id: workoutId || null,
-        completed_at: time,
-        notes: notes || null,
-      })
+      .insert(payload)
       .select()
       .single()
 
@@ -275,39 +360,3 @@ export async function insertFitWorkoutSession(
     return null
   }
 }
-
-/** Log bioimpedance */
-export async function insertFitBioimpedance(
-  data: Partial<FitBioimpedance>,
-): Promise<FitBioimpedance | null> {
-  if (!fitwellSupabase) return null
-  try {
-    const { data: result, error } = await fitwellSupabase
-      .from('bioimpedance_logs')
-      .insert({
-        user_id: getFitUserId(),
-        log_date: data.log_date || new Date().toISOString().slice(0, 10),
-        weight_kg: data.weight_kg ?? null,
-        body_fat_pct: data.body_fat_pct ?? null,
-        muscle_mass_kg: data.muscle_mass_kg ?? null,
-        bone_mass_kg: data.bone_mass_kg ?? null,
-        body_water_pct: data.body_water_pct ?? null,
-        visceral_fat: data.visceral_fat ?? null,
-        bmr_machine: data.bmr_machine ?? null,
-        metabolic_age: data.metabolic_age ?? null,
-        notes: data.notes ?? null,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.warn('[FitWell] Erro ao inserir bioimpedância:', error.message)
-      return null
-    }
-    return result as FitBioimpedance
-  } catch (err) {
-    console.warn('[FitWell] Falha ao gravar bioimpedância:', err)
-    return null
-  }
-}
-

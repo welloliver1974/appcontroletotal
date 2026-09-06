@@ -6,10 +6,13 @@ import {
   Dumbbell,
   ExternalLink,
   Flame,
+  LogIn,
+  LogOut,
   Plus,
   RefreshCw,
   Ruler,
   Scale,
+  ShieldCheck,
 } from 'lucide-react'
 import {
   Area,
@@ -29,6 +32,7 @@ import { useFitStore } from '@/stores/fitStore'
 import { WeightModal } from './WeightModal'
 import { MeasurementModal } from './MeasurementModal'
 import { WorkoutModal } from './WorkoutModal'
+import { FitLoginModal } from './FitLoginModal'
 import { cn } from '@/lib/utils'
 
 export function FitPage() {
@@ -40,7 +44,11 @@ export function FitPage() {
     templates,
     sessions,
     isSyncing,
+    fitUserEmail,
+    isFitAuthenticated,
+    initFitAuth,
     fetchData,
+    logout,
     logWorkoutSession,
     deleteWeightLocal,
     deleteMeasurementLocal,
@@ -54,10 +62,11 @@ export function FitPage() {
   const [weightModalOpen, setWeightModalOpen] = useState(false)
   const [measurementModalOpen, setMeasurementModalOpen] = useState(false)
   const [workoutModalOpen, setWorkoutModalOpen] = useState(false)
+  const [loginModalOpen, setLoginModalOpen] = useState(false)
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    initFitAuth()
+  }, [initFitAuth])
 
   const latestWeight = getLatestWeight()
   const weightDelta = getWeightDelta()
@@ -114,11 +123,37 @@ export function FitPage() {
           <RefreshCw className={cn('h-4 w-4', isSyncing && 'animate-spin text-emerald-400')} />
         </button>
 
+        {isFitAuthenticated ? (
+          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="truncate max-w-[120px] font-medium" title={fitUserEmail || 'Conectado'}>
+              {fitUserEmail ? fitUserEmail.split('@')[0] : 'Conectado'}
+            </span>
+            <button
+              onClick={() => logout()}
+              className="text-zinc-400 hover:text-rose-400 p-0.5 ml-1 transition-colors"
+              title="Desconectar conta FitWell"
+            >
+              <LogOut className="h-3 w-3" />
+            </button>
+          </div>
+        ) : (
+          <Button
+            variant="soft"
+            size="sm"
+            onClick={() => setLoginModalOpen(true)}
+            className="gap-1.5 border-emerald-500/40 text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20"
+          >
+            <LogIn className="h-3.5 w-3.5" />
+            <span>Conectar Conta</span>
+          </Button>
+        )}
+
         <a
           href={appUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 transition-all"
+          className="hidden md:inline-flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-all"
           title="Abrir aplicativo FitWellHub"
         >
           <span>FitWellHub</span>
@@ -145,6 +180,33 @@ export function FitPage() {
           <span>Treinar</span>
         </Button>
       </PageHeader>
+
+      {/* Banner de Aviso quando não conectado */}
+      {!isFitAuthenticated && (
+        <div
+          onClick={() => setLoginModalOpen(true)}
+          className="cursor-pointer rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-transparent p-4 transition-all hover:border-emerald-500/60"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                <LogIn className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-zinc-100">
+                  Conecte sua conta do FitWellHub
+                </p>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Clique aqui para entrar com seu e-mail e senha do FitWell e sincronizar seus treinos, pesos e medidas em tempo real.
+                </p>
+              </div>
+            </div>
+            <Button size="sm" variant="primary" className="shrink-0 bg-emerald-500 text-white">
+              Conectar 🚀
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -203,7 +265,9 @@ export function FitPage() {
             hint={
               latestBio?.muscle_mass_kg
                 ? `${latestBio.muscle_mass_kg} kg MM`
-                : 'Nuvem ativa'
+                : isFitAuthenticated
+                ? 'Nuvem ativa'
+                : 'Desconectado'
             }
             icon={Activity}
             soft="border-violet-500/30 bg-violet-500/10 text-violet-300"
@@ -597,6 +661,7 @@ export function FitPage() {
       )}
 
       {/* Modais */}
+      <FitLoginModal open={loginModalOpen} onClose={() => setLoginModalOpen(false)} />
       <WeightModal open={weightModalOpen} onClose={() => setWeightModalOpen(false)} />
       <MeasurementModal
         open={measurementModalOpen}
