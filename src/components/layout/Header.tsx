@@ -1,8 +1,9 @@
 import { useLocation } from 'react-router-dom'
-import { HelpCircle, Plus, Search, Settings, Smartphone } from 'lucide-react'
+import { HelpCircle, LogOut, Plus, Search, Settings, Smartphone } from 'lucide-react'
 import { MODULE_BY_PATH } from '@/lib/modules'
 import { useUiStore } from '@/stores/uiStore'
 import { useOfflineQueueStore } from '@/stores/offlineQueueStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useSupabase } from '@/lib/db'
 import { checkStandalone } from '@/lib/pwa'
 import { toast } from '@/stores/toastStore'
@@ -11,7 +12,7 @@ import { Omnibox } from './Omnibox'
 import { SettingsModal } from '@/features/agenda/SettingsModal'
 import { UserManualModal } from '@/components/help/UserManualModal'
 
-/** Global header: current module chip · Neural Omnibox · Hermes sync · quick add (+) · settings. */
+/** Global header: current module chip · Neural Omnibox · Hermes sync · quick add (+) · settings · logout. */
 export function Header() {
   const location = useLocation()
   const setCommandOpen = useUiStore((s) => s.setCommandOpen)
@@ -22,7 +23,15 @@ export function Header() {
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen)
   const isOnline = useOfflineQueueStore((s) => s.isOnline)
   const isSyncing = useOfflineQueueStore((s) => s.isSyncing)
+  const signOut = useAuthStore((s) => s.signOut)
   const module = MODULE_BY_PATH[location.pathname]
+
+  const handleLogout = async () => {
+    if (confirm('Deseja realmente sair da sua conta e bloquear o aplicativo?')) {
+      await signOut()
+      toast.info('Sessão encerrada com sucesso.')
+    }
+  }
 
   return (
     <>
@@ -112,6 +121,16 @@ export function Header() {
               aria-label="Configurações"
             >
               <Settings className="h-5 w-5" />
+            </button>
+
+            {/* Sair / Logout */}
+            <button
+              onClick={handleLogout}
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border border-zinc-800/80 bg-zinc-900/60 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 active:scale-95 transition-all"
+              title="Sair da Conta / Bloquear Dispositivo"
+              aria-label="Sair da Conta"
+            >
+              <LogOut className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             </button>
 
             {/* Quick add */}
