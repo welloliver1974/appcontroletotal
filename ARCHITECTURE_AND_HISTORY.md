@@ -1179,6 +1179,28 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## 📏 65. Zonas Anatômicas, Calculadoras de Saúde, Metas e Comparativo Multi-Linhas (06/09/2026)
+
+* **Contexto & Motivação:**
+  - O usuário solicitou expandir a gestão de medidas corporais na aba **Saúde & Fit**, adicionando organização anatômica, índices automáticos de saúde, metas visuais e gráficos comparativos para uma análise física completa.
+
+* **Soluções Implementadas:**
+  1. **📐 Zonas Anatômicas & Filtros Rápidos ([MeasurementModal.tsx](file:///e:/Apps/AppControleTotal/src/features/fit/MeasurementModal.tsx) & [FitPage.tsx](file:///e:/Apps/AppControleTotal/src/features/fit/FitPage.tsx)):**
+     - As medidas corporais foram organizadas em 3 regiões: **Tronco & Core** (Cintura, Abdômen, Quadril, Peitoral, Ombros), **Membros Superiores** (Braço D/E, Antebraço D/E, Pescoço) e **Membros Inferiores** (Coxa D/E, Panturrilha D/E).
+     - O modal de lançamento agora possui chips categorizados por zona com 1 clique.
+  2. **🧮 Calculadoras e Índices Automáticos de Saúde ([fitStore.ts](file:///e:/Apps/AppControleTotal/src/stores/fitStore.ts)):**
+     - **Índice Cintura-Estatura (ICE):** Relação entre a circunferência da cintura e a altura em cm, com classificação de risco metabólico (Ideal < 0.50).
+     - **Índice Cintura-Quadril (ICQ):** Relação cintura/quadril padrão OMS (Baixo Risco, Moderado, Elevado).
+     - **IMC Dinâmico:** Calculado com base na pesagem mais recente e na altura cadastrada.
+     - **Radar de Simetria Muscular:** Compara lados direito e esquerdo de Bíceps, Coxas e Panturrilhas, destacando variações em cm.
+     - **Ajuste de Altura do Usuário:** Campo editável para personalizar a estatura (ex: 178 cm).
+  3. **🎯 Metas por Medida:**
+     - Capacidade de definir objetivos em centímetros no modal ou nos cards, com barras de progresso visuais indicando a distância até o alvo.
+  4. **📈 Gráfico Comparativo Multi-Linhas:**
+     - Gráfico Recharts interativo permitindo selecionar e comparar a evolução de múltiplas medidas simultâneas ao longo da linha do tempo com cores exclusivas.
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 

@@ -8,7 +8,11 @@ import {
   Dumbbell,
   ExternalLink,
   Flame,
+  GitCompare,
+  HeartPulse,
   LayoutGrid,
+  Layers,
+  LineChart as LineChartIcon,
   LogIn,
   LogOut,
   Minus,
@@ -16,8 +20,10 @@ import {
   RefreshCw,
   Ruler,
   Scale,
+  Settings2,
   ShieldCheck,
   Sparkles,
+  Target,
   Trash2,
   TrendingDown,
   TrendingUp,
@@ -26,6 +32,9 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -45,6 +54,30 @@ import { cn } from '@/lib/utils'
 
 type TabType = 'geral' | 'treinos' | 'peso' | 'medidas' | 'bioimpedancia'
 type WeightRange = '7d' | '30d' | '90d' | 'all'
+type MeasureFilter = 'todas' | 'tronco' | 'superiores' | 'inferiores' | 'indices' | 'grafico'
+
+const ZONE_MAP: Record<string, 'tronco' | 'superiores' | 'inferiores'> = {
+  cintura: 'tronco',
+  abdômen: 'tronco',
+  quadril: 'tronco',
+  'peitoral / tórax': 'tronco',
+  peitoral: 'tronco',
+  tórax: 'tronco',
+  ombros: 'tronco',
+  pescoço: 'superiores',
+  'braço direito': 'superiores',
+  'braço esquerdo': 'superiores',
+  'bíceps direito': 'superiores',
+  'bíceps esquerdo': 'superiores',
+  'antebraço direito': 'superiores',
+  'antebraço esquerdo': 'superiores',
+  'coxa direita': 'inferiores',
+  'coxa esquerda': 'inferiores',
+  'panturrilha direita': 'inferiores',
+  'panturrilha esquerda': 'inferiores',
+}
+
+const MEASURE_COLORS = ['#10b981', '#06b6d4', '#8b5cf6', '#f59e0b', '#ec4899', '#3b82f6']
 
 export function FitPage() {
   const module = MODULE_BY_ID['fit']
@@ -56,9 +89,12 @@ export function FitPage() {
     isSyncing,
     fitUserEmail,
     isFitAuthenticated,
+    userHeightCm,
+    measurementGoals,
     setupAutoSync,
     fetchData,
     logout,
+    setUserHeightCm,
     deleteWorkoutSession,
     deleteWeightLocal,
     deleteMeasurementLocal,
@@ -68,11 +104,17 @@ export function FitPage() {
     getWeeklyStreak,
     getLatestWorkoutSession,
     getMeasurementDeltas,
+    getHealthIndices,
     appUrl,
   } = useFitStore()
 
   const [activeTab, setActiveTab] = useState<TabType>('geral')
   const [weightRange, setWeightRange] = useState<WeightRange>('30d')
+  const [measureFilter, setMeasureFilter] = useState<MeasureFilter>('todas')
+  const [selectedMultiLines, setSelectedMultiLines] = useState<string[]>(['cintura', 'peitoral / tórax', 'braço direito'])
+  const [editingHeight, setEditingHeight] = useState(false)
+  const [tempHeight, setTempHeight] = useState<string>(String(userHeightCm || 175))
+
   const [weightModalOpen, setWeightModalOpen] = useState(false)
   const [measurementModalOpen, setMeasurementModalOpen] = useState(false)
   const [workoutModalOpen, setWorkoutModalOpen] = useState(false)
@@ -90,6 +132,7 @@ export function FitPage() {
   const streak = getWeeklyStreak()
   const { session: latestSession, relativeTime: latestSessionTime } = getLatestWorkoutSession()
   const measurementDeltas = getMeasurementDeltas()
+  const healthIndices = getHealthIndices()
   const latestBio = bioimpedance.length > 0 ? bioimpedance[0] : null
 
   // Weight chart data filtered by range
@@ -131,6 +174,51 @@ export function FitPage() {
     return Math.ceil(max + 1)
   }, [chartData])
 
+  // Multi-line chart data for measurements evolution
+  const multiLineChartData = useMemo(() => {
+    if (measurements.length === 0) return []
+    const datesSet = new Set<string>()
+    const dataByDate: Record<string, Record<string, number>> = {}
+
+    for (const m of measurements) {
+      datesSet.add(m.log_date)
+      if (!dataByDate[m.log_date]) dataByDate[m.log_date] = {}
+      dataByDate[m.log_date][m.label.toLowerCase().trim()] = m.value_cm
+    }
+
+    const sortedDates = Array.from(datesSet).sort((a, b) => a.localeCompare(b))
+    return sortedDates.map((dateStr) => {
+      const parts = dateStr.split('-')
+      const dayMonth = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dateStr
+      return {
+        date: dayMonth,
+        rawDate: dateStr,
+        ...dataByDate[dateStr],
+      }
+    })
+  }, [measurements])
+
+  // Filtered measurement deltas based on zone filter
+  const filteredMeasurementDeltas = useMemo(() => {
+    if (measureFilter === 'todas' || measureFilter === 'indices' || measureFilter === 'grafico') {
+      return measurementDeltas
+    }
+    return measurementDeltas.filter((m) => {
+      const key = m.label.toLowerCase().trim()
+      const zone = ZONE_MAP[key]
+      return zone === measureFilter
+    })
+  }, [measurementDeltas, measureFilter])
+
+  // Available measurement labels for multi-line comparison
+  const availableLabels = useMemo(() => {
+    const set = new Set<string>()
+    for (const m of measurements) {
+      set.add(m.label.toLowerCase().trim())
+    }
+    return Array.from(set)
+  }, [measurements])
+
   // Hermes Fit Insight dinâmico
   const hermesInsight = useMemo(() => {
     const parts: string[] = []
@@ -152,8 +240,33 @@ export function FitPage() {
       }
     }
 
+    if (healthIndices.ice) {
+      parts.push(`Índice Cintura/Estatura: ${healthIndices.ice.value} (${healthIndices.ice.classification}).`)
+    }
+
     return parts.join(' ')
-  }, [streak, latestWeight, weightDelta])
+  }, [streak, latestWeight, weightDelta, healthIndices])
+
+  const handleSaveHeight = (e: React.FormEvent) => {
+    e.preventDefault()
+    const val = parseFloat(tempHeight.replace(',', '.'))
+    if (!isNaN(val) && val >= 100 && val <= 250) {
+      setUserHeightCm(val)
+      setEditingHeight(false)
+    }
+  }
+
+  const toggleMultiLineLabel = (label: string) => {
+    if (selectedMultiLines.includes(label)) {
+      if (selectedMultiLines.length > 1) {
+        setSelectedMultiLines(selectedMultiLines.filter((l) => l !== label))
+      }
+    } else {
+      if (selectedMultiLines.length < 5) {
+        setSelectedMultiLines([...selectedMultiLines, label])
+      }
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -470,7 +583,7 @@ export function FitPage() {
             </Card>
 
             {/* 4. Medidas em Foco */}
-            <Card className="p-4 flex flex-col justify-between border-zinc-800 bg-zinc-900/40 hover:border-emerald-500/30 transition-all cursor-pointer" onClick={() => setMeasurementModalOpen(true)}>
+            <Card className="p-4 flex flex-col justify-between border-zinc-800 bg-zinc-900/40 hover:border-emerald-500/30 transition-all cursor-pointer" onClick={() => setActiveTab('medidas')}>
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
@@ -648,7 +761,7 @@ export function FitPage() {
                   onClick={() => setActiveTab('treinos')}
                   className="text-xs text-zinc-400 hover:text-zinc-200 w-full justify-center"
                 >
-                  Ver Histórico Completo de Treinos ({sessions.length})
+                  Ver Histórico Completo ({sessions.length})
                 </Button>
               </div>
             </Card>
@@ -852,12 +965,12 @@ export function FitPage() {
                         content={({ active, payload }) => {
                           if (!active || !payload?.length) return null
                           const d = payload[0].payload
-                          return (
-                            <div className="rounded-xl border border-zinc-700 bg-zinc-900/95 p-2.5 text-xs shadow-xl">
-                              <p className="font-bold text-emerald-400">{d.peso} kg</p>
-                              <p className="text-zinc-500">{d.rawDate}</p>
-                            </div>
-                          )
+                            return (
+                              <div className="rounded-xl border border-zinc-700 bg-zinc-900/95 p-2.5 text-xs shadow-xl">
+                                <p className="font-bold text-emerald-400">{d.peso} kg</p>
+                                <p className="text-zinc-500">{d.rawDate}</p>
+                              </div>
+                            )
                         }}
                       />
                       <Area
@@ -908,60 +1021,359 @@ export function FitPage() {
         </div>
       )}
 
-      {/* TAB 4: MEDIDAS CORPORAIS */}
+      {/* TAB 4: MEDIDAS CORPORAIS COMPLETO & ZONAS ANATÔMICAS */}
       {activeTab === 'medidas' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-400">
-              Últimas Medições Registradas
-            </h2>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setMeasurementModalOpen(true)}
-              className="gap-1.5 bg-cyan-500 hover:bg-cyan-400 text-white"
-            >
-              <Ruler className="h-3.5 w-3.5" />
-              <span>Nova Medida</span>
-            </Button>
-          </div>
+          {/* Top Bar com Sub-Filtros e Ações */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 p-1 rounded-2xl overflow-x-auto w-full sm:w-auto scrollbar-none">
+              {[
+                { id: 'todas', label: 'Todas', icon: Layers },
+                { id: 'tronco', label: 'Tronco & Core', icon: Activity },
+                { id: 'superiores', label: 'Superiores', icon: Dumbbell },
+                { id: 'inferiores', label: 'Inferiores', icon: Flame },
+                { id: 'indices', label: 'Calculadoras & Índices', icon: HeartPulse },
+                { id: 'grafico', label: 'Comparativo Multi-Linhas', icon: LineChartIcon },
+              ].map((f) => {
+                const Icon = f.icon
+                const isSelected = measureFilter === f.id
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => setMeasureFilter(f.id as MeasureFilter)}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all',
+                      isSelected
+                        ? 'bg-cyan-500 text-white shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60',
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{f.label}</span>
+                  </button>
+                )
+              })}
+            </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {measurementDeltas.map((m) => (
-              <div
-                key={m.label}
-                className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4 hover:border-cyan-500/40 hover:bg-zinc-900/70 transition-all"
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setMeasurementModalOpen(true)}
+                className="gap-1.5 bg-cyan-500 hover:bg-cyan-400 text-white shadow-cyan-500/20"
               >
-                <div className="flex items-center justify-between gap-1">
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider truncate">
-                    {m.label}
-                  </p>
-                  {typeof m.diff === 'number' && (
-                    <span
-                      className={cn(
-                        'chip py-0 px-1.5 text-[9px] font-bold',
-                        m.diff === 0
-                          ? 'border-zinc-700 bg-zinc-800 text-zinc-400'
-                          : m.diff < 0
-                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                          : 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-                      )}
-                    >
-                      {m.diff > 0 ? `+${m.diff}` : m.diff} cm
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-2 flex items-baseline gap-1">
-                  <span className="text-2xl font-black text-zinc-100 tracking-tight">
-                    {m.current}
-                  </span>
-                  <span className="text-xs font-semibold text-cyan-400">cm</span>
-                </div>
-                <p className="mt-2 text-[10px] text-zinc-500">Atualizado em {m.logDate}</p>
-              </div>
-            ))}
+                <Ruler className="h-3.5 w-3.5" />
+                <span>Nova Medida</span>
+              </Button>
+            </div>
           </div>
+
+          {/* SEÇÃO 1: CALCULADORAS & ÍNDICES DE SAÚDE */}
+          {(measureFilter === 'indices' || measureFilter === 'todas') && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                  <HeartPulse className="h-4 w-4 text-cyan-400" />
+                  <span>Calculadoras & Índices Corporais de Saúde</span>
+                </h3>
+
+                {/* Botão de Ajustar Altura */}
+                <button
+                  onClick={() => setEditingHeight(!editingHeight)}
+                  className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                  <span>Sua Altura: {userHeightCm || 175} cm</span>
+                </button>
+              </div>
+
+              {/* Form de Edição de Altura */}
+              {editingHeight && (
+                <form
+                  onSubmit={handleSaveHeight}
+                  className="p-4 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 flex items-center gap-3 animate-in fade-in duration-200"
+                >
+                  <div className="flex-1">
+                    <label className="text-xs font-bold text-zinc-300">
+                      Informe sua Estatura / Altura (em cm)
+                    </label>
+                    <input
+                      type="number"
+                      value={tempHeight}
+                      onChange={(e) => setTempHeight(e.target.value)}
+                      className="input w-full mt-1 text-sm font-bold text-cyan-300"
+                      placeholder="Ex: 178"
+                    />
+                  </div>
+                  <Button type="submit" size="sm" variant="primary" className="bg-cyan-500 text-white mt-5">
+                    Salvar Altura
+                  </Button>
+                </form>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* 1. Índice Cintura-Estatura (ICE) */}
+                <Card className="p-4 border-zinc-800 bg-zinc-900/50">
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                      Índice Cintura/Estatura (ICE)
+                    </span>
+                    <span className="text-[10px] font-bold text-cyan-400 border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 rounded-md">
+                      Ideal &lt; 0.50
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-zinc-100">
+                        {healthIndices.ice ? healthIndices.ice.value : '—'}
+                      </span>
+                      <span className="text-xs text-zinc-500">ratio</span>
+                    </div>
+                    <p className="text-xs mt-1 font-semibold text-emerald-400">
+                      {healthIndices.ice ? healthIndices.ice.classification : 'Requer medida de cintura'}
+                    </p>
+                  </div>
+                </Card>
+
+                {/* 2. Índice Cintura-Quadril (ICQ) */}
+                <Card className="p-4 border-zinc-800 bg-zinc-900/50">
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                      Índice Cintura/Quadril (ICQ)
+                    </span>
+                    <span className="text-[10px] font-bold text-violet-400 border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 rounded-md">
+                      OMS
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-zinc-100">
+                        {healthIndices.icq ? healthIndices.icq.value : '—'}
+                      </span>
+                      <span className="text-xs text-zinc-500">ratio</span>
+                    </div>
+                    <p className="text-xs mt-1 font-semibold text-emerald-400">
+                      {healthIndices.icq ? healthIndices.icq.classification : 'Requer cintura e quadril'}
+                    </p>
+                  </div>
+                </Card>
+
+                {/* 3. IMC Estimado */}
+                <Card className="p-4 border-zinc-800 bg-zinc-900/50">
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                      IMC Atual
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                      {userHeightCm || 175} cm
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-zinc-100">
+                        {healthIndices.imc ? `${healthIndices.imc.value}` : '—'}
+                      </span>
+                      <span className="text-xs text-zinc-500">kg/m²</span>
+                    </div>
+                    <p className="text-xs mt-1 font-semibold text-emerald-400">
+                      {healthIndices.imc ? healthIndices.imc.classification : 'Requer pesagem'}
+                    </p>
+                  </div>
+                </Card>
+
+                {/* 4. Simetria Muscular */}
+                <Card className="p-4 border-zinc-800 bg-zinc-900/50">
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                      Simetria Muscular
+                    </span>
+                    <GitCompare className="h-3.5 w-3.5 text-orange-400" />
+                  </div>
+                  <div className="space-y-1 mt-1 text-xs">
+                    {healthIndices.symmetries.length > 0 ? (
+                      healthIndices.symmetries.map((sym) => (
+                        <div key={sym.label} className="flex items-center justify-between">
+                          <span className="text-zinc-400">{sym.label}:</span>
+                          <span className={cn('font-bold', sym.diff <= 0.5 ? 'text-emerald-400' : 'text-amber-400')}>
+                            Δ {sym.diff} cm
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-zinc-500 text-xs py-2">
+                        Meça lados D e E para calcular simetria
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* SEÇÃO 2: GRÁFICO COMPARATIVO MULTI-LINHAS */}
+          {(measureFilter === 'grafico' || measureFilter === 'todas') && (
+            <Card>
+              <CardHeader
+                title="Evolução Comparativa das Medidas"
+                subtitle="Compare o histórico de diferentes regiões corporais ao mesmo tempo"
+                action={
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {availableLabels.map((lbl, idx) => {
+                      const isSelected = selectedMultiLines.includes(lbl)
+                      const color = MEASURE_COLORS[idx % MEASURE_COLORS.length]
+                      return (
+                        <button
+                          key={lbl}
+                          onClick={() => toggleMultiLineLabel(lbl)}
+                          className={cn(
+                            'px-2 py-0.5 text-[10px] font-bold rounded-lg border transition-all capitalize',
+                            isSelected
+                              ? 'bg-zinc-800 border-zinc-500 text-zinc-100 shadow-sm'
+                              : 'bg-zinc-950/60 border-zinc-800 text-zinc-500 hover:text-zinc-300',
+                          )}
+                          style={{ borderColor: isSelected ? color : undefined }}
+                        >
+                          <span
+                            className="inline-block w-2 h-2 rounded-full mr-1"
+                            style={{ backgroundColor: color }}
+                          />
+                          {lbl}
+                        </button>
+                      )
+                    })}
+                  </div>
+                }
+              />
+              <div className="p-4 pt-2">
+                {multiLineChartData.length < 2 ? (
+                  <div className="h-64 flex flex-col items-center justify-center text-zinc-500 text-sm">
+                    <Ruler className="h-8 w-8 mb-2 text-zinc-600" />
+                    <p>Adicione medições em datas diferentes para visualizar o comparativo.</p>
+                  </div>
+                ) : (
+                  <div className="h-72 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={multiLineChartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                        <XAxis dataKey="date" stroke="#71717a" fontSize={11} tickLine={false} />
+                        <YAxis stroke="#71717a" fontSize={11} tickLine={false} domain={['dataMin - 2', 'dataMax + 2']} />
+                        <Tooltip
+                          content={({ active, payload, label: lDate }) => {
+                            if (!active || !payload?.length) return null
+                            return (
+                              <div className="rounded-xl border border-zinc-700 bg-zinc-900/95 p-3 text-xs shadow-xl space-y-1.5">
+                                <p className="font-bold text-zinc-300 border-b border-zinc-800 pb-1">{payload[0]?.payload?.rawDate || lDate}</p>
+                                {payload.map((item: any) => (
+                                  <div key={item.name} className="flex items-center justify-between gap-3 text-xs">
+                                    <span style={{ color: item.color }} className="capitalize font-semibold">{item.name}:</span>
+                                    <span className="font-bold text-zinc-100">{item.value} cm</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )
+                          }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                        {selectedMultiLines.map((lbl, idx) => {
+                          const color = MEASURE_COLORS[idx % MEASURE_COLORS.length]
+                          return (
+                            <Line
+                              key={lbl}
+                              type="monotone"
+                              dataKey={lbl}
+                              name={lbl}
+                              stroke={color}
+                              strokeWidth={3}
+                              dot={{ r: 4, fill: color }}
+                              activeDot={{ r: 6 }}
+                              connectNulls
+                            />
+                          )
+                        })}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* SEÇÃO 3: CARDS VISUAIS DE MEDIDAS COM METAS & VARIAÇÃO */}
+          {measureFilter !== 'grafico' && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                Circunferências ({filteredMeasurementDeltas.length} regiões)
+              </h3>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {filteredMeasurementDeltas.map((m) => {
+                  const goal = measurementGoals[m.label.toLowerCase().trim()]
+                  return (
+                    <div
+                      key={m.label}
+                      className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4 hover:border-cyan-500/40 hover:bg-zinc-900/70 transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-1">
+                          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider truncate">
+                            {m.label}
+                          </p>
+                          {typeof m.diff === 'number' && (
+                            <span
+                              className={cn(
+                                'chip py-0 px-1.5 text-[9px] font-bold',
+                                m.diff === 0
+                                  ? 'border-zinc-700 bg-zinc-800 text-zinc-400'
+                                  : m.diff < 0
+                                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                                  : 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+                              )}
+                            >
+                              {m.diff > 0 ? `+${m.diff}` : m.diff} cm
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-2 flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-zinc-100 tracking-tight">
+                            {m.current}
+                          </span>
+                          <span className="text-xs font-semibold text-cyan-400">cm</span>
+                        </div>
+                      </div>
+
+                      {/* Barra de Meta se existir */}
+                      <div className="mt-3 pt-2.5 border-t border-zinc-800/60">
+                        {goal ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                              <span className="flex items-center gap-1 text-cyan-400 font-semibold">
+                                <Target className="h-3 w-3" />
+                                <span>Meta: {goal} cm</span>
+                              </span>
+                              <span>{Math.abs(Number((m.current - goal).toFixed(1)))} cm rest.</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-cyan-400 rounded-full transition-all"
+                                style={{
+                                  width: `${Math.min(100, Math.max(15, (goal / m.current) * 100))}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-zinc-500 flex items-center justify-between">
+                            <span>Atualizado em {m.logDate}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Histórico Geral de Medidas */}
           <Card>

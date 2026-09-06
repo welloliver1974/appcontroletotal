@@ -57,12 +57,27 @@ export interface WeightStats {
   totalEntries: number
 }
 
+export interface HealthIndices {
+  icq: { value: number; classification: string; status: 'good' | 'warning' | 'danger' } | null
+  ice: { value: number; classification: string; status: 'good' | 'warning' | 'danger' } | null
+  imc: { value: number; classification: string; status: 'good' | 'warning' | 'danger' } | null
+  symmetries: {
+    label: string
+    left: number
+    right: number
+    diff: number
+    status: 'good' | 'warning'
+  }[]
+}
+
 interface FitState {
   weights: FitWeight[]
   measurements: FitMeasurement[]
   bioimpedance: FitBioimpedance[]
   templates: FitWorkoutTemplate[]
   sessions: FitWorkoutSession[]
+  userHeightCm: number
+  measurementGoals: Record<string, number>
   loading: boolean
   isSyncing: boolean
   lastSync: string | null
@@ -73,6 +88,8 @@ interface FitState {
   // Actions
   initFitAuth: () => Promise<void>
   setupAutoSync: () => () => void
+  setUserHeightCm: (cm: number) => void
+  setMeasurementGoal: (label: string, goalCm: number) => void
   login: (email: string, pass: string) => Promise<{ ok: boolean; error?: string }>
   logout: () => Promise<void>
   fetchData: (silent?: boolean) => Promise<void>
@@ -89,6 +106,7 @@ interface FitState {
   getWeeklyStreak: () => WeeklyStreak
   getLatestWorkoutSession: () => { session: FitWorkoutSession | null; relativeTime: string }
   getMeasurementDeltas: () => MeasurementDelta[]
+  getHealthIndices: () => HealthIndices
   getLatestMeasurementsByLabel: () => Record<string, FitMeasurement>
 }
 
@@ -108,6 +126,8 @@ export const useFitStore = create<FitState>()(
       bioimpedance: [],
       templates: DEFAULT_TEMPLATES,
       sessions: [],
+      userHeightCm: 175,
+      measurementGoals: {},
       loading: false,
       isSyncing: false,
       lastSync: null,
@@ -480,6 +500,106 @@ export const useFitStore = create<FitState>()(
         return deltas
       },
 
+      getHealthIndices: () => {
+        const measurementsMap = get().getLatestMeasurementsByLabel()
+        const latestWeight = get().getLatestWeight()
+        const heightCm = get().userHeightCm || 175
+
+        // 1. ICQ (Cintura / Quadril)
+        let icq: HealthIndices['icq'] = null
+        const cintura = measurementsMap['cintura']?.value_cm || measurementsMap['cintura / abdômen']?.value_cm
+        const quadril = measurementsMap['quadril']?.value_cm || measurementsMap['quadril / glúteo']?.value_cm
+        if (cintura && quadril && quadril > 0) {
+          const val = Number((cintura / quadril).toFixed(2))
+          let classification = 'Risco Baixo'
+          let status: 'good' | 'warning' | 'danger' = 'good'
+          if (val >= 1.0) {
+            classification = 'Risco Elevado'
+            status = 'danger'
+          } else if (val >= 0.90) {
+            classification = 'Risco Moderado'
+            status = 'warning'
+          }
+          icq = { value: val, classification, status }
+        }
+
+        // 2. ICE (Cintura / Estatura)
+        let ice: HealthIndices['ice'] = null
+        if (cintura && heightCm > 0) {
+          const val = Number((cintura / heightCm).toFixed(2))
+          let classification = 'Excelente (< 0.50)'
+          let status: 'good' | 'warning' | 'danger' = 'good'
+          if (val >= 0.60) {
+            classification = 'Elevado (>= 0.60)'
+            status = 'danger'
+          } else if (val >= 0.50) {
+            classification = 'Atenção (0.50 - 0.59)'
+            status = 'warning'
+          }
+          ice = { value: val, classification, status }
+        }
+
+        // 3. IMC (Peso / Altura^2)
+        let imc: HealthIndices['imc'] = null
+        if (latestWeight && heightCm > 0) {
+          const heightM = heightCm / 100
+          const val = Number((latestWeight.weight_kg / (heightM * heightM)).toFixed(1))
+          let classification = 'Peso Saudável'
+          let status: 'good' | 'warning' | 'danger' = 'good'
+          if (val >= 30) {
+            classification = 'Obesidade'
+            status = 'danger'
+          } else if (val >= 25) {
+            classification = 'Sobrepeso'
+            status = 'warning'
+          } else if (val < 18.5) {
+            classification = 'Abaixo do peso'
+            status = 'warning'
+          }
+          imc = { value: val, classification, status }
+        }
+
+        // 4. Simetria Muscular
+        const symmetries: HealthIndices['symmetries'] = []
+        const pairs = [
+          { label: 'Bíceps / Braço', leftKey: 'braço esquerdo', rightKey: 'braço direito' },
+          { label: 'Coxas', leftKey: 'coxa esquerda', rightKey: 'coxa direita' },
+          { label: 'Panturrilhas', leftKey: 'panturrilha esquerda', rightKey: 'panturrilha direita' },
+        ]
+
+        for (const pair of pairs) {
+          const leftVal = measurementsMap[pair.leftKey]?.value_cm
+          const rightVal = measurementsMap[pair.rightKey]?.value_cm
+          if (leftVal && rightVal) {
+            const diff = Number(Math.abs(leftVal - rightVal).toFixed(1))
+            symmetries.push({
+              label: pair.label,
+              left: leftVal,
+              right: rightVal,
+              diff,
+              status: diff <= 1.0 ? 'good' : 'warning',
+            })
+          }
+        }
+
+        return { icq, ice, imc, symmetries }
+      },
+
+      setUserHeightCm: (cm: number) => {
+        set({ userHeightCm: cm })
+        toast.success(`Altura atualizada para ${cm} cm! 📏`)
+      },
+
+      setMeasurementGoal: (label: string, goalCm: number) => {
+        set((state) => ({
+          measurementGoals: {
+            ...state.measurementGoals,
+            [label.toLowerCase().trim()]: goalCm,
+          },
+        }))
+        toast.success(`Meta de ${label} definida para ${goalCm} cm! 🎯`)
+      },
+
       getLatestMeasurementsByLabel: () => {
         const measurements = get().measurements
         const map: Record<string, FitMeasurement> = {}
@@ -500,6 +620,8 @@ export const useFitStore = create<FitState>()(
         bioimpedance: state.bioimpedance,
         templates: state.templates,
         sessions: state.sessions,
+        userHeightCm: state.userHeightCm,
+        measurementGoals: state.measurementGoals,
         lastSync: state.lastSync,
         fitUserEmail: state.fitUserEmail,
         isFitAuthenticated: state.isFitAuthenticated,
@@ -507,3 +629,4 @@ export const useFitStore = create<FitState>()(
     },
   ),
 )
+
