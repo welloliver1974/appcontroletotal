@@ -4,10 +4,26 @@
  */
 import { PROVIDERS, type ProviderId } from './llmProviders'
 import { extractAndExecuteHermesActions, type ExecutedAction } from './hermesActions'
-import { db, supabase } from './db'
+import { db, supabase, getCurrentUserEmail, isPrimaryUser } from './db'
 import { isoOffset, todayStr } from './utils'
 
 const STORAGE_KEY = 'act.hermesAdvancedConfig'
+
+export function getHermesStorageKey(email?: string | null): string {
+  const user = (email || getCurrentUserEmail() || '').toLowerCase().trim()
+  if (!user || isPrimaryUser(user)) {
+    return STORAGE_KEY
+  }
+  return `${STORAGE_KEY}_${user}`
+}
+
+export function getHermesCloudDocId(email?: string | null): string {
+  const user = (email || getCurrentUserEmail() || '').toLowerCase().trim()
+  if (!user || isPrimaryUser(user)) {
+    return 'hermes_config'
+  }
+  return `hermes_config_${user}`
+}
 
 export interface HermesAdvancedConfig {
   vpsUrl: string
@@ -59,15 +75,7 @@ export function normalizeVisionModelForProvider(providerId: ProviderId, modelId?
 export function normalizeModelForProvider(providerId: ProviderId, modelId?: string): string {
   const m = (modelId || '').trim()
   if (providerId === 'nvidia') {
-    if (
-      !m ||
-      m.startsWith('openai/') ||
-      m.includes('gpt-oss') ||
-      m.includes('versatile') ||
-      m.startsWith('google/') ||
-      m.includes('gemini') ||
-      !m.includes('/')
-    ) {
+    if (!m || m.startsWith('openai/') || m.startsWith('google/') || m.includes('gpt-oss') || !m.includes('/')) {
       return 'meta/llama-3.3-70b-instruct'
     }
     return m
@@ -112,29 +120,48 @@ export function getApiKeyForProvider(config: HermesAdvancedConfig, providerId: P
   return config.llmApiKey?.trim() || ''
 }
 
-export function getHermesAdvancedConfig(): HermesAdvancedConfig {
+export function getHermesAdvancedConfig(targetEmail?: string | null): HermesAdvancedConfig {
+  const currentEmail = (targetEmail || getCurrentUserEmail() || '').toLowerCase().trim()
+  const isSilvinha = currentEmail.includes('silvinha')
+  const storageKey = getHermesStorageKey(currentEmail)
+
+  // Load shared base config (from primary STORAGE_KEY or .env)
+  let sharedParsed: Partial<HermesAdvancedConfig> = {}
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const rawShared = localStorage.getItem(STORAGE_KEY)
+    if (rawShared) sharedParsed = JSON.parse(rawShared)
+  } catch {}
+
+  const defaultTelegramToken = isSilvinha
+    ? '8959661332:AAHwFSeidRmv9dvjnzujFeERKbmV_HQjzwc'
+    : (sharedParsed.telegramBotToken || import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '')
+
+  const defaultTelegramChatId = isSilvinha
+    ? '8927954331'
+    : (sharedParsed.telegramChatId || import.meta.env.VITE_TELEGRAM_CHAT_ID || '')
+
+  try {
+    const raw = localStorage.getItem(storageKey)
     if (raw) {
       const parsed = JSON.parse(raw)
-      const provider = (parsed.provider || 'groq') as ProviderId
-      const rawModel = parsed.llmModel || ''
+      const provider = (parsed.provider || sharedParsed.provider || 'groq') as ProviderId
+      const rawModel = parsed.llmModel || sharedParsed.llmModel || ''
       const normalizedModel = normalizeModelForProvider(provider, rawModel)
 
-      const groqKey = parsed.groqApiKey || (provider === 'groq' ? parsed.llmApiKey : '') || import.meta.env.VITE_GROQ_API_KEY || ''
-      const openRouterKey = parsed.openRouterApiKey || (provider === 'openrouter' ? parsed.llmApiKey : '') || ''
-      const nvidiaKey = parsed.nvidiaApiKey || (provider === 'nvidia' ? parsed.llmApiKey : '') || ''
-      const customKey = parsed.customApiKey || (provider === 'custom' ? parsed.llmApiKey : '') || ''
+      const groqKey = parsed.groqApiKey || sharedParsed.groqApiKey || (provider === 'groq' ? (parsed.llmApiKey || sharedParsed.llmApiKey) : '') || import.meta.env.VITE_GROQ_API_KEY || ''
+      const openRouterKey = parsed.openRouterApiKey || sharedParsed.openRouterApiKey || (provider === 'openrouter' ? (parsed.llmApiKey || sharedParsed.llmApiKey) : '') || ''
+      const nvidiaKey = parsed.nvidiaApiKey || sharedParsed.nvidiaApiKey || (provider === 'nvidia' ? (parsed.llmApiKey || sharedParsed.llmApiKey) : '') || ''
+      const customKey = parsed.customApiKey || sharedParsed.customApiKey || (provider === 'custom' ? (parsed.llmApiKey || sharedParsed.llmApiKey) : '') || ''
 
       // Independent Vision Provider
-      let visionProvider: ProviderId = parsed.visionProvider
+      let visionProvider: ProviderId = parsed.visionProvider || sharedParsed.visionProvider
       if (!visionProvider || !PROVIDERS[visionProvider] || visionProvider === 'groq') {
         if (nvidiaKey) visionProvider = 'nvidia'
         else if (openRouterKey) visionProvider = 'openrouter'
         else visionProvider = 'openrouter'
       }
 
-      const rawVision = parsed.visionModel || ''
+      const rawVision = parsed.visionModel || sharedParsed.visionModel || ''
       const normalizedVision = normalizeVisionModelForProvider(visionProvider, rawVision)
 
       const currentKey =
@@ -144,11 +171,11 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
             ? openRouterKey
             : provider === 'nvidia'
               ? nvidiaKey
-              : customKey || parsed.llmApiKey || ''
+              : customKey || parsed.llmApiKey || sharedParsed.llmApiKey || ''
 
       return {
-        vpsUrl: parsed.vpsUrl || import.meta.env.VITE_HERMES_WEBHOOK_URL || '',
-        vpsSecret: parsed.vpsSecret || import.meta.env.VITE_HERMES_API_KEY || '',
+        vpsUrl: parsed.vpsUrl || sharedParsed.vpsUrl || import.meta.env.VITE_HERMES_WEBHOOK_URL || '',
+        vpsSecret: parsed.vpsSecret || sharedParsed.vpsSecret || import.meta.env.VITE_HERMES_API_KEY || '',
         provider,
         visionProvider,
         llmApiKey: currentKey,
@@ -158,37 +185,41 @@ export function getHermesAdvancedConfig(): HermesAdvancedConfig {
         customApiKey: customKey,
         llmModel: normalizedModel,
         visionModel: normalizedVision,
-        customBaseUrl: parsed.customBaseUrl || '',
+        customBaseUrl: parsed.customBaseUrl || sharedParsed.customBaseUrl || '',
         telegramBotUrl: parsed.telegramBotUrl || '',
-        telegramBotToken: parsed.telegramBotToken || import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '',
-        telegramChatId: parsed.telegramChatId || import.meta.env.VITE_TELEGRAM_CHAT_ID || '',
+        telegramBotToken: parsed.telegramBotToken || defaultTelegramToken,
+        telegramChatId: parsed.telegramChatId || defaultTelegramChatId,
         enabled: parsed.enabled ?? true,
       }
     }
   } catch {}
 
   return {
-    vpsUrl: import.meta.env.VITE_HERMES_WEBHOOK_URL || '',
-    vpsSecret: import.meta.env.VITE_HERMES_API_KEY || '',
-    provider: 'groq',
-    visionProvider: 'openrouter',
-    llmApiKey: import.meta.env.VITE_LLM_API_KEY || '',
-    groqApiKey: import.meta.env.VITE_GROQ_API_KEY || import.meta.env.VITE_LLM_API_KEY || '',
-    openRouterApiKey: '',
-    nvidiaApiKey: '',
-    customApiKey: '',
-    llmModel: 'openai/gpt-oss-120b',
-    visionModel: getDefaultVisionModel('openrouter'),
-    customBaseUrl: '',
+    vpsUrl: sharedParsed.vpsUrl || import.meta.env.VITE_HERMES_WEBHOOK_URL || '',
+    vpsSecret: sharedParsed.vpsSecret || import.meta.env.VITE_HERMES_API_KEY || '',
+    provider: (sharedParsed.provider as ProviderId) || 'groq',
+    visionProvider: (sharedParsed.visionProvider as ProviderId) || 'openrouter',
+    llmApiKey: sharedParsed.llmApiKey || import.meta.env.VITE_LLM_API_KEY || '',
+    groqApiKey: sharedParsed.groqApiKey || import.meta.env.VITE_GROQ_API_KEY || import.meta.env.VITE_LLM_API_KEY || '',
+    openRouterApiKey: sharedParsed.openRouterApiKey || '',
+    nvidiaApiKey: sharedParsed.nvidiaApiKey || '',
+    customApiKey: sharedParsed.customApiKey || '',
+    llmModel: sharedParsed.llmModel || 'openai/gpt-oss-120b',
+    visionModel: sharedParsed.visionModel || getDefaultVisionModel('openrouter'),
+    customBaseUrl: sharedParsed.customBaseUrl || '',
     telegramBotUrl: '',
-    telegramBotToken: import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '',
-    telegramChatId: import.meta.env.VITE_TELEGRAM_CHAT_ID || '',
+    telegramBotToken: defaultTelegramToken,
+    telegramChatId: defaultTelegramChatId,
     enabled: true,
   }
 }
 
-export function saveHermesAdvancedConfig(config: HermesAdvancedConfig): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+export function saveHermesAdvancedConfig(config: HermesAdvancedConfig, targetEmail?: string | null): void {
+  const currentEmail = (targetEmail || getCurrentUserEmail() || '').toLowerCase().trim()
+  const storageKey = getHermesStorageKey(currentEmail)
+  const cloudDocId = getHermesCloudDocId(currentEmail)
+
+  localStorage.setItem(storageKey, JSON.stringify(config))
 
   // Persist to Supabase so config survives redeploys and syncs across devices
   if (supabase) {
@@ -198,7 +229,7 @@ export function saveHermesAdvancedConfig(config: HermesAdvancedConfig): void {
           .from('app_settings')
           .upsert(
             {
-              id: 'hermes_config',
+              id: cloudDocId,
               data: config,
               updated_at: new Date().toISOString(),
             },
@@ -217,26 +248,30 @@ export function saveHermesAdvancedConfig(config: HermesAdvancedConfig): void {
 /**
  * Load latest config from Supabase cloud and update local storage.
  */
-export async function loadHermesConfigFromCloud(): Promise<HermesAdvancedConfig> {
-  const local = getHermesAdvancedConfig()
+export async function loadHermesConfigFromCloud(targetEmail?: string | null): Promise<HermesAdvancedConfig> {
+  const currentEmail = (targetEmail || getCurrentUserEmail() || '').toLowerCase().trim()
+  const local = getHermesAdvancedConfig(currentEmail)
   if (!supabase) return local
+
+  const cloudDocId = getHermesCloudDocId(currentEmail)
 
   try {
     const { data, error } = await supabase
       .from('app_settings')
       .select('data')
-      .eq('id', 'hermes_config')
+      .eq('id', cloudDocId)
       .maybeSingle()
 
     if (error || !data?.data) {
-      if (local.llmApiKey || local.groqApiKey || local.vpsUrl) {
-        saveHermesAdvancedConfig(local)
+      if (local.llmApiKey || local.groqApiKey || local.vpsUrl || local.telegramBotToken) {
+        saveHermesAdvancedConfig(local, currentEmail)
       }
       return local
     }
 
     const cloudData = data.data as Partial<HermesAdvancedConfig>
     let safeProvider = (cloudData.provider || local.provider || 'groq') as ProviderId
+    if (!PROVIDERS[safeProvider]) safeProvider = 'groq'
     if (!PROVIDERS[safeProvider]) safeProvider = 'groq'
 
     let safeVisionProvider = (cloudData.visionProvider || local.visionProvider || 'openrouter') as ProviderId

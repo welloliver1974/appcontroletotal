@@ -42,6 +42,7 @@ import {
   sendHermesWebhook,
   type HermesAdvancedConfig,
 } from '@/lib/hermes'
+import { getCurrentUserEmail } from '@/lib/db'
 import { toast } from '@/stores/toastStore'
 
 export function SettingsHermes() {
@@ -913,7 +914,15 @@ export function SettingsHermes() {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+        <div className="flex items-center justify-between p-2 rounded-lg bg-zinc-900/80 border border-zinc-800 text-xs">
+          <div className="flex items-center gap-2 text-zinc-300">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Perfil Telegram vinculado a: <strong className="text-emerald-400">{getCurrentUserEmail() || 'Conta Principal (Wellington)'}</strong></span>
+          </div>
+          <span className="text-[10px] text-zinc-500">Isolado por conta</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
           <div className="space-y-1.5">
             <label className="text-xs text-zinc-400">Token do Bot Telegram (@BotFather)</label>
             <input
