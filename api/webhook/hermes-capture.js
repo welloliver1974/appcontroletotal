@@ -55,45 +55,59 @@ async function askHermesAI(userMessage, isSilvia, supabase) {
 
   if (!groqKey) {
     return isSilvia
-      ? `Olá Silvia! Estou aqui com você. Como posso te ajudar hoje no Life OS Hub? 😊`
+      ? `Olá Silvia! ✨ Estou aqui com você. Como posso te ajudar hoje no Life OS Hub?`
       : `Fala Wellington! Estou online e pronto para agir em qualquer módulo do Life OS Hub.`;
   }
 
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${groqKey}`,
-      },
-      body: JSON.stringify({
-        model: targetModel,
-        messages: [
-          {
-            role: 'system',
-            content: `Você é ${botName}, a assistente e copiloto pessoal de alta performance de ${userName} no aplicativo Life OS Hub.
-Você tem acesso e atua em TODO o aplicativo da família: Finanças, Mercado/Despensa, Fit (treinos, medidas e peso), Agenda/Compromissos, Diário Pessoal e Mídias.
-Fale de forma 100% natural, humana, acolhedora, inteligente, elegante e simpática. Nunca seja engessado, rígido ou robótico.
-Se o usuário mandar uma saudação (como "boa noite", "bom dia", "como vai?", "estou cansada", etc.), responda com empatia, simpatia e acolhimento em 2 a 3 frases. Use emojis com bom gosto.`
-          },
-          { role: 'user', content: userMessage }
-        ],
-        temperature: 0.7,
-        max_tokens: 350,
-      }),
-    });
+  const candidateModels = [targetModel, 'openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'].filter((v, i, a) => a.indexOf(v) === i);
 
-    const json = await res.json();
-    if (json.choices?.[0]?.message?.content) {
-      return json.choices[0].message.content.trim();
+  for (const model of candidateModels) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${groqKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: `Você é ${botName}, assistente e copiloto pessoal de alta performance de ${userName} no aplicativo Life OS Hub.
+Você tem acesso e atua em TODO o ecossistema do aplicativo da família:
+- Finanças & Gastos compartilhados
+- Despensa & Lista de Compras do Mercado
+- FitWell (Treinos, Medidas corporais, Peso e Bioimpedância)
+- Agenda & Compromissos da família
+- Diário Pessoal (Life-Log) e Galeria de Mídias/Vídeos
+
+Suas diretrizes de comunicação:
+1. Seja 100% natural, amigável, humana, empática e inteligente. NUNCA seja fria, robótica ou engessada.
+2. Se o usuário mandar saudações (ex: "boa noite", "bom dia", "como vai?", "oi", "tudo bem?"), responda calorosamente com simpatia em 2 a 3 frases.
+3. Se o usuário fizer perguntas gerais ou pedir conselhos, responda de forma prestativa, clara e elegante.
+4. Lembre suavemente, quando for oportuno, que você pode registrar treinos, pesos, medidas, compras ou finanças a qualquer momento.
+5. Use emojis moderados e de bom gosto.`
+            },
+            { role: 'user', content: userMessage }
+          ],
+          temperature: 0.7,
+          max_tokens: 400,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.choices?.[0]?.message?.content) {
+        let text = json.choices[0].message.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        if (text) return text;
+      }
+    } catch (err) {
+      console.warn(`[HermesAI model ${model} error]:`, err);
     }
-    console.warn('[HermesAI response empty]:', json);
-  } catch (err) {
-    console.warn('[HermesAI error]:', err);
   }
 
   return isSilvia
-    ? `Olá Silvia! Estou aqui com você. Como foi o seu dia? Se precisar anotar compras, peso, medidas ou qualquer coisa, é só me falar! ✨`
+    ? `Olá Silvia! ✨ Estou aqui com você. Como posso te ajudar agora no seu dia ou no Life OS Hub?`
     : `Fala Wellington! Estou online e pronto para agir em qualquer módulo do Life OS Hub.`;
 }
 
