@@ -178,14 +178,14 @@ export const useFitStore = create<FitState>()(
         if (currentEmail === 'welloliver@gmail.com' || currentEmail.startsWith('welloliver')) {
           set({ fitUserEmail: currentEmail })
         } else {
-          // New user (e.g. silvinhamsa@gmail.com) starts with a clean slate!
+          // New user (silvinhamsa@gmail.com or other) starts with a clean slate!
           set({
             weights: [],
             measurements: [],
             bioimpedance: [],
             templates: DEFAULT_TEMPLATES,
             sessions: [],
-            userHeightCm: 165,
+            userHeightCm: currentEmail.includes('silvinha') ? 165 : 170,
             measurementGoals: {},
             fitUserEmail: currentEmail,
             isFitAuthenticated: false,
@@ -207,11 +207,16 @@ export const useFitStore = create<FitState>()(
         }
 
         const session = await getFitwellSession()
+        const isUserPrimary = !currentAuthEmail || currentAuthEmail.startsWith('welloliver')
+
         if (session?.user && (!currentAuthEmail || session.user.email?.toLowerCase() === currentAuthEmail.toLowerCase())) {
           set({
             fitUserEmail: session.user.email || null,
             isFitAuthenticated: true,
           })
+          await get().fetchData(true)
+        } else if (isUserPrimary) {
+          // Primary user can pull general fitwell data if desired
           await get().fetchData(true)
         } else {
           set({ isFitAuthenticated: false })
@@ -700,4 +705,21 @@ export const useFitStore = create<FitState>()(
     },
   ),
 )
+
+// Automatically persist user-specific changes to localStorage per account email
+useFitStore.subscribe((state) => {
+  const email = state.fitUserEmail || 'welloliver@gmail.com'
+  try {
+    const toSave = {
+      weights: state.weights,
+      measurements: state.measurements,
+      bioimpedance: state.bioimpedance,
+      templates: state.templates,
+      sessions: state.sessions,
+      userHeightCm: state.userHeightCm,
+      measurementGoals: state.measurementGoals,
+    }
+    localStorage.setItem(`act.fit_profile_${email}`, JSON.stringify(toSave))
+  } catch {}
+})
 
