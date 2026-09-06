@@ -1,7 +1,7 @@
 /**
- * Refined Hermes Morning Briefing Generator.
- * Considers a 2-day agenda horizon (Today + Tomorrow), monthly finances,
- * pantry items, and verified maintenance alerts (no phantom vehicle alerts).
+ * Refined Hermes Briefing Generator.
+ * Considers time-of-day awareness (Morning / Afternoon / Night),
+ * remaining vs. completed/past events, weather, finances, pantry, and vehicle alerts.
  */
 import { getHermesAdvancedConfig } from './hermes'
 import type { DashboardData } from '@/features/dashboard/dashboardData'
@@ -15,35 +15,56 @@ export async function generateFastAIBriefing(data: DashboardData): Promise<strin
   const now = new Date()
   const todayIso = todayStr(now)
   const tomorrowIso = isoOffset(1, now)
+  const currentHour = now.getHours()
+  const currentMin = now.getMinutes()
+  const currentTimeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`
+
+  const greeting = currentHour < 12 ? 'Bom dia' : currentHour < 18 ? 'Boa tarde' : 'Boa noite'
+  const timeContextLabel = currentHour < 12 ? 'Manhã' : currentHour < 18 ? 'Tarde' : 'Noite'
 
   // Clima em tempo real (Open-Meteo)
   const weather = await fetchCurrentWeather().catch(() => null)
 
-  // 1. Agenda de 2 dias (Hoje e Amanhã)
+  // 1. Agenda de Hoje (separando pendentes de passados/concluídos)
   const todayEvents = (data.events || [])
     .filter((e) => e.date === todayIso)
     .sort((a, b) => (a.timeStart || '').localeCompare(b.timeStart || ''))
 
+  const remainingTodayEvents = todayEvents.filter((e) => {
+    if (e.completed) return false
+    if (!e.timeStart) return true
+    const endTime = e.timeEnd || e.timeStart
+    return endTime >= currentTimeStr
+  })
+
+  const pastTodayEvents = todayEvents.filter((e) => {
+    if (e.completed) return true
+    if (!e.timeStart) return false
+    const endTime = e.timeEnd || e.timeStart
+    return endTime < currentTimeStr
+  })
+
+  // 2. Agenda de Amanhã
   const tomorrowEvents = (data.events || [])
     .filter((e) => e.date === tomorrowIso)
     .sort((a, b) => (a.timeStart || '').localeCompare(b.timeStart || ''))
 
-  // 2. Despensa
+  // 3. Despensa
   const lowStock = (data.pantry || []).filter((p) => Number(p.qty || 0) <= Number(p.lowThreshold || 1))
 
-  // 3. Manutenção real (apenas se data explícita estiver cadastrada e for próxima)
+  // 4. Manutenção real (apenas se data explícita estiver cadastrada e for próxima)
   const urgentAssets = (data.assets || []).filter((a) => {
     if (!a.nextMaintenance || !isValidIsoDate(a.nextMaintenance)) return false
     return a.nextMaintenance <= tomorrowIso
   })
 
-  // 4. Veículos reais (somente se houver dados suficientes de odômetro)
+  // 5. Veículos reais (somente se houver dados suficientes de odômetro)
   const vehicleAlerts = (data.assets || [])
     .filter((a) => a.category === 'carro' || a.category === 'moto')
     .map((a) => ({ asset: a, stats: calculateVehiclePredictiveStats(a.id, data.maintenance || []) }))
     .filter((v) => v.stats && v.stats.hasEnoughData && (v.stats.urgency === 'critical' || v.stats.urgency === 'warning'))
 
-  // 5. Finanças do mês e Safe-to-Spend
+  // 6. Finanças do mês e Safe-to-Spend
   const totalMonthSpent = (data.spending || []).reduce(
     (acc, s) =>
       acc +
@@ -92,10 +113,17 @@ export async function generateFastAIBriefing(data: DashboardData): Promise<strin
         model = config.llmModel || 'default-model'
       }
 
-      const todayText =
-        todayEvents.length > 0
-          ? todayEvents.map((e) => `${e.title}${e.timeStart ? ` às ${e.timeStart}` : ''}`).join(', ')
-          : 'Nenhum compromisso marcado para hoje'
+      let todayText = ''
+      if (remainingTodayEvents.length > 0) {
+        todayText = `Próximos compromissos hoje (a partir de ${currentTimeStr}): ${remainingTodayEvents.map((e) => `${e.title}${e.timeStart ? ` às ${e.timeStart}` : ''}`).join(', ')}`
+        if (pastTodayEvents.length > 0) {
+          todayText += ` (${pastTodayEvents.length} compromisso(s) anterior(es) já concluído(s)/passados hoje)`
+        }
+      } else if (pastTodayEvents.length > 0) {
+        todayText = `Todos os ${pastTodayEvents.length} compromisso(s) de hoje já foram concluídos/passaram (${pastTodayEvents.map((e) => e.title).join(', ')}). Nenhum compromisso pendente para o restante deste dia/noite.`
+      } else {
+        todayText = 'Nenhum compromisso marcado para hoje'
+      }
 
       const tomorrowText =
         tomorrowEvents.length > 0
@@ -119,24 +147,26 @@ export async function generateFastAIBriefing(data: DashboardData): Promise<strin
         : 'Clima estável'
 
       const systemPrompt = `Você é o HERMES, o copiloto executivo e pessoal do Life OS Hub.
-Escreva um briefing matinal em português brasileiro, fluído, inteligente, encorpador e motivador (com cerca de 3 a 4 frases bem articuladas).
-DIRETRIZES:
-1. Comece com uma saudação executiva calorosa, mencione brevemente o clima do dia (${weatherText}) e destaque os compromissos de HOJE.
-2. Dê uma visão prévia dos compromissos de AMANHÃ para que o usuário se planeje com antecedência.
-3. Se houver itens em falta na despensa ou alerta real de manutenção, mencione de forma construtiva. Se estiver tudo em dia, parabenize pela organização.
-4. Feche com uma frase inspiradora de foco e alta performance para o dia.
-5. REGRA CRÍTICA: NUNCA deixe frases incompletas, parênteses sem fechar ou pensamentos cortados. Sempre conclua todas as frases com pontuação final.
+Horário atual do usuário: ${currentTimeStr} (${timeContextLabel} — use obrigatoriamente a saudação exata: "${greeting}!").
+Escreva um briefing executivo, inteligente, fluido e contextualizado ao momento do dia em português brasileiro (com cerca de 3 a 4 frases bem articuladas).
+DIRETRIZES TEMPORAIS E DE CONTEÚDO:
+1. Comece OBRIGATORIAMENTE com a saudação de agora ("${greeting}!").
+2. NUNCA trate compromissos passados antes de ${currentTimeStr} como tarefas pendentes. Se houver compromissos restantes a partir de agora (${currentTimeStr}), mencione-os. Se todos os compromissos de hoje já passaram ou foram concluídos, comente que a pauta do dia foi concluída e direcione a atenção para o restante do período ou para amanhã.
+3. Dê uma visão prévia dos compromissos de AMANHÃ para planejamento antecipado.
+4. Se houver itens em falta na despensa ou alerta real de manutenção/veículo, mencione brevemente.
+5. Feche com uma frase motivadora ou de bom descanso adequada ao período (${timeContextLabel}).
+6. REGRA CRÍTICA: NUNCA deixe frases incompletas, parênteses sem fechar ou pensamentos cortados. Sempre conclua todas as frases com pontuação final.
 NÃO use marcadores com hífen ou tópicos — escreva em texto corrido e elegante.`
 
-      const userPrompt = `DADOS ATUAIS (${now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}):
+      const userPrompt = `DADOS ATUAIS (Horário: ${currentTimeStr} de ${now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}):
 - Clima: ${weatherText}
-- Agenda Hoje: ${todayText}
+- Agenda Hoje (${timeContextLabel}): ${todayText}
 - Agenda Amanhã: ${tomorrowText}
 - Finanças do Mês: R$ ${totalMonthSpent.toFixed(2)} gastos registrados (Cota Segura: ${safeToSpendText})
 - Despensa: ${pantryText}
 - Manutenção: ${maintenanceText}
 
-Gere o briefing matinal executivo:`
+Gere o briefing executivo contextualizado para agora:`
 
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 8500)
@@ -181,27 +211,44 @@ Gere o briefing matinal executivo:`
   }
 
   // Fallback heurístico inteligente refinado (0ms)
-  return buildSmartRefinedBriefing(todayEvents, tomorrowEvents, lowStock, vehicleAlerts, urgentAssets, totalMonthSpent)
+  return buildSmartRefinedBriefing(
+    remainingTodayEvents,
+    pastTodayEvents,
+    tomorrowEvents,
+    lowStock,
+    vehicleAlerts,
+    urgentAssets,
+    totalMonthSpent,
+    greeting,
+    currentHour,
+  )
 }
 
 function buildSmartRefinedBriefing(
-  todayEvents: any[],
+  remainingTodayEvents: any[],
+  pastTodayEvents: any[],
   tomorrowEvents: any[],
   lowStock: any[],
   vehicleAlerts: any[],
   urgentAssets: any[],
   totalMonthSpent: number,
+  greeting: string,
+  currentHour: number,
 ): string {
   const sentences: string[] = []
 
   // 1. Saudação + Hoje
-  if (todayEvents.length > 0) {
-    const nextEvt = todayEvents[0]
+  if (remainingTodayEvents.length > 0) {
+    const nextEvt = remainingTodayEvents[0]
     sentences.push(
-      `Bom dia! Seu foco principal para hoje é "${nextEvt.title}"${nextEvt.timeStart ? ` às ${nextEvt.timeStart}` : ''}${todayEvents.length > 1 ? `, com mais ${todayEvents.length - 1} compromisso(s) na pauta` : ''}.`,
+      `${greeting}! Seu próximo compromisso hoje é "${nextEvt.title}"${nextEvt.timeStart ? ` às ${nextEvt.timeStart}` : ''}${remainingTodayEvents.length > 1 ? `, com mais ${remainingTodayEvents.length - 1} pendência(s) na pauta` : ''}.`,
+    )
+  } else if (pastTodayEvents.length > 0) {
+    sentences.push(
+      `${greeting}! Os ${pastTodayEvents.length} compromisso(s) programados para hoje já foram concluídos e a agenda segue livre para o restante do período.`,
     )
   } else {
-    sentences.push('Bom dia! Sua agenda de hoje está livre de compromissos fixos, um ótimo cenário para focar em projetos prioritários.')
+    sentences.push(`${greeting}! Sua agenda segue livre de compromissos para este período, excelente para focar em prioridades.`)
   }
 
   // 2. Panorama de Amanhã
@@ -210,7 +257,7 @@ function buildSmartRefinedBriefing(
       `Para amanhã, você já tem ${tomorrowEvents.length} atividade(s) programada(s), iniciando por "${tomorrowEvents[0].title}"${tomorrowEvents[0].timeStart ? ` às ${tomorrowEvents[0].timeStart}` : ''}.`,
     )
   } else {
-    sentences.push('Amanhã o dia também segue calmo na agenda.')
+    sentences.push('Amanhã a agenda também segue tranquila.')
   }
 
   // 3. Despensa / Manutenção / Finanças
@@ -229,7 +276,13 @@ function buildSmartRefinedBriefing(
   }
 
   // 4. Fechamento
-  sentences.push('Tenha um excelente dia de produtividade e conquistas!')
+  if (currentHour >= 18) {
+    sentences.push('Tenha uma excelente noite e um descanso reparador!')
+  } else if (currentHour >= 12) {
+    sentences.push('Tenha uma tarde produtiva e de ótimos resultados!')
+  } else {
+    sentences.push('Tenha um excelente dia de produtividade e conquistas!')
+  }
 
   return sentences.join(' ')
 }

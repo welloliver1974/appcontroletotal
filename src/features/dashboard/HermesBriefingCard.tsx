@@ -71,10 +71,22 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
   const now = new Date()
   const todayIso = todayStr(now)
   const tomorrowIso = isoOffset(1, now)
+  const currentHour = now.getHours()
+  const currentMin = String(now.getMinutes()).padStart(2, '0')
+  const currentTimeStr = `${String(currentHour).padStart(2, '0')}:${currentMin}`
+  const greeting = currentHour < 12 ? 'Bom dia' : currentHour < 18 ? 'Boa tarde' : 'Boa noite'
+  const greetingEmoji = currentHour < 12 ? '☀️' : currentHour < 18 ? '🌤️' : '🌙'
 
-  const todayEvents = (data.events || [])
+  const allTodayEvents = (data.events || [])
     .filter((e) => e.date === todayIso)
     .sort((a, b) => (a.timeStart || '').localeCompare(b.timeStart || ''))
+
+  const remainingTodayEvents = allTodayEvents.filter(
+    (e) => !e.completed && (!e.timeStart || (e.timeEnd ? e.timeEnd >= currentTimeStr : e.timeStart >= currentTimeStr))
+  )
+  const pastTodayEvents = allTodayEvents.filter(
+    (e) => e.completed || (e.timeStart && (e.timeEnd ? e.timeEnd < currentTimeStr : e.timeStart < currentTimeStr))
+  )
 
   const tomorrowEvents = (data.events || [])
     .filter((e) => e.date === tomorrowIso)
@@ -115,12 +127,14 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
   const smartSummary = () => {
     const sentences: string[] = []
 
-    if (todayEvents.length > 0) {
+    if (remainingTodayEvents.length > 0) {
       sentences.push(
-        `Hoje você tem ${todayEvents.length} compromisso(s), iniciando com "${todayEvents[0].title}"${todayEvents[0].timeStart ? ` às ${todayEvents[0].timeStart}` : ''}.`,
+        `${greeting}! Você ainda tem ${remainingTodayEvents.length} compromisso(s) para hoje, o próximo é "${remainingTodayEvents[0].title}"${remainingTodayEvents[0].timeStart ? ` às ${remainingTodayEvents[0].timeStart}` : ''}.`,
       )
+    } else if (allTodayEvents.length > 0) {
+      sentences.push(`${greeting}! Todos os seus compromissos de hoje já foram cumpridos ou encerrados.`)
     } else {
-      sentences.push('Sua agenda está livre de compromissos para hoje.')
+      sentences.push(`${greeting}! Sua agenda está livre de compromissos para hoje.`)
     }
 
     if (tomorrowEvents.length > 0) {
@@ -153,16 +167,21 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
     })
 
     const lines = [
-      `☀️ *BOM DIA! RESUMO MATINAL — LIFE OS HUB*`,
+      `${greetingEmoji} *${greeting.toUpperCase()}! BRIEFING EXECUTIVO — LIFE OS HUB*`,
       `📅 *Data:* ${todayFormatted}`,
       ``,
       `🤖 *Mensagem do Hermes:*`,
       `"${briefing || smartSummary()}"`,
       ``,
-      `📌 *Compromissos de Hoje (${todayEvents.length}):*`,
-      todayEvents.length > 0
-        ? todayEvents.map((e) => `• ${e.timeStart ? `${e.timeStart} - ` : ''}${e.title}${e.location ? ` (${e.location})` : ''}`).join('\n')
-        : `• Nenhum compromisso agendado para hoje.`,
+      `📌 *Compromissos Restantes de Hoje (${remainingTodayEvents.length}):*`,
+      remainingTodayEvents.length > 0
+        ? remainingTodayEvents.map((e) => `• ${e.timeStart ? `${e.timeStart} - ` : ''}${e.title}${e.location ? ` (${e.location})` : ''}`).join('\n')
+        : `• Nenhum compromisso restante para hoje.`,
+      ...(pastTodayEvents.length > 0 ? [
+        ``,
+        `✅ *Compromissos Já Concluídos / Encerrados (${pastTodayEvents.length}):*`,
+        pastTodayEvents.map((e) => `• ~${e.timeStart ? `${e.timeStart} - ` : ''}${e.title}~`).join('\n')
+      ] : []),
       ``,
       `📅 *Compromissos de Amanhã (${tomorrowEvents.length}):*`,
       tomorrowEvents.length > 0

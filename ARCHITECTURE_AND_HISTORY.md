@@ -1130,6 +1130,28 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## ⏰ 63. Briefing Temporal Dinâmico e Filtro de Eventos Passados (06/09/2026)
+
+* **Contexto & Motivação:**
+  - O usuário relatou que ao atualizar o Briefing do Hermes no início da noite (ex: 18:32), o briefing continuava iniciando com *"Bom dia"* e listando compromissos que já haviam passado ou ocorrido mais cedo como se ainda fossem acontecer.
+
+* **Soluções Implementadas:**
+  1. **🕒 Saudação Inteligente por Faixa de Horário ([fastBriefing.ts](file:///e:/Apps/AppControleTotal/src/lib/fastBriefing.ts) & [HermesBriefingCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/HermesBriefingCard.tsx)):**
+     - O Hermes agora avalia a hora local atual (`new Date().getHours()`):
+       - `< 12h`: *"Bom dia"* (☀️)
+       - `12h - 18h`: *"Boa tarde"* (🌤️)
+       - `>= 18h`: *"Boa noite"* (🌙)
+     - O prompt do modelo de IA (Gemini Flash) agora recebe explicitamente o horário local e a saudação temporal exata a ser utilizada.
+  2. **📅 Filtro Inteligente de Compromissos Passados vs. Restantes:**
+     - Eventos do dia (`e.date === todayIso`) agora são divididos em:
+       - **Restantes (`remainingTodayEvents`):** Apenas os compromissos que ainda não foram marcados como concluídos E cujo horário final/inicial ainda é maior ou igual ao horário atual (`currentTimeStr`).
+       - **Passados / Concluídos (`pastTodayEvents`):** Eventos concluídos ou cujo horário já passou.
+     - Quando todos os eventos do dia já passaram, o Hermes informa com clareza: *"Todos os seus compromissos de hoje já foram cumpridos ou encerrados."*, evitando gerar ansiedade ou informações defasadas.
+  3. **📲 Exportação para Telegram Atualizada:**
+     - O cabeçalho e as seções de exportação do Telegram agora refletem o período do dia e mostram os compromissos restantes e os já encerrados com riscado (`~`).
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 
