@@ -6,6 +6,30 @@ import { createClient } from '@supabase/supabase-js';
 const nowIso = () => new Date().toISOString();
 const genId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
 
+// Tokens padrão para resposta no Telegram
+const SILVIA_CHAT_ID = '8927954331';
+const SILVIA_BOT_TOKEN = '8959661332:AAHwFSeidRmv9dvjnzujFeERKbmV_HQjzwc';
+const WELL_CHAT_ID = '497789001';
+const WELL_BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || '8638107104:AAHd2IYOmLRB1kOl3Rcr0TFnNvlIo0-UjDk';
+
+async function sendTelegramReply(chatId, text, customToken) {
+  if (!chatId || !text) return;
+  const token = customToken || (String(chatId) === SILVIA_CHAT_ID ? SILVIA_BOT_TOKEN : WELL_BOT_TOKEN);
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: 'Markdown',
+      }),
+    });
+  } catch (err) {
+    console.warn('[TelegramReply Error]:', err);
+  }
+}
+
 function inferPantryCategory(itemName) {
   const t = (itemName || '').toLowerCase();
   if (/(coca|coke|refrigerante|suco|cerveja|vinho|leite|caf[eé]|ch[aá]|água|bebida|energetico|pepsi|guaran[aá])/i.test(t)) return 'bebidas';
@@ -50,9 +74,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 1. Validação de Segurança (Bearer Token ou X-Hermes-Signature)
+  const body = req.body || {};
+  const tgMsg = body.message || body.edited_message || body.channel_post || {};
+  const chatId = tgMsg.chat?.id;
+  const isTelegramUpdate = !!(body.update_id || body.message || body.edited_message);
+
+  // 1. Validação de Segurança (Bearer Token ou X-Hermes-Signature) para chamadas que NÃO são webhook nativo do Telegram
   const expectedSecret = process.env.HERMES_API_KEY || process.env.VITE_HERMES_API_KEY || '';
-  if (expectedSecret && expectedSecret.trim() !== '' && expectedSecret !== 'sua_chave_de_seguranca_aqui') {
+  if (!isTelegramUpdate && expectedSecret && expectedSecret.trim() !== '' && expectedSecret !== 'sua_chave_de_seguranca_aqui') {
     const authHeader = req.headers.authorization || '';
     const sigHeader = req.headers['x-hermes-signature'] || '';
     const token = authHeader.replace(/^Bearer\s+/i, '').trim() || sigHeader.trim();
@@ -81,10 +110,10 @@ export default async function handler(req, res) {
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  const body = req.body || {};
 
-  // Extração ampla de texto (compatível com Telegram Webhook, n8n, Hermes, formulários e JSON livre)
-  const tgMsg = body.message || body.edited_message || body.channel_post || {};
+  // Identificação do usuário
+  const userEmail = String(chatId) === SILVIA_CHAT_ID ? 'silvinhamsa@gmail.com' : 'welloliver@gmail.com';
+
   const tgText = typeof tgMsg.text === 'string' ? tgMsg.text : (typeof tgMsg.caption === 'string' ? tgMsg.caption : '');
 
   const rawText = String(
@@ -103,6 +132,16 @@ export default async function handler(req, res) {
   ).trim();
 
   const lowerText = rawText.toLowerCase();
+
+  // Tratamento para comando /start ou saudações simples
+  if (lowerText === '/start' || lowerText === 'start') {
+    const welcome = String(chatId) === SILVIA_CHAT_ID
+      ? `👋 Olá Silvia! Eu sou a sua assistente **Herculana** no Life OS Hub.\n\nVocê pode me mandar:\n• 🛒 *Comprar leite e ovos* (adiciona à despensa)\n• 💸 *Gastei 45 no almoço* (registra gasto)\n• 📅 *Consulta dentista amanhã 14h* (agenda evento)\n• 📝 *Diário: Hoje foi um dia incrível* (salva no seu diário)\n• Ou qualquer link de vídeo/receita para salvar!`
+      : `👋 Olá Wellington! Eu sou o **Hermes**, seu copiloto no Life OS Hub.\n\nPronto para capturar compras, despesas, compromissos e diários 24/7! 🚀`;
+
+    await sendTelegramReply(chatId, welcome);
+    return res.status(200).json({ ok: true, message: 'Welcome sent' });
+  }
 
   // Normalização do payload
   const action = body.action || body.event || body.type || '';
@@ -152,7 +191,6 @@ export default async function handler(req, res) {
       platform === 'despensa' ||
       platform === 'compras'
     ) {
-      // Limpa prefixo de comando se houver
       let cleanGroceryText = rawText;
       if (isBoughtAction) {
         cleanGroceryText = cleanGroceryText.replace(/^(comprei|comprado|compramos|repus|repor|abasteci)\s+/i, '');
@@ -160,7 +198,6 @@ export default async function handler(req, res) {
         cleanGroceryText = cleanGroceryText.replace(/^(comprar|compra|preciso de|falta|pegar)\s+/i, '');
       }
 
-      // Se for uma lista múltipla ou texto com múltiplos itens (ex: "Coca zero e batata", "Leite, pão e café")
       const rawItemList = (Array.isArray(body.payload?.items) || Array.isArray(body.items))
         ? (Array.isArray(body.payload?.items) ? body.payload.items : body.items)
         : splitGroceryItems(cleanGroceryText || body.name || title).map((name) => ({ name }));
@@ -171,11 +208,8 @@ export default async function handler(req, res) {
         const itName = it.name ? it.name.trim() : 'Item sem nome';
         const formattedName = itName.charAt(0).toUpperCase() + itName.slice(1);
         const itCategory = it.category || inferPantryCategory(formattedName);
-
-        // Quantidade a definir: se comprou, repõe para 2 (ou especificado), se adicionou na lista, marca como 0 (em falta)
         const targetQty = isBoughtAction ? (Number(it.qty) > 0 ? Number(it.qty) : 2) : 0;
 
-        // Verifica se já existe para atualizar quantidade ou inserir
         const { data: existing } = await supabase
           .from('pantry')
           .select('*')
@@ -206,8 +240,10 @@ export default async function handler(req, res) {
       }
 
       const responseMessage = isBoughtAction
-        ? `✅ ${inserted.join(', ')} marcado(s) como comprado(s) e estoque reposto! 🛒`
-        : `🛒 ${inserted.join(', ')} adicionado(s) à lista de compras da despensa!`;
+        ? `✅ *${inserted.join(', ')}* marcado(s) como comprado(s) e despensa atualizada! 🛒`
+        : `🛒 *${inserted.join(', ')}* adicionado(s) à lista de compras da despensa!`;
+
+      await sendTelegramReply(chatId, responseMessage);
 
       return res.status(201).json({
         ok: true,
@@ -252,6 +288,7 @@ export default async function handler(req, res) {
         minutes: Number(body.minutes || 0),
         status: 'salvo',
         tags,
+        user_email: userEmail,
         created_at: nowIso(),
         updated_at: nowIso(),
       };
@@ -259,13 +296,16 @@ export default async function handler(req, res) {
       const { data, error } = await supabase.from('media').insert(mediaRow).select().single();
       if (error) throw error;
 
+      const replyText = `🎬 Link *"${mediaRow.title}"* salvo na sua galeria de mídias!`;
+      await sendTelegramReply(chatId, replyText);
+
       return res.status(201).json({
         ok: true,
         success: true,
         table: 'media',
         id: data.id,
         kind,
-        message: `Mídia "${mediaRow.title}" salva no Life-Log! 🎬`,
+        message: replyText,
       });
     }
 
@@ -286,12 +326,15 @@ export default async function handler(req, res) {
       const { data, error } = await supabase.from('spending').insert(spendingRow).select().single();
       if (error) throw error;
 
+      const replyText = `💸 Gasto registrado com sucesso nas Finanças da família!`;
+      await sendTelegramReply(chatId, replyText);
+
       return res.status(201).json({
         ok: true,
         success: true,
         table: 'spending',
         id: data.id,
-        message: 'Gasto registrado com sucesso! 💸',
+        message: replyText,
       });
     }
 
@@ -307,6 +350,7 @@ export default async function handler(req, res) {
         time_end: body.timeEnd || body.time_end || null,
         category: ['reuniao', 'pessoal', 'habit', 'viagem'].includes(body.category) ? body.category : 'pessoal',
         location: body.location || null,
+        user_email: userEmail,
         created_at: nowIso(),
         updated_at: nowIso(),
       };
@@ -314,12 +358,15 @@ export default async function handler(req, res) {
       const { data, error } = await supabase.from('events').insert(eventRow).select().single();
       if (error) throw error;
 
+      const replyText = `📅 Compromisso *"${eventRow.title}"* agendado com sucesso!`;
+      await sendTelegramReply(chatId, replyText);
+
       return res.status(201).json({
         ok: true,
         success: true,
         table: 'events',
         id: data.id,
-        message: `Compromisso "${eventRow.title}" agendado! 📅`,
+        message: replyText,
       });
     }
 
@@ -333,6 +380,7 @@ export default async function handler(req, res) {
         body: summary || body.body || title,
         tags,
         mood: Math.min(5, Math.max(1, Number(body.mood) || 3)),
+        user_email: userEmail,
         created_at: nowIso(),
         updated_at: nowIso(),
       };
@@ -340,12 +388,15 @@ export default async function handler(req, res) {
       const { data, error } = await supabase.from('life_log').insert(logRow).select().single();
       if (error) throw error;
 
+      const replyText = `📝 Entrada salva no seu Diário Pessoal: *"${logRow.title}"*!`;
+      await sendTelegramReply(chatId, replyText);
+
       return res.status(201).json({
         ok: true,
         success: true,
         table: 'life_log',
         id: data.id,
-        message: `Entrada criada no Diário: "${logRow.title}"! 📝`,
+        message: replyText,
       });
     }
 
@@ -355,8 +406,9 @@ export default async function handler(req, res) {
     const factRow = {
       id: body.id || genId(),
       content: rawText || (typeof body === 'string' ? body : JSON.stringify(body)),
-      source: body.source || 'telegram',
+      source: 'telegram',
       tags,
+      user_email: userEmail,
       created_at: nowIso(),
       updated_at: nowIso(),
     };
@@ -364,15 +416,21 @@ export default async function handler(req, res) {
     const { data, error } = await supabase.from('facts').insert(factRow).select().single();
     if (error) throw error;
 
+    const replyText = `💡 Anotado! Salvei sua nota no Life OS Hub: \n\n_"${factRow.content}"_`;
+    await sendTelegramReply(chatId, replyText);
+
     return res.status(201).json({
       ok: true,
       success: true,
       table: 'facts',
       id: data.id,
-      message: 'Nota salva no Cofre de Fatos! 💡',
+      message: replyText,
     });
   } catch (err) {
     console.error('[HermesCaptureWebhook Error]:', err);
+    if (chatId) {
+      await sendTelegramReply(chatId, `⚠️ Tive uma instabilidade ao salvar: ${err.message || 'Erro de conexão'}`);
+    }
     return res.status(500).json({
       error: err.message || 'Erro ao processar dados no banco Supabase',
       details: String(err),
