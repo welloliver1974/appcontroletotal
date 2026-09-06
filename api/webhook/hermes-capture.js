@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Timestamps explícitos no formato ISO
 const nowIso = () => new Date().toISOString();
+const todayDateIso = () => new Date().toISOString().slice(0, 10);
 const genId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
 
 // Tokens e Chat IDs padrão
@@ -116,8 +117,8 @@ export default async function handler(req, res) {
   // 2. Respostas para /start, saudações e comandos básicos
   if (lowerText === '/start' || lowerText === 'start') {
     const welcome = String(chatId) === SILVIA_CHAT_ID
-      ? `👋 Olá Silvia! Eu sou a Herculana, sua assistente no Life OS Hub.\n\nVocê pode me mandar por aqui:\n• 🛒 Comprar leite e ovos (adiciona à lista de compras)\n• 💸 Gastei 45 no almoço (registra nas finanças)\n• 📅 Consulta dentista amanhã 14h (agenda seu compromisso)\n• 📝 Diário: Hoje foi um dia produtivo (salva no seu diário)\n• Ou links do YouTube/Instagram para salvar!`
-      : `👋 Olá Wellington! Eu sou o Hermes, seu copiloto no Life OS Hub.\n\nPronto para capturar compras, despesas, compromissos e diários 24/7! 🚀`;
+      ? `👋 Olá Silvia! Eu sou a Herculana, sua assistente no Life OS Hub.\n\nVocê pode me mandar por aqui:\n• ⚖️ "Pesei 62.5" ou "Meu peso hoje é 63" (grava peso no Fit)\n• 📏 "Cintura 70" ou "Medida braço 28" (salva medidas corporais)\n• 💪 "Treino de perna concluído" (registra treino)\n• 🛒 "Comprar leite e ovos" (adiciona à despensa)\n• 💸 "Gastei 45 no almoço" (registra finanças)\n• 📅 "Consulta dentista amanhã 14h" (agenda evento)\n• 📝 "Diário: Hoje foi um dia produtivo" (salva no seu diário)`
+      : `👋 Olá Wellington! Eu sou o Hermes, seu copiloto no Life OS Hub.\n\nPronto para capturar peso, medidas corporais, treinos, compras, despesas e diários 24/7! 🚀`;
 
     await sendTelegramReply(chatId, welcome);
     return res.status(200).json({ ok: true, message: 'Welcome sent' });
@@ -127,14 +128,14 @@ export default async function handler(req, res) {
   if (/^(oi|oii|oiii|oiiii|ola|olá|bom dia|boa tarde|boa noite|e ai|e a[ií]|tudo bem|help|ajuda|teste)$/i.test(lowerText)) {
     const isSilvia = String(chatId) === SILVIA_CHAT_ID;
     const greeting = isSilvia
-      ? `Olá Silvia! Tudo bem com você? 😊\n\nEstou pronta para te ajudar. Pode me pedir para adicionar compras ("comprar maçã e banana"), registrar gastos ("gastei 30"), anotar no diário ou marcar compromissos na agenda!`
-      : `Olá Wellington! Tudo 100%! 🚀\n\nComo posso te ajudar agora? Pode me mandar compras, despesas, eventos da agenda ou reflexões para o Life-Log.`;
+      ? `Olá Silvia! Tudo bem com você? 😊\n\nEstou pronta para te ajudar. Pode me pedir:\n• Registrar seu peso: "Pesei 62.5"\n• Salvar suas medidas: "Cintura 70", "Braço 28", "Quadril 98"\n• Anotar seu treino: "Treino de perna concluído"\n• Compras da despensa: "Comprar leite e café"\n• Gastos e diários pessoais!`
+      : `Olá Wellington! Tudo 100%! 🚀\n\nComo posso te ajudar agora? Pode me mandar peso, medidas, treinos, compras, despesas ou reflexões para o Life-Log.`;
 
     await sendTelegramReply(chatId, greeting);
     return res.status(200).json({ ok: true, message: 'Greeting replied' });
   }
 
-  // 3. Conexão resiliente com o Supabase
+  // 3. Conexão com o Supabase Principal do Life OS
   const SUPABASE_URL =
     process.env.SUPABASE_URL ||
     process.env.VITE_SUPABASE_URL ||
@@ -150,23 +151,48 @@ export default async function handler(req, res) {
 
   const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
+  // Conexão com o Supabase do FitWell
+  const FITWELL_URL =
+    process.env.VITE_FITWELL_SUPABASE_URL || 'https://haavrgglnfbchiygspqw.supabase.co';
+  const FITWELL_KEY =
+    process.env.VITE_FITWELL_SUPABASE_KEY || 'sb_publishable_Ad2aSiOJKf_53pnMCLhc6A_JkX1vvJ2';
+  const fitSupabase = FITWELL_URL && FITWELL_KEY ? createClient(FITWELL_URL, FITWELL_KEY) : null;
+
+  const isSilviaUser = String(chatId) === SILVIA_CHAT_ID;
+  const userEmail = isSilviaUser ? 'silvinhamsa@gmail.com' : 'welloliver@gmail.com';
+
   // Normalização do payload
   const action = body.action || body.event || body.type || '';
   let platform = String(body.platform || body.kind || '').toLowerCase();
   const title = typeof body.title === 'string' && body.title ? body.title.slice(0, 250) : rawText.slice(0, 250);
   const summary = typeof body.summary === 'string' && body.summary ? body.summary.slice(0, 4000) : rawText.slice(0, 4000);
   const url = typeof body.url === 'string' && body.url ? body.url : (rawText.match(/https?:\/\/[^\s]+/)?.[0] || null);
-  const userTag = String(chatId) === SILVIA_CHAT_ID ? 'user:silvia' : 'user:wellington';
+  const userTag = isSilviaUser ? 'user:silvia' : 'user:wellington';
   const tags = Array.isArray(body.tags) ? body.tags.map(String).filter(Boolean).slice(0, 10) : ['hermes', 'telegram', userTag];
+
+  // -------------------------------------------------------------
+  // SMART DETECTION: FIT (PESO, MEDIDAS, TREINOS)
+  // -------------------------------------------------------------
+  const weightMatch = rawText.match(/(?:pesei|peso|pesando|balan[cç]a)\s*(?:hoje|de)?\s*(?:foi|de|em|:)?\s*(\d+(?:[.,]\d+)?)\s*(?:kg|quilos)?/i)
+    || rawText.match(/^(\d{2,3}(?:[.,]\d+)?)\s*(?:kg|quilos)$/i);
+
+  const measureMatch = rawText.match(/(?:medida|medir)?\s*(cintura|quadril|bra[cç]o|coxa|panturrilha|peito|peitoral|ombro|pesco[cç]o|abd[oô]men|busto)\s*(?:de|em|foi|:)?\s*(\d+(?:[.,]\d+)?)\s*(?:cm|cent[ií]metros)?/i);
+
+  const workoutMatch = rawText.match(/(?:treino|treinei|fiz treino|conclui treino|conclu[ií] treino)\s*(?:de)?\s*(.+)/i);
 
   // Detecção de padrões de compras e alimentos
   const isGroceryPattern =
     /(coca|coke|batata|leite|doce|arroz|feij[aã]o|caf[eé]|p[aã]o|aç[uú]car|[oó]leo|manteiga|queijo|cerveja|sab[aã]o|shampoo|detergente|frango|carne|banana|maç[aã]|tomate|cebola|alho|[aá]gua|suco|macarr[aã]o|sal|farinha|iogurte|presunto|papel higi[eê]nico|desodorante|pasta de dente)/i.test(lowerText) ||
     tags.some((t) => /pantry|compra|mercado|despensa/i.test(t));
 
-  // Smart Intent Detection para mensagens livres do Telegram
   if (!platform && !action) {
-    if (
+    if (weightMatch) {
+      platform = 'fit_weight';
+    } else if (measureMatch) {
+      platform = 'fit_measurement';
+    } else if (workoutMatch) {
+      platform = 'fit_workout';
+    } else if (
       /^(comprar|compra|mercado|despensa|preciso de|falta|comprar:|comprar\s+|pegar\s+)/i.test(lowerText) ||
       /(lista de compras|precisamos de)/i.test(lowerText) ||
       (isGroceryPattern && rawText.split(/\s+/).length <= 8)
@@ -184,6 +210,91 @@ export default async function handler(req, res) {
   }
 
   try {
+    // -------------------------------------------------------------
+    // 1. FIT: REGISTRO DE PESO
+    // -------------------------------------------------------------
+    if (platform === 'fit_weight' && weightMatch) {
+      const weightVal = Number(weightMatch[1].replace(',', '.'));
+      const logDate = todayDateIso();
+
+      if (fitSupabase) {
+        await fitSupabase.from('body_weights').insert({
+          weight_kg: weightVal,
+          log_date: logDate,
+          created_at: nowIso(),
+        });
+      }
+
+      const responseMessage = `⚖️ Peso de ${weightVal} kg registrado com sucesso no seu perfil Fit! 💪`;
+      await sendTelegramReply(chatId, responseMessage);
+
+      return res.status(200).json({
+        ok: true,
+        success: true,
+        type: 'fit_weight',
+        weight: weightVal,
+        message: responseMessage,
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 2. FIT: REGISTRO DE MEDIDAS CORPORAIS
+    // -------------------------------------------------------------
+    if (platform === 'fit_measurement' && measureMatch) {
+      const rawLabel = measureMatch[1];
+      const valCm = Number(measureMatch[2].replace(',', '.'));
+      const formattedLabel = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1).toLowerCase();
+      const logDate = todayDateIso();
+
+      if (fitSupabase) {
+        await fitSupabase.from('body_measurements').insert({
+          label: formattedLabel,
+          value_cm: valCm,
+          log_date: logDate,
+          created_at: nowIso(),
+        });
+      }
+
+      const responseMessage = `📏 Medida de ${formattedLabel} (${valCm} cm) salva no seu histórico do Fit! ✨`;
+      await sendTelegramReply(chatId, responseMessage);
+
+      return res.status(200).json({
+        ok: true,
+        success: true,
+        type: 'fit_measurement',
+        label: formattedLabel,
+        valueCm: valCm,
+        message: responseMessage,
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 3. FIT: REGISTRO DE TREINOS
+    // -------------------------------------------------------------
+    if (platform === 'fit_workout' && workoutMatch) {
+      const workoutName = workoutMatch[1].trim();
+      const formattedName = workoutName.charAt(0).toUpperCase() + workoutName.slice(1);
+
+      if (fitSupabase) {
+        await fitSupabase.from('workout_sessions').insert({
+          name: formattedName,
+          completed_at: nowIso(),
+          created_at: nowIso(),
+        });
+      }
+
+      const responseMessage = `🔥 Treino "${formattedName}" concluído e registrado no seu Fit! Parabéns! 🏋️‍♀️`;
+      await sendTelegramReply(chatId, responseMessage);
+
+      return res.status(200).json({
+        ok: true,
+        success: true,
+        type: 'fit_workout',
+        name: formattedName,
+        message: responseMessage,
+      });
+    }
+
     // -------------------------------------------------------------
     // A. DESPENSA / LISTA DE COMPRAS (pantry)
     // -------------------------------------------------------------
