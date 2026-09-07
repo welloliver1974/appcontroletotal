@@ -48,6 +48,33 @@ export default function App() {
     initAuth()
   }, [initAuth])
 
+  // Pré-carregamento silencioso das abas em segundo plano durante o tempo ocioso (Idle)
+  // Garante que o primeiro clique em qualquer aba seja 100% instantâneo sem nenhum atraso de download
+  useEffect(() => {
+    if (!isTrusted) return
+
+    const preloadModules = () => {
+      void import('@/features/dashboard/DashboardPage')
+      void import('@/features/despensa/DespensaPage')
+      void import('@/features/financas/FinancasPage')
+      void import('@/features/agenda/AgendaPage')
+      void import('@/features/fit/FitPage')
+      void import('@/features/life-log/LifeLogPage')
+      void import('@/features/manutencao/ManutencaoPage')
+      void import('@/features/viagens/ViagensPage')
+    }
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const id = (window as unknown as { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback(preloadModules, { timeout: 2000 })
+      return () => {
+        (window as unknown as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(id)
+      }
+    } else {
+      const timer = setTimeout(preloadModules, 1200)
+      return () => clearTimeout(timer)
+    }
+  }, [isTrusted])
+
   return (
     <BrowserRouter>
       {isTrusted ? (
