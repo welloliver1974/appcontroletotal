@@ -52,11 +52,17 @@ interface ReceiptScannerModalProps {
   onApply: (data: ParsedReceiptData) => void
 }
 
+interface CapturedReceiptPhoto {
+  id: string
+  file: File
+  compressed: CompressionResult
+}
+
 export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerModalProps) {
   const qrFileInputRef = useRef<HTMLInputElement>(null)
   const fullFileInputRef = useRef<HTMLInputElement>(null)
 
-  const [compressResult, setCompressResult] = useState<CompressionResult | null>(null)
+  const [capturedPhotos, setCapturedPhotos] = useState<CapturedReceiptPhoto[]>([])
   const [analyzing, setAnalyzing] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
@@ -77,6 +83,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
   const [selectedItems, setSelectedItems] = useState<Record<number, boolean>>({})
   const [qrInfo, setQrInfo] = useState<SefazQrCodeData | null>(null)
   const [showPhotoPreview, setShowPhotoPreview] = useState(false)
+  const [previewPhotoIndex, setPreviewPhotoIndex] = useState(0)
   const [hasResult, setHasResult] = useState(false)
 
   // Apply parsed QR / Access Key result into form with asynchronous CNPJ Trade Name lookup
@@ -179,7 +186,12 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
       } else {
         // Fallback: If QR couldn't be decoded, run AI vision on the image
         const compressed = await compressImageForOcr(file, 1800, 0.88)
-        setCompressResult(compressed)
+        const photoItem: CapturedReceiptPhoto = {
+          id: `photo-${Date.now()}`,
+          file,
+          compressed,
+        }
+        setCapturedPhotos([photoItem])
         const parsed = await parseReceiptWithVision(compressed.dataUrl, file)
 
         setEstablishment(parsed.establishment || 'Cupom Fiscal')
@@ -218,10 +230,37 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     }
   }
 
-  // 2. Fotografar Cupom Completo para IA & Despensa
+  // 2. Adicionar Foto de Parte do Cupom (Suporte a Múltiplas Fotos)
   const handleFullReceiptChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    setErrorMsg(null)
+    try {
+      const compressed = await compressImageForOcr(file, 1800, 0.88)
+      const newPhoto: CapturedReceiptPhoto = {
+        id: `photo-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        file,
+        compressed,
+      }
+      setCapturedPhotos((prev) => [...prev, newPhoto])
+      toast.success(`Foto ${capturedPhotos.length + 1} adicionada! 📸`)
+    } catch (err) {
+      console.error(err)
+      toast.error('Falha ao processar a imagem fotografada.')
+    } finally {
+      if (fullFileInputRef.current) fullFileInputRef.current.value = ''
+    }
+  }
+
+  // 3. Remover uma foto capturada
+  const handleRemovePhoto = (id: string) => {
+    setCapturedPhotos((prev) => prev.filter((p) => p.id !== id))
+  }
+
+  // 4. Processar todas as fotos capturadas com a IA
+  const handleProcessPhotosWithAi = async () => {
+    if (capturedPhotos.length === 0) return
 
     setErrorMsg(null)
     setHasResult(false)
@@ -229,10 +268,10 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
     setQrInfo(null)
 
     try {
-      const compressed = await compressImageForOcr(file, 1800, 0.88)
-      setCompressResult(compressed)
+      const urls = capturedPhotos.map((p) => p.compressed.dataUrl)
+      const files = capturedPhotos.map((p) => p.file)
 
-      const parsed = await parseReceiptWithVision(compressed.dataUrl, file)
+      const parsed = await parseReceiptWithVision(urls, files)
 
       setEstablishment(parsed.establishment || 'Cupom Fiscal')
       setAmountStr(parsed.amount > 0 ? parsed.amount.toFixed(2).replace('.', ',') : '')
@@ -258,9 +297,11 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
 
       setHasResult(true)
       toast.success(
-        parsed.qrCode
-          ? 'Cupom + QR Code SEFAZ lidos com sucesso! 🧾✨'
-          : 'Cupom lido com sucesso pela IA! 🧾✨',
+        capturedPhotos.length > 1
+          ? `Cupom consolidado de ${capturedPhotos.length} fotos pela IA! 🧾✨`
+          : parsed.qrCode
+            ? 'Cupom + QR Code SEFAZ lidos com sucesso! 🧾✨'
+            : 'Cupom lido com sucesso pela IA! 🧾✨',
       )
     } catch (err) {
       console.error(err)
@@ -269,11 +310,10 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
       toast.error('Erro ao ler cupom fiscal.')
     } finally {
       setAnalyzing(false)
-      if (fullFileInputRef.current) fullFileInputRef.current.value = ''
     }
   }
 
-  // 3. Manual URL Submit
+  // 5. Manual URL Submit
   const handleManualUrlSubmit = () => {
     if (!manualUrl.trim()) return
     const parsed = parseSefazUrl(manualUrl.trim())
@@ -337,11 +377,12 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
   }
 
   const resetScan = () => {
-    setCompressResult(null)
+    setCapturedPhotos([])
     setHasResult(false)
     setErrorMsg(null)
     setItems([])
     setSelectedItems({})
+    setPreviewPhotoIndex(0)
     if (qrFileInputRef.current) qrFileInputRef.current.value = ''
     if (fullFileInputRef.current) fullFileInputRef.current.value = ''
   }
@@ -369,8 +410,8 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
           className="hidden"
         />
 
-        {/* Hero Options Selection State */}
-        {!compressResult && !analyzing && !hasResult && (
+        {/* Hero Options Selection State (quando nenhuma foto foi tirada ainda) */}
+        {capturedPhotos.length === 0 && !analyzing && !hasResult && (
           <div className="space-y-4">
             <div className="border-2 border-dashed border-zinc-800 rounded-2xl p-6 text-center bg-zinc-900/40 space-y-4">
               <div className="space-y-1.5">
@@ -378,7 +419,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                   Como você deseja escanear o cupom?
                 </h4>
                 <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
-                  Tire a foto de perto do QR Code para leitura instantânea ou fotografe o cupom inteiro para a IA extrair os produtos.
+                  Tire a foto de perto do QR Code para leitura instantânea ou fotografe o cupom (mesmo se for longo, em várias partes) para a IA extrair os produtos.
                 </p>
               </div>
 
@@ -429,7 +470,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
                       Foto Cupom (IA)
                     </h5>
                     <p className="text-[11px] text-zinc-400 leading-tight">
-                      Lê itens e alimenta a despensa.
+                      Lê itens (suporta cupons longos).
                     </p>
                   </div>
                 </button>
@@ -562,6 +603,102 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
           </div>
         )}
 
+        {/* Galeria de Fotos Capturadas (quando há fotos mas ainda não foi processado com IA) */}
+        {capturedPhotos.length > 0 && !analyzing && !hasResult && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="border border-purple-500/30 rounded-2xl p-4 bg-zinc-900/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                    <Camera className="h-4 w-4 text-purple-400" />
+                    Fotos do Cupom ({capturedPhotos.length})
+                  </h4>
+                  <p className="text-[11px] text-zinc-400">
+                    {capturedPhotos.length === 1
+                      ? 'Cupom longo? Adicione mais fotos das outras partes antes de processar.'
+                      : 'Todas as partes do cupom serão consolidadas juntas pela IA.'}
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="soft"
+                  size="sm"
+                  onClick={() => fullFileInputRef.current?.click()}
+                  className="text-xs gap-1.5 border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-purple-200 font-semibold"
+                >
+                  <Plus className="h-3.5 w-3.5 text-purple-400" />
+                  + Outra Parte
+                </Button>
+              </div>
+
+              {/* Grid de Miniaturas das Fotos */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                {capturedPhotos.map((photo, index) => (
+                  <div
+                    key={photo.id}
+                    className="relative group rounded-xl overflow-hidden border border-zinc-700 bg-zinc-950 aspect-[3/4] flex flex-col"
+                  >
+                    <img
+                      src={photo.compressed.dataUrl}
+                      alt={`Parte ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-1.5 left-1.5 bg-black/75 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-bold text-purple-300 border border-purple-500/30">
+                      Parte {index + 1}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePhoto(photo.id)}
+                      className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-rose-600/90 text-white flex items-center justify-center hover:bg-rose-500 shadow-md transition-transform active:scale-90"
+                      title="Remover esta foto"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Botão de adicionar mais uma foto em formato de card */}
+                <button
+                  type="button"
+                  onClick={() => fullFileInputRef.current?.click()}
+                  className="rounded-xl border-2 border-dashed border-zinc-700 hover:border-purple-500/80 bg-zinc-950/40 hover:bg-purple-500/5 aspect-[3/4] flex flex-col items-center justify-center gap-1.5 text-zinc-400 hover:text-purple-300 transition-all group"
+                >
+                  <div className="h-8 w-8 rounded-full bg-zinc-800 group-hover:bg-purple-500/20 flex items-center justify-center transition-colors">
+                    <Plus className="h-4 w-4 text-zinc-300 group-hover:text-purple-300" />
+                  </div>
+                  <span className="text-xs font-semibold">Tirar + Foto</span>
+                  <span className="text-[10px] text-zinc-500">Próxima parte</span>
+                </button>
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetScan}
+                  className="text-xs text-zinc-400 hover:text-zinc-200"
+                >
+                  Recomeçar
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  onClick={handleProcessPhotosWithAi}
+                  className="text-xs gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold shadow-lg shadow-purple-600/20 px-4"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Processar com IA ({capturedPhotos.length} {capturedPhotos.length === 1 ? 'foto' : 'fotos'})
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Loading / Analisando state */}
         {analyzing && (
           <div className="border border-zinc-800 rounded-2xl p-8 text-center bg-zinc-900/60 space-y-4">
@@ -572,10 +709,10 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
 
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-zinc-100">
-                Processando documento fiscal...
+                Processando {capturedPhotos.length > 1 ? `${capturedPhotos.length} partes do cupom` : 'documento fiscal'} com IA...
               </h4>
               <p className="text-xs text-zinc-400">
-                Decodificando dados da SEFAZ e extraindo informações.
+                Lendo produtos, preços, quantidades e valor total.
               </p>
             </div>
           </div>
@@ -604,26 +741,57 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
               <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider">
                 <CheckCircle2 className="h-4 w-4" /> Conferir & Ajustar Dados
               </span>
-              {compressResult && (
+              {capturedPhotos.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setShowPhotoPreview(!showPhotoPreview)}
                   className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors bg-zinc-800/60 px-2.5 py-1 rounded-lg border border-zinc-700/60"
                 >
                   {showPhotoPreview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  <span>{showPhotoPreview ? 'Ocultar Foto' : 'Ver Foto do Cupom'}</span>
+                  <span>
+                    {showPhotoPreview
+                      ? 'Ocultar Foto'
+                      : capturedPhotos.length > 1
+                        ? `Ver Fotos (${capturedPhotos.length})`
+                        : 'Ver Foto do Cupom'}
+                  </span>
                 </button>
               )}
             </div>
 
             {/* Preview da Foto se expandido */}
-            {showPhotoPreview && compressResult && (
-              <div className="rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 max-h-56 flex items-center justify-center">
-                <img
-                  src={compressResult.dataUrl}
-                  alt="Cupom Fiscal"
-                  className="object-contain w-full h-full max-h-56"
-                />
+            {showPhotoPreview && capturedPhotos.length > 0 && (
+              <div className="space-y-2">
+                {/* Abas se houver mais de 1 foto */}
+                {capturedPhotos.length > 1 && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    {capturedPhotos.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setPreviewPhotoIndex(idx)}
+                        className={`text-[11px] font-bold px-2.5 py-1 rounded-md border transition-all ${
+                          previewPhotoIndex === idx
+                            ? 'bg-purple-600 border-purple-500 text-white'
+                            : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                        }`}
+                      >
+                        Parte {idx + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 max-h-60 flex items-center justify-center p-1">
+                  <img
+                    src={
+                      capturedPhotos[previewPhotoIndex]?.compressed.dataUrl ||
+                      capturedPhotos[0]?.compressed.dataUrl
+                    }
+                    alt="Cupom Fiscal"
+                    className="object-contain w-full h-full max-h-60"
+                  />
+                </div>
               </div>
             )}
 

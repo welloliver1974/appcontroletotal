@@ -66,7 +66,9 @@ O **Safe-to-Spend** é o seu termômetro financeiro diário para garantir que o 
 
 ### 1. Leitura de Cupons Fiscais (Finanças & Reposição):
 * **⚡ Fotografar QR Code:** Lê instantaneamente dados fiscais da SEFAZ (NFC-e / SAT).
-* **🛒 Foto Completa do Cupom (IA):** Lê item por item, calcula descontos e abastece a Despensa.
+* **🛒 Foto Completa do Cupom (IA & Múltiplas Partes):**
+  - Permite tirar **várias fotos consecutivas** do mesmo cupom longo (Parte 1: topo, Parte 2: meio, Parte 3: total).
+  - A IA multimodal consolida todos os itens e preços em uma única lista sem duplicatas e preenche a Despensa e Finanças.
 * **🔑 Chave de Acesso (44 Dígitos & Código de Barras 1D):** Digite ou cole a chave de 44 números; o app identifica o CNPJ da loja, data e valor.
 
 ### 2. 🏷️ Scanner de Código de Barras de Alimentos (OpenFoodFacts na Despensa):

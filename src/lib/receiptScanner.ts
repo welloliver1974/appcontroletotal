@@ -253,12 +253,20 @@ function parseReceiptResponse(raw: string, existingQr?: SefazQrCodeData | null):
  * Finishes in ~2-3 seconds with Direct Fetch and proxy fallback.
  */
 export async function parseReceiptWithVision(
-  compressedDataUrl: string,
-  rawFile?: File | Blob,
+  compressedDataUrls: string | string[],
+  rawFiles?: (File | Blob) | (File | Blob)[],
 ): Promise<ParsedReceiptData> {
   const config = getHermesAdvancedConfig()
 
-  // 1. Provedor de Visão Dedicado e Independente do Chat
+  // 1. Normalizar entradas em arrays
+  const urls = Array.isArray(compressedDataUrls) ? compressedDataUrls : [compressedDataUrls]
+  const files = rawFiles ? (Array.isArray(rawFiles) ? rawFiles : [rawFiles]) : []
+
+  if (urls.length === 0) {
+    throw new Error('Nenhuma imagem fornecida para o leitor de visão.')
+  }
+
+  // 2. Provedor de Visão Dedicado e Independente do Chat
   const visionProvider = config.visionProvider || (config.nvidiaApiKey ? 'nvidia' : 'openrouter')
 
   if (visionProvider === 'groq') {
@@ -274,15 +282,39 @@ export async function parseReceiptWithVision(
     throw new Error(`Configure sua chave de API para o Leitor de Visão (${pName}) em Configurações > Inteligência Artificial Hermes.`)
   }
 
-  // 2. Detecção ultrarrápida de QR Code direto no arquivo do sensor
-  const qrCode = rawFile
-    ? await detectQrCodeFromFile(rawFile).catch(() => null)
-    : await detectQrCodeFromDataUrl(compressedDataUrl).catch(() => null)
+  // 3. Detecção ultrarrápida de QR Code em qualquer uma das fotos
+  let qrCode: SefazQrCodeData | null = null
+  for (let i = 0; i < Math.max(urls.length, files.length); i++) {
+    const file = files[i]
+    const url = urls[i]
+    try {
+      const detected = file
+        ? await detectQrCodeFromFile(file).catch(() => null)
+        : url
+          ? await detectQrCodeFromDataUrl(url).catch(() => null)
+          : null
+      if (detected) {
+        qrCode = detected
+        break
+      }
+    } catch {
+      // Ignora erro de leitura de QR code e continua
+    }
+  }
 
-  // 3. Seleção do Modelo de Visão normalizado para o provedor de visão
+  // 4. Seleção do Modelo de Visão normalizado para o provedor de visão
   const visionModel = normalizeVisionModelForProvider(visionProvider, config.visionModel)
 
-  const systemPrompt = `Você é um scanner OCR especialista em cupons fiscais brasileiros (Hortifrutis, Mercados, Padarias, Lanchonetes, SAT CFe, NFC-e).
+  const multiPhotoNote =
+    urls.length > 1
+      ? `\n\nATENÇÃO - CUPOM LONGO COMPOSTO POR ${urls.length} FOTOS CONSECUTIVAS:
+- As imagens enviadas correspondem a partes sequenciais do mesmo cupom fiscal.
+- Una e consolide todos os produtos comprados presentes em todas as fotos numa única lista contínua.
+- Se houver produtos sobrepostos/repetidos na transição entre duas fotos, NÃO duplique o item.
+- Extraia o valor TOTAL pago geralmente impresso no rodapé da última foto.`
+      : ''
+
+  const systemPrompt = `Você é um scanner OCR especialista em cupons fiscais brasileiros (Hortifrutis, Mercados, Padarias, Lanchonetes, SAT CFe, NFC-e).${multiPhotoNote}
 
 REGRAS DE EXTRAÇÃO:
 
@@ -335,17 +367,28 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
   ]
 }`
 
+  const userContent: any[] = [
+    {
+      type: 'text',
+      text:
+        urls.length > 1
+          ? `Leia as ${urls.length} fotos deste cupom fiscal longo. Extraia o estabelecimento no topo, todos os produtos de todas as fotos, o valor total e a chave de acesso em JSON.`
+          : 'Leia este cupom fiscal / recibo. Extraia o estabelecimento no topo, valor líquido pago, data/hora, produtos e a chave de acesso fiscal em JSON.',
+    },
+  ]
+
+  for (const url of urls) {
+    userContent.push({
+      type: 'image_url',
+      image_url: { url },
+    })
+  }
+
   const userMessages = [
     { role: 'system', content: systemPrompt },
     {
       role: 'user',
-      content: [
-        {
-          type: 'text',
-          text: 'Leia este cupom fiscal / recibo. Extraia o estabelecimento no topo, valor líquido pago, data/hora, produtos e a chave de acesso fiscal em JSON.',
-        },
-        { type: 'image_url', image_url: { url: compressedDataUrl } },
-      ],
+      content: userContent,
     },
   ]
 

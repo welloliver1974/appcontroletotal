@@ -1229,6 +1229,21 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
      - `fetchData` e o estado local do Zustand respeitam a conta ativa conectada.
 
 ---
+ 
+ ## 🧾 68. Scanner de Cupons Fiscais Longos com Múltiplas Fotos & Consolidação IA (07/09/2026)
+
+* **Contexto & Motivação:**
+  - Cupons fiscais longos de supermercados e compras de grande volume perdiam resolução e legibilidade quando fotografados inteiros em uma única tomada.
+* **Soluções Implementadas:**
+  1. **Captura Múltipla de Imagens ([ReceiptScannerModal.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/ReceiptScannerModal.tsx)):**
+     - O usuário pode fotografar sequencialmente as partes do cupom (Parte 1: topo, Parte 2: meio, Parte 3: rodapé).
+     - Adicionada galeria de miniaturas com opção de exclusão individual de fotos tremidas e botão de adicionar novas partes antes do envio para a IA.
+     - Navegação por abas na tela de conferência para visualizar individualmente cada foto capturada.
+  2. **Consolidação Multimodal na IA ([receiptScanner.ts](file:///e:/Apps/AppControleTotal/src/lib/receiptScanner.ts)):**
+     - `parseReceiptWithVision` atualizado para receber arrays de imagens (`compressedDataUrls: string | string[]`).
+     - Prompt especializado para orientar o modelo de visão a unificar a lista contínua de produtos, remover sobreposições acidentais na divisão das fotos e extrair o valor líquido total do rodapé.
+
+---
 
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
