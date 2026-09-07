@@ -164,7 +164,7 @@ export function parseIcalToEvents(icalText: string): AgendaEvent[] {
   }
 
   // Global limit to prevent browser freezing with large calendars
-  const MAX_TOTAL_EVENTS = 2000
+  const MAX_TOTAL_EVENTS = 500
   let totalEvents = 0
   let limitReached = false
 
@@ -270,7 +270,7 @@ export function parseIcalToEvents(icalText: string): AgendaEvent[] {
   }
 
   if (limitReached) {
-    console.warn('[iCal] Limite de eventos atingido (2.000). Alguns eventos podem não ser exibidos.')
+    console.warn('[iCal] Limite de eventos atingido (500). Alguns eventos podem não ser exibidos.')
   }
 
   // Sort chronologically
