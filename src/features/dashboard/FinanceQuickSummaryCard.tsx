@@ -7,6 +7,16 @@ import { api } from '@/data/api'
 import { formatBRL } from '@/lib/utils'
 import type { FixedBill, SpendingItem } from '@/data/types'
 
+function parseItemIsoDate(dateStr?: string, fallbackIso?: string): string {
+  if (!dateStr) return fallbackIso?.slice(0, 10) || ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr
+  const parts = dateStr.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/)
+  if (parts) {
+    return `${parts[3]}-${parts[2].padStart(2, '0')}-${parts[1].padStart(2, '0')}`
+  }
+  return dateStr.slice(0, 10)
+}
+
 export function FinanceQuickSummaryCard() {
   const [spending, setSpending] = useState<SpendingItem[]>([])
   const [fixedBills, setFixedBills] = useState<FixedBill[]>([])
@@ -42,7 +52,7 @@ export function FinanceQuickSummaryCard() {
 
   // Calculate monthly total from date or createdAt matching YYYY-MM
   const monthSpending = spending.filter((s) => {
-    const itemDate = s.date || s.createdAt?.slice(0, 10) || ''
+    const itemDate = parseItemIsoDate(s.date, s.createdAt)
     return itemDate.startsWith(currentMonthKey)
   })
   const totalSpent = monthSpending.reduce((acc, s) => acc + (Number(s.amount) || 0), 0)

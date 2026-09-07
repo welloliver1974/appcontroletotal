@@ -477,19 +477,24 @@ export function FinancasPage() {
                       return (
                         <div
                           key={item.id}
-                          className="flex items-center justify-between p-3.5 hover:bg-zinc-800/20 transition-colors"
+                          onClick={() => {
+                            setEditingSpending(item)
+                            setSpendingModalOpen(true)
+                          }}
+                          className="flex items-center justify-between p-3.5 hover:bg-zinc-800/40 transition-colors cursor-pointer group select-none"
+                          title="Clique para editar este lançamento"
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <span
                               className={cn(
-                                'h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border',
+                                'h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border transition-transform group-hover:scale-105',
                                 catConfig.bg,
                               )}
                             >
                               <Icon className={cn('h-4 w-4', catConfig.color)} />
                             </span>
                             <div className="min-w-0">
-                              <p className="text-sm font-medium text-zinc-100 truncate">
+                              <p className="text-sm font-medium text-zinc-100 truncate group-hover:text-emerald-300 transition-colors">
                                 {item.note || item.category}
                               </p>
                               <div className="flex items-center gap-2 text-[11px] text-zinc-500 font-num">
@@ -501,7 +506,7 @@ export function FinancasPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                          <div className="flex items-center gap-1.5 shrink-0 ml-3" onClick={(e) => e.stopPropagation()}>
                             <span className="font-display font-num text-sm md:text-base font-bold text-zinc-100 mr-1">
                               {formatBRL(Number(item.amount) || 0)}
                             </span>
@@ -510,14 +515,15 @@ export function FinancasPage() {
                               variant="ghost"
                               size="icon"
                               aria-label="Editar gasto"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation()
                                 setEditingSpending(item)
                                 setSpendingModalOpen(true)
                               }}
-                              className="h-8 w-8 rounded-lg bg-zinc-800/50 hover:bg-emerald-500/20 text-zinc-300 hover:text-emerald-300 border border-zinc-700/60 transition-colors"
-                              title="Editar este lançamento (valor, data, categoria ou nota)"
+                              className="h-8 w-8 rounded-lg bg-zinc-800/60 hover:bg-emerald-500/20 text-zinc-300 hover:text-emerald-300 border border-zinc-700/60 transition-colors"
+                              title="Editar este lançamento"
                             >
-                              <Edit2 className="h-3.5 w-3.5" />
+                              <Edit2 className="h-3.5 w-3.5 text-emerald-400" />
                             </Button>
 
                             {pendingDelete === item.id ? (
@@ -525,7 +531,10 @@ export function FinancasPage() {
                                 variant="danger"
                                 size="sm"
                                 className="h-8 px-2.5 text-xs font-semibold"
-                                onClick={() => request(item.id, () => void removeSpending(item.id))}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  request(item.id, () => void removeSpending(item.id))
+                                }}
                               >
                                 Confirmar?
                               </Button>
@@ -534,8 +543,11 @@ export function FinancasPage() {
                                 variant="ghost"
                                 size="icon"
                                 aria-label="Excluir gasto"
-                                onClick={() => request(item.id, () => void removeSpending(item.id))}
-                                className="h-8 w-8 rounded-lg bg-zinc-800/50 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-zinc-700/60 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  request(item.id, () => void removeSpending(item.id))
+                                }}
+                                className="h-8 w-8 rounded-lg bg-zinc-800/60 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-zinc-700/60 transition-colors"
                                 title="Excluir lançamento"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
