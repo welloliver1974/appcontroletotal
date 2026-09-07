@@ -514,8 +514,8 @@ export function FinancasPage() {
                                 setEditingSpending(item)
                                 setSpendingModalOpen(true)
                               }}
-                              className="h-7 w-7 text-zinc-500 hover:text-emerald-400"
-                              title="Editar este gasto"
+                              className="h-8 w-8 rounded-lg bg-zinc-800/50 hover:bg-emerald-500/20 text-zinc-300 hover:text-emerald-300 border border-zinc-700/60 transition-colors"
+                              title="Editar este lançamento (valor, data, categoria ou nota)"
                             >
                               <Edit2 className="h-3.5 w-3.5" />
                             </Button>
@@ -524,7 +524,7 @@ export function FinancasPage() {
                               <Button
                                 variant="danger"
                                 size="sm"
-                                className="h-7 px-2 text-xs"
+                                className="h-8 px-2.5 text-xs font-semibold"
                                 onClick={() => request(item.id, () => void removeSpending(item.id))}
                               >
                                 Confirmar?
@@ -535,7 +535,8 @@ export function FinancasPage() {
                                 size="icon"
                                 aria-label="Excluir gasto"
                                 onClick={() => request(item.id, () => void removeSpending(item.id))}
-                                className="h-7 w-7 text-zinc-500 hover:text-rose-400"
+                                className="h-8 w-8 rounded-lg bg-zinc-800/50 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-zinc-700/60 transition-colors"
+                                title="Excluir lançamento"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
