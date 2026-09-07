@@ -346,7 +346,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
             category: category === 'Despensa' ? 'alimentos' : category.toLowerCase(),
             qty: Number(it.qty) || 1,
             unit: it.unit || 'un',
-            lowThreshold: 1,
+            lowThreshold: 0,
           }
           await db.upsert('pantry', newItem)
           stockedCount++

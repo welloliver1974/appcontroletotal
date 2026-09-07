@@ -10,9 +10,11 @@ export function categories(items: PantryItem[]): Array<{ name: string; count: nu
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 
-/** Low stock: at or below the threshold (matches dashboard Alerts' `qty <= lowThreshold`). */
+/** Low stock: only when quantity is strictly below threshold, or when completely out of stock (qty === 0). */
 export function isLow(item: PantryItem): boolean {
-  return item.qty <= item.lowThreshold
+  if (item.qty <= 0) return true
+  if (item.lowThreshold > 0 && item.qty < item.lowThreshold) return true
+  return false
 }
 
 export function isExpired(item: PantryItem): boolean {
@@ -26,6 +28,7 @@ export function isExpiringSoon(item: PantryItem, days = 7): boolean {
 
 /** Stock fill 0..100, scaled so the threshold sits at half the bar. */
 export function stockRatio(item: PantryItem): number {
+  if (item.qty <= 0) return 0
   if (item.lowThreshold <= 0) return 100
   return Math.max(0, Math.min(100, (item.qty / (item.lowThreshold * 2)) * 100))
 }
