@@ -259,28 +259,9 @@ export const db = {
       if (error) throw error
       const parsed = fromSupabaseRow<T[]>(data ?? [])
       const filtered = filterRowsForUser<T>(collection, parsed)
+      // REMOVIDO: lógica de merge com app_settings que causava duplicatas
       if (collection === 'events') {
-        const currentEmail = getCurrentUserEmail() || 'welloliver@gmail.com'
-        let userCloudEvents: AgendaEvent[] = []
-        try {
-          const { data: cloudSetting } = await supabase
-            .from('app_settings')
-            .select('data')
-            .eq('id', `events_${currentEmail.toLowerCase().trim()}`)
-            .maybeSingle()
-          if (Array.isArray(cloudSetting?.data)) {
-            userCloudEvents = cloudSetting.data
-          }
-        } catch {}
-
-        const merged = [...userCloudEvents, ...(filtered as unknown as AgendaEvent[])]
-        const seen = new Set<string>()
-        const unique = merged.filter((e) => {
-          if (!e.id || seen.has(e.id)) return false
-          seen.add(e.id)
-          return true
-        })
-        return enrichEventsWithCompletion(unique) as unknown as T[]
+        return enrichEventsWithCompletion(filtered as unknown as AgendaEvent[]) as unknown as T[]
       }
       return filtered
     } catch (err) {
