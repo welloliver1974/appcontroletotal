@@ -1,11 +1,8 @@
-import { db, supabase } from './db'
+import { db, supabase, getCurrentUserEmail } from './db'
 import { parseIcalToEvents } from './ical'
 import { enrichEventsWithCompletion } from './eventCompletionStore'
 import { formatLocalIsoDate } from './utils'
 import type { AgendaEvent } from '@/data/types'
-
-const STORAGE_KEY = 'act.googleCalendarConfig'
-const DOC_VAULT_CONFIG_ID = 'sys-gcal-config'
 
 export interface GoogleCalendarConfig {
   icalUrl: string
@@ -15,8 +12,10 @@ export interface GoogleCalendarConfig {
 }
 
 export function getGoogleCalendarConfig(): GoogleCalendarConfig {
+  const currentEmail = getCurrentUserEmail() || 'welloliver@gmail.com'
+  const key = `act.googleCalendarConfig_${currentEmail.toLowerCase().trim()}`
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(key) || (currentEmail.startsWith('welloliver') ? localStorage.getItem('act.googleCalendarConfig') : null)
     if (raw) {
       return JSON.parse(raw)
     }
@@ -31,31 +30,24 @@ export function getGoogleCalendarConfig(): GoogleCalendarConfig {
 }
 
 export function saveGoogleCalendarConfig(config: GoogleCalendarConfig): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+  const currentEmail = getCurrentUserEmail() || 'welloliver@gmail.com'
+  const key = `act.googleCalendarConfig_${currentEmail.toLowerCase().trim()}`
+  localStorage.setItem(key, JSON.stringify(config))
   
-  // Persiste no Supabase (app_settings e docVault)
+  // Persiste no Supabase por usuário (app_settings)
   if (supabase) {
     void Promise.resolve(
       supabase.from('app_settings').upsert({
-        id: 'gcal_config',
+        id: `gcal_config_${currentEmail.toLowerCase().trim()}`,
         data: config,
         updated_at: new Date().toISOString(),
       })
     ).catch(() => {})
   }
-
-  void db.upsert('docVault', {
-    id: DOC_VAULT_CONFIG_ID,
-    title: 'Google Calendar Config',
-    category: 'outro',
-    url: config.icalUrl,
-    notes: JSON.stringify(config),
-    tags: ['system', 'config'],
-    createdAt: new Date().toISOString(),
-  }).catch(() => {})
 }
 
 export async function restoreGoogleCalendarConfigFromDb(): Promise<GoogleCalendarConfig> {
+  const currentEmail = getCurrentUserEmail() || 'welloliver@gmail.com'
   const current = getGoogleCalendarConfig()
   if (current.icalUrl) {
     saveGoogleCalendarConfig(current)
@@ -64,7 +56,11 @@ export async function restoreGoogleCalendarConfigFromDb(): Promise<GoogleCalenda
 
   if (supabase) {
     try {
-      const { data } = await supabase.from('app_settings').select('data').eq('id', 'gcal_config').maybeSingle()
+      const { data } = await supabase
+        .from('app_settings')
+        .select('data')
+        .eq('id', `gcal_config_${currentEmail.toLowerCase().trim()}`)
+        .maybeSingle()
       if (data?.data?.icalUrl) {
         const restored: GoogleCalendarConfig = {
           icalUrl: data.data.icalUrl,
@@ -72,34 +68,11 @@ export async function restoreGoogleCalendarConfigFromDb(): Promise<GoogleCalenda
           lastSyncAt: data.data.lastSyncAt ?? null,
           lastEventsCount: data.data.lastEventsCount ?? 0,
         }
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(restored))
+        saveGoogleCalendarConfig(restored)
         return restored
       }
     } catch {}
   }
-
-  try {
-    const docs = await db.get<{ id: string; url?: string; notes?: string }>('docVault')
-    const found = Array.isArray(docs) ? docs.find((d) => d.id === DOC_VAULT_CONFIG_ID) : null
-    if (found) {
-      let parsedConfig: GoogleCalendarConfig | null = null
-      if (found.notes) {
-        try {
-          parsedConfig = JSON.parse(found.notes)
-        } catch {}
-      }
-      const restored: GoogleCalendarConfig = {
-        icalUrl: (found.url || parsedConfig?.icalUrl || '').trim(),
-        autoSync: parsedConfig?.autoSync ?? true,
-        lastSyncAt: parsedConfig?.lastSyncAt ?? null,
-        lastEventsCount: parsedConfig?.lastEventsCount ?? 0,
-      }
-      if (restored.icalUrl) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(restored))
-        return restored
-      }
-    }
-  } catch {}
 
   return current
 }
@@ -204,11 +177,27 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
     // Baixa e processa cada URL em paralelo
     const results = await Promise.all(urlList.map((url) => fetchAndParseSingleIcal(url)))
 
+    const currentEmail = getCurrentUserEmail() || 'welloliver@gmail.com'
+    const isSilvia = currentEmail.toLowerCase().includes('silvinha')
+    const userPrefix = isSilvia ? 'silvia' : 'well'
+
     for (const eventList of results) {
       for (const ev of eventList) {
-        if (!seenMap.has(ev.id)) {
-          seenMap.set(ev.id, ev)
-          allEvents.push(ev)
+        const rawId = ev.id || `ev-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+        const scopedId = rawId.startsWith(`gcal-${userPrefix}-`)
+          ? rawId
+          : (rawId.startsWith('gcal-') ? `gcal-${userPrefix}-${rawId.slice(5)}` : `gcal-${userPrefix}-${rawId}`)
+
+        const scopedEvent: AgendaEvent = {
+          ...ev,
+          id: scopedId,
+          userEmail: currentEmail,
+          authorEmail: currentEmail,
+        }
+
+        if (!seenMap.has(scopedEvent.id)) {
+          seenMap.set(scopedEvent.id, scopedEvent)
+          allEvents.push(scopedEvent)
         }
       }
     }
@@ -221,7 +210,7 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
       }
     }
 
-    // Identifica e remove eventos do Google Calendar que foram apagados no Google
+    // Identifica e remove eventos do Google Calendar deste usuário que foram apagados no Google
     try {
       const existingEvents = await db.get<AgendaEvent>('events')
       const incomingGcalIds = new Set(allEvents.map((e) => e.id))
@@ -233,7 +222,7 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
       const orphanedGcalEvents = (Array.isArray(existingEvents) ? existingEvents : []).filter(
         (e) =>
           typeof e.id === 'string' &&
-          e.id.startsWith('gcal-') &&
+          e.id.startsWith(`gcal-${userPrefix}-`) &&
           e.date >= windowStart &&
           e.date <= windowEnd &&
           !incomingGcalIds.has(e.id),
@@ -247,6 +236,17 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
     // Enriquece com status concluído persistido e salva em lote
     const enrichedEvents = enrichEventsWithCompletion(allEvents)
     await db.upsertMany('events', enrichedEvents)
+
+    // Persiste no Supabase por usuário
+    if (supabase) {
+      void Promise.resolve(
+        supabase.from('app_settings').upsert({
+          id: `events_${currentEmail.toLowerCase().trim()}`,
+          data: enrichedEvents,
+          updated_at: new Date().toISOString(),
+        })
+      ).catch(() => {})
+    }
 
     const now = new Date().toISOString()
     saveGoogleCalendarConfig({

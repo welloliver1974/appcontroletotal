@@ -9,6 +9,8 @@ export interface AgendaEvent {
   category: 'reuniao' | 'pessoal' | 'habit' | 'viagem'
   location?: string
   completed?: boolean
+  userEmail?: string
+  authorEmail?: string
 }
 
 export type EmailImportance = 'critico' | 'normal'

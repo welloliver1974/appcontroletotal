@@ -35,7 +35,7 @@ export function tableName(collection: string): string {
   return TABLES[collection] ?? collection
 }
 
-/** Shared collections: Household, Expenses, Maintenance, Pantry, Trips, Agenda & Google Calendar Events (visible to everyone in the family) */
+/** Shared collections: Household, Expenses, Maintenance, Pantry, Trips (visible to everyone in the family) */
 export const SHARED_COLLECTIONS = new Set([
   'spending',
   'spendingEntries',
@@ -52,16 +52,16 @@ export const SHARED_COLLECTIONS = new Set([
   'places',
   'docVault',
   'doc_vault',
-  'events',
 ])
 
-/** Personal collections: Life-Log, Reading, Media, Facts (isolated per user) */
+/** Personal collections: Life-Log, Reading, Media, Facts, Events (strictly isolated per user) */
 export const PERSONAL_COLLECTIONS = new Set([
   'lifeLog',
   'life_log',
   'reading',
   'media',
   'facts',
+  'events',
 ])
 
 export function isPersonalCollection(collection: string): boolean {
@@ -260,7 +260,27 @@ export const db = {
       const parsed = fromSupabaseRow<T[]>(data ?? [])
       const filtered = filterRowsForUser<T>(collection, parsed)
       if (collection === 'events') {
-        return enrichEventsWithCompletion(filtered as unknown as AgendaEvent[]) as unknown as T[]
+        const currentEmail = getCurrentUserEmail() || 'welloliver@gmail.com'
+        let userCloudEvents: AgendaEvent[] = []
+        try {
+          const { data: cloudSetting } = await supabase
+            .from('app_settings')
+            .select('data')
+            .eq('id', `events_${currentEmail.toLowerCase().trim()}`)
+            .maybeSingle()
+          if (Array.isArray(cloudSetting?.data)) {
+            userCloudEvents = cloudSetting.data
+          }
+        } catch {}
+
+        const merged = [...userCloudEvents, ...(filtered as unknown as AgendaEvent[])]
+        const seen = new Set<string>()
+        const unique = merged.filter((e) => {
+          if (!e.id || seen.has(e.id)) return false
+          seen.add(e.id)
+          return true
+        })
+        return enrichEventsWithCompletion(unique) as unknown as T[]
       }
       return filtered
     } catch (err) {
