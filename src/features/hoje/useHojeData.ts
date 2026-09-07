@@ -11,7 +11,7 @@ import type {
   Trip,
 } from '@/data/types'
 import { buildTodayPlan, type RawTodayData, type TodayPlan, todayIsoString } from './hojeUtils'
-import { getGoogleCalendarConfig, syncGoogleCalendar } from '@/lib/googleCalendarSync'
+// import { getGoogleCalendarConfig, syncGoogleCalendar } from '@/lib/googleCalendarSync'
 import {
   enrichEventsWithCompletion,
   restoreCompletedEventsFromDb,

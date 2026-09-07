@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { Calendar, Mail, Bell, RefreshCw, Loader2 } from 'lucide-react'
 import { MODULE_BY_ID } from '@/lib/modules'
 import { PageHeader } from '@/components/ui/PageHeader'
