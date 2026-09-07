@@ -1245,7 +1245,8 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
      - Limite de resposta aumentado para 4.000 tokens para suportar notas fiscais com mais de 60 produtos.
   3. **Refinamento de Nitidez e Desabreviação de Produtos ([imageCompressor.ts](file:///e:/Apps/AppControleTotal/src/lib/imageCompressor.ts) & [receiptScanner.ts](file:///e:/Apps/AppControleTotal/src/lib/receiptScanner.ts)):**
      - Resolução do compressor de imagem elevada para 2200px (qualidade 0.92), garantindo nitidez cristalina em casas decimais de peso (ex: `0.485 kg`) e multiplicadores unitários (ex: `3 UN x 4.50`).
-     - Prompt calibrado para desabreviação comercial automática em português e limpeza de códigos de barras / NCM anexados aos nomes.
+     - Dicionário extensivo de abreviações de varejo (`CR LEITE` ➔ Creme de Leite, `CR RICOTA` ➔ Creme de Ricota, `CR CHEESE` ➔ Cream Cheese, `L COND` ➔ Leite Condensado, `L PO` ➔ Leite em Pó, `REQ CATUP` ➔ Requeijão Catupiry, `MARG` ➔ Margarina, `MUSS` ➔ Muçarela, `ACH PO` ➔ Achocolatado em Pó, `DET` ➔ Detergente, etc.).
+     - Captura inteligente da linha `DATA: DD/MM/AAAA - HH:MM` do cabeçalho e `VALOR A PAGAR R$` (líquido com descontos aplicados).
 
 ---
 

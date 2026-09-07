@@ -45,12 +45,13 @@ function normalizeBrazilianDate(dateStr?: string): string {
   if (!dateStr || typeof dateStr !== 'string') return todayIso()
 
   const clean = dateStr.trim()
-  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-    return clean
+  const isoMatch = clean.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (isoMatch) {
+    return isoMatch[1]
   }
 
   // DD/MM/YYYY or DD-MM-YYYY
-  const dmyMatch = clean.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/)
+  const dmyMatch = clean.match(/(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/)
   if (dmyMatch) {
     const day = dmyMatch[1].padStart(2, '0')
     const month = dmyMatch[2].padStart(2, '0')
@@ -62,6 +63,21 @@ function normalizeBrazilianDate(dateStr?: string): string {
   }
 
   return todayIso()
+}
+
+/**
+ * Extracts HH:MM from strings like "08:22:40", "DATA: 07/09/2026 - 08:22", "08:22"
+ */
+function extractTime(timeStr?: string, fallbackDateStr?: string): string {
+  if (timeStr && typeof timeStr === 'string') {
+    const match = timeStr.match(/(\d{1,2}:\d{2})/)
+    if (match) return match[1].padStart(5, '0')
+  }
+  if (fallbackDateStr && typeof fallbackDateStr === 'string') {
+    const match = fallbackDateStr.match(/(\d{1,2}:\d{2})/)
+    if (match) return match[1].padStart(5, '0')
+  }
+  return ''
 }
 
 /**
@@ -162,11 +178,14 @@ function parseReceiptResponse(raw: string, existingQr?: SefazQrCodeData | null):
         qrFromKey = parseSefazUrl(`https://www.nfce.fazenda.sp.gov.br/consulta?p=${rawKey}`)
       }
 
+      const rawDateStr = parsed.date || parsed.data || ''
+      const rawTimeStr = parsed.time || parsed.hora || ''
+
       return {
         establishment: storeName,
         amount: isNaN(numAmount) ? 0 : Math.abs(numAmount),
-        date: normalizeBrazilianDate(parsed.date || parsed.data),
-        time: parsed.time || parsed.hora ? String(parsed.time || parsed.hora).slice(0, 5) : '',
+        date: normalizeBrazilianDate(rawDateStr),
+        time: extractTime(rawTimeStr, rawDateStr),
         category: parsed.category || parsed.categoria || 'Despensa',
         items: itemsNames.length > 0 ? itemsNames : undefined,
         detailedItems,
@@ -186,8 +205,8 @@ function parseReceiptResponse(raw: string, existingQr?: SefazQrCodeData | null):
   const establishment = estMatch ? estMatch[1].trim() : 'Cupom Fiscal'
 
   const amtMatch =
-    text.match(/"(?:amount|valor|total)"\s*:\s*"?([\d.,]+)"?/i) ||
-    text.match(/(?:valor|total|pago|r\$)\s*[:=]?\s*r?\$?\s*([\d.,]+)/i)
+    text.match(/"(?:amount|valor|total|a_pagar|total_pago)"\s*:\s*"?([\d.,]+)"?/i) ||
+    text.match(/(?:valor\s+a\s+pagar|total|pago|r\$)\s*[:=]?\s*r?\$?\s*([\d.,]+)/i)
   let amount = 0
   if (amtMatch) {
     amount = parseFloat(amtMatch[1].replace(/[^\d.,]/g, '').replace(',', '.')) || 0
@@ -195,13 +214,17 @@ function parseReceiptResponse(raw: string, existingQr?: SefazQrCodeData | null):
 
   const dateMatch =
     text.match(/"(?:date|data)"\s*:\s*"([^"]+)"/i) ||
+    text.match(/DATA:\s*(\d{2}[/.-]\d{2}[/.-]\d{2,4})/i) ||
     text.match(/(\d{2}[/.-]\d{2}[/.-]\d{2,4})/)
-  const date = dateMatch ? normalizeBrazilianDate(dateMatch[1]) : todayIso()
+  const rawDateMatched = dateMatch ? dateMatch[1] : ''
+  const date = rawDateMatched ? normalizeBrazilianDate(rawDateMatched) : todayIso()
 
   const timeMatch =
     text.match(/"(?:time|hora)"\s*:\s*"([^"]+)"/i) ||
+    text.match(/(?:DATA:.*?)(\d{1,2}:\d{2})/i) ||
+    text.match(/(\d{1,2}:\d{2}:\d{2})/) ||
     text.match(/(\d{1,2}:\d{2})/)
-  const time = timeMatch ? timeMatch[1] : ''
+  const time = extractTime(timeMatch ? timeMatch[1] : '', rawDateMatched)
 
   const catMatch = text.match(/"(?:category|categoria)"\s*:\s*"([^"]+)"/i)
   const category = catMatch ? catMatch[1] : 'Despensa'
@@ -323,41 +346,53 @@ REGRAS DE EXTRAÇÃO:
 
 1. ESTABELECIMENTO (establishment):
    - Extraia o Nome Comercial / Fantasia ou Razão Social no topo da nota (Linha 1 do cabeçalho da Foto 1).
-   - Exemplos: "Hortifruti Queiroz Filho Ltda", "Sacolão Vila Pompeia", "Padaria Bella Paulista", "Sendas Distribuidora (Assaí)", "Carrefour".
+   - Exemplos: "Sendas Distribuidora (Assaí)", "Hortifruti Queiroz Filho Ltda", "Sacolão Vila Pompeia", "Padaria Bella Paulista", "Carrefour".
    - NUNCA use "Cupom Fiscal", "Documento Auxiliar", "NFC-e", "SAT", "SEFAZ", "Consumidor" nem endereços.
 
-2. VALOR TOTAL LÍQUIDO (amount):
-   - Localize o "TOTAL R$", "VALOR A PAGAR R$" ou "VALOR LÍQUIDO R$" (geralmente na última foto).
-   - Retorne o número float (ex: 39.97).
+2. VALOR TOTAL LÍQUIDO A PAGAR (amount):
+   - Localize o "VALOR A PAGAR R$", "VALOR LÍQUIDO R$" ou "TOTAL R$" (geralmente no rodapé da última foto, após descontos).
+   - Retorne o número float com o valor real final pago (ex: 573.83).
 
 3. CATEGORIA (category):
-   - "Despensa": Hortifrutis, sacolões, supermercados, atacadões, açougues.
+   - "Despensa": Supermercados, atacadões (Assaí, Atacadão, etc.), hortifrutis, sacolões, açougues.
    - "Alimentação": Padarias, lanchonetes, restaurantes, bares, cafés.
    - "Saúde": Farmácias, drogarias.
    - "Transporte": Postos de combustível.
    - "Outros": Demais despesas.
 
-4. DATA E HORA:
-   - Data no formato ISO "YYYY-MM-DD" e Hora "HH:MM" (ex: "2026-08-15" e "19:15").
+4. DATA E HORA EXATAS:
+   - Procure no cabeçalho ou no rodapé a linha com data e horário (ex: "DATA: 07/09/2026 - 08:22" ou "07/09/2026 08:22:40").
+   - Retorne a Data no formato ISO "YYYY-MM-DD" (ex: "2026-09-07") e a Hora "HH:MM" (ex: "08:22").
 
-5. ITENS / PRODUTOS (detailedItems) - LEITURA RIGOROSA:
-   - Extraia TODOS os produtos comprados listados no cupom (percorrendo todas as fotos da lista do início ao fim):
-     
-     * "name": Nome limpo, compreensível e legível em português.
-       - Desabrevie termos comuns de supermercado (ex: "LEITE UHT INT PIRACANJUBA 1L" ➔ "Leite Piracanjuba Integral 1L", "BAT CONG BEMB 1KG" ➔ "Batata Congelada Bem Brasil 1kg", "ARROZ T1 CAMIL 5KG" ➔ "Arroz Camil Tipo 1 5kg", "MACA GALA NAC KG" ➔ "Maçã Gala Nacional", "REFRIG COCA COLA 2L" ➔ "Refrigerante Coca-Cola 2L").
-       - Remova códigos numéricos de barras, NCM, CFOP, índices "001", "002" e referências fiscais grudadas no nome.
-     
-     * "qty": Quantidade numérica real e precisa.
-       - MULTIPLICADOR DE UNIDADES: Se o cupom tiver "2 UN x 6,50 = 13,00" ou "3 x 4,99" ou "QTD: 3", extraia "qty": 2 ou 3 (NUNCA coloque 1 quando houver multiplicador de quantidade).
-       - PRODUTOS POR PESO (KG/G): Em hortifruti, açougue ou frios (ex: "0,485 KG x 32,90 = 15,96"), extraia o peso com decimais "qty": 0.485 (NUNCA arredonde para 1).
-     
-     * "unit": Unidade padrão ("un", "kg", "g", "l", "pct", "cx").
-     
-     * "unitPrice": Preço unitário float (ex: 6.50 ou 32.90).
-     
-     * "totalPrice": Preço total líquido do item float após descontos da linha (ex: 13.00 ou 15.96).
-     
-     * CONSISTÊNCIA MATEMÁTICA: Certifique-se de que (qty × unitPrice) seja compatível com totalPrice.
+5. ITENS / PRODUTOS (detailedItems) - DICIONÁRIO E LEITURA RIGOROSA:
+   - Extraia TODOS os produtos comprados percorrendo todas as fotos sequenciais da primeira à última.
+   
+   * DESABREVIAÇÃO INTELIGENTE DE TERMOS DE SUPERMERCADO:
+     - "CR LEITE" / "CREM LEITE" ➔ "Creme de Leite" (NUNCA coloque só "Leite" quando houver "CR" antes!)
+     - "CR RICOTA" ➔ "Creme de Ricota"
+     - "CR CHEESE" ➔ "Cream Cheese"
+     - "L COND" / "LTE COND" ➔ "Leite Condensado"
+     - "L PO" / "LTE PO" ➔ "Leite em Pó"
+     - "LTE DESN" / "LTE INT" / "LTE SEMI" ➔ "Leite Desnatado" / "Leite Integral" / "Leite Semidesnatado"
+     - "BE IT WHEY" / "BEB LACT" ➔ "Bebida Láctea Whey"
+     - "REQ" / "REQ CREM" / "REQ CATUP" ➔ "Requeijão Cremoso" / "Requeijão Catupiry"
+     - "MARG" ➔ "Margarina"
+     - "PRES" / "PRES SADIA" ➔ "Presunto Sadia"
+     - "MUSS" ➔ "Muçarela" (ou Mussarela)
+     - "ACH PO" ➔ "Achocolatado em Pó"
+     - "DET" / "DET MINUANO" ➔ "Detergente Minuano"
+     - "DES" / "DESOD" / "DES GB" ➔ "Desodorante"
+     - "OL SJ" / "OL SOJA" ➔ "Óleo de Soja"
+     - "OVO BCO" / "OVO VERM" ➔ "Ovos Brancos" / "Ovos Vermelhos"
+     - "S/AC" ➔ "sem Açúcar" | "C/S" ➔ "com Sal" | "S/S" ➔ "sem Sal" ou "sem Semente" | "S/C" ➔ "sem Capa"
+     - "FT" ➔ "Fatiado" | "BJ" ➔ "Bandeja" | "PT" ➔ "Pote" | "GF" ➔ "Garrafa" | "PC" ➔ "Pacote" | "UN" ➔ "Unidade" | "CT" ➔ "Caixa"
+     - Remova códigos numéricos de barras (ex: 7891000...), NCMs, índices "001", "002" e referências fiscais grudadas no nome.
+
+   * QUANTIDADE E UNIDADE:
+     - MULTIPLICADOR DE UNIDADES: Se o cupom tiver "6.000 Un x 2.99" ou "3.000 PC x 5.29", extraia "qty": 6 ou 3 e "unit": "un" ou "pct".
+     - PRODUTOS POR PESO (KG): Em frios, carnes ou frutas (ex: "0.318 Kg x 34.69" ou "1.084 Kg x 38.90"), extraia o peso com decimais "qty": 0.318 ou 1.084 e "unit": "kg".
+     - "unitPrice": Preço unitário float.
+     - "totalPrice": Preço total líquido da linha.
 
 6. CHAVE DE ACESSO FISCAL SEFAZ (accessKey):
    - Extraia a sequência de 44 dígitos da 'Chave de Acesso' ou 'Consulte pela Chave de Acesso' se presente no cupom (ex: "35260817879943000139650130000291821778634186" sem espaços).
