@@ -29,61 +29,75 @@ export function PantryItemCard({
   const tone = low || expired ? 'rose' : 'emerald'
 
   return (
-    <div className="card flex flex-col gap-3 p-4">
-      <div className="flex items-center gap-2">
+    <div className="card flex flex-col gap-3 p-3.5 sm:p-4 min-w-0 max-w-full overflow-hidden">
+      {/* Cabeçalho: Ícone, Nome e Categoria */}
+      <div className="flex items-center gap-2 min-w-0 w-full">
         <span className={cn(iconTile, PURPLE_SOFT)}>
           <PackageOpen className="h-4 w-4" />
         </span>
-        <p className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-100">{item.name}</p>
-        <span className="chip px-2 py-0.5 text-[10px] text-purple-300">{item.category}</span>
+        <p
+          className="min-w-0 flex-1 text-sm font-medium text-zinc-100 line-clamp-2 leading-tight break-words"
+          title={item.name}
+        >
+          {item.name}
+        </p>
+        <span
+          className="chip px-2 py-0.5 text-[10px] text-purple-300 shrink-0 max-w-[90px] truncate"
+          title={item.category}
+        >
+          {item.category}
+        </span>
       </div>
 
+      {/* Quantidade e Preço */}
       <div>
-        <div className="mb-1.5 flex items-baseline justify-between gap-2">
-          <div className="flex items-baseline gap-1.5">
-            <span className="font-display font-num text-3xl leading-none tracking-tight text-zinc-50">
+        <div className="mb-1.5 flex items-baseline justify-between gap-2 min-w-0">
+          <div className="flex items-baseline gap-1.5 min-w-0 shrink-0">
+            <span className="font-display font-num text-2xl sm:text-3xl leading-none tracking-tight text-zinc-50 truncate">
               {item.qty}
             </span>
-            <span className="text-xs text-zinc-500">{item.unit}</span>
+            <span className="text-xs text-zinc-500 shrink-0">{item.unit}</span>
           </div>
           {item.price !== undefined && item.price > 0 && (
-            <span className="text-xs font-semibold font-num text-emerald-400">
+            <span className="text-xs font-semibold font-num text-emerald-400 shrink-0 truncate">
               {formatBRL(item.price)}
             </span>
           )}
         </div>
         <ProgressBar value={stockRatio(item)} tone={tone} />
         {low && (
-          <p className="mt-1.5 text-[11px] text-rose-300">
+          <p className="mt-1.5 text-[11px] text-rose-300 truncate">
             mínimo <span className="font-num">{item.lowThreshold}</span> {item.unit}
           </p>
         )}
       </div>
 
-      <div className="mt-auto flex min-h-6 flex-wrap items-center gap-1.5">
-        {low && <span className={cn('chip px-2 py-0.5 text-[10px]', ROSE_CHIP)}>Estoque baixo</span>}
+      {/* Status Badges */}
+      <div className="mt-auto flex min-h-6 flex-wrap items-center gap-1.5 min-w-0">
+        {low && <span className={cn('chip px-2 py-0.5 text-[10px] shrink-0', ROSE_CHIP)}>Estoque baixo</span>}
         {expired ? (
-          <span className={cn('chip px-2 py-0.5 text-[10px]', ROSE_CHIP)}>Vencido</span>
+          <span className={cn('chip px-2 py-0.5 text-[10px] shrink-0', ROSE_CHIP)}>Vencido</span>
         ) : expiring && item.expiresAt ? (
-          <span className={cn('chip px-2 py-0.5 text-[10px]', AMBER_CHIP)}>
+          <span className={cn('chip px-2 py-0.5 text-[10px] shrink-0', AMBER_CHIP)}>
             Vence em {daysUntil(item.expiresAt)}d
           </span>
         ) : item.expiresAt ? (
-          <span className="chip px-2 py-0.5 text-[10px] text-zinc-500">
+          <span className="chip px-2 py-0.5 text-[10px] text-zinc-500 shrink-0">
             Vence {daysUntil(item.expiresAt) >= 0 ? `em ${daysUntil(item.expiresAt)}d` : 'hoje'}
           </span>
         ) : null}
       </div>
 
-      <div className="flex items-center justify-end gap-1 border-t border-zinc-800/70 pt-2">
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={onEdit}>
+      {/* Ações */}
+      <div className="flex items-center justify-end gap-1 border-t border-zinc-800/70 pt-2 min-w-0">
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] shrink-0" onClick={onEdit}>
           <Pencil className="h-3.5 w-3.5" /> Editar
         </Button>
         {pendingDelete === item.id ? (
           <Button
             variant="danger"
             size="sm"
-            className="h-7 px-2 text-[11px]"
+            className="h-7 px-2 text-[11px] shrink-0"
             onClick={() => request(item.id, () => void onRemove(item.id))}
           >
             Remover?
@@ -94,7 +108,7 @@ export function PantryItemCard({
             size="icon"
             aria-label="Excluir item"
             onClick={() => request(item.id, () => void onRemove(item.id))}
-            className="h-7 w-7 hover:text-rose-300"
+            className="h-7 w-7 hover:text-rose-300 shrink-0"
           >
             <Trash2 className="h-4 w-4" />
           </Button>

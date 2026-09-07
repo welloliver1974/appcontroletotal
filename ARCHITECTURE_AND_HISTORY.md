@@ -1250,7 +1250,24 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## 🛒 69. Correção de Overflow e Responsividade nos Cards da Despensa (07/09/2026)
+
+* **Contexto & Motivação:**
+  - Nomes longos de produtos e descrições detalhadas importadas de cupons fiscais (ex: cortes de carnes, laticínios especiais e produtos com pesos decimais) estavam estourando a largura dos cards na visualização em grade da Despensa no mobile/desktop.
+* **Soluções Implementadas:**
+  1. **Card de Produto ([PantryItemCard.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/PantryItemCard.tsx)):**
+     - Adicionado `min-w-0 max-w-full overflow-hidden` no card pai.
+     - Título com `line-clamp-2`, `break-words` e `leading-tight` para acomodar descrições completas sem quebrar o layout.
+     - Chip de categoria com `shrink-0 max-w-[90px] truncate` para evitar empurrar o título.
+     - Tipografia responsiva na quantidade (`text-2xl sm:text-3xl`) e no preço para garantir alinhamento limpo mesmo com decimais de peso (`0.318 kg`).
+  2. **Grid e Lista ([DespensaPage.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/DespensaPage.tsx) & [PantryListView.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/PantryListView.tsx)):**
+     - Aplicação de `min-w-0 max-w-full` na malha de grid de cards.
+     - Correção de padding e suporte responsivo na tabela em modo lista.
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 
 
 

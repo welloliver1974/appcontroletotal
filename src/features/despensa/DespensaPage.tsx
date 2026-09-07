@@ -417,7 +417,7 @@ export function DespensaPage() {
                 onUpdateQty={handleUpdateQty}
               />
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 min-w-0 max-w-full">
                 {visible.map((item) => (
                   <PantryItemCard
                     key={item.id}

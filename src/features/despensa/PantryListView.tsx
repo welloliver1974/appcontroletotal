@@ -26,11 +26,11 @@ export function PantryListView({ items, onEdit, onRemove, onUpdateQty }: PantryL
   return (
     <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 backdrop-blur-xl overflow-hidden divide-y divide-zinc-800/60 shadow-xl shadow-black/20">
       {/* Header da Tabela (visível em desktop/tablet) */}
-      <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4, py-2.5 bg-zinc-900/60 text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-        <div className="col-span-4">Item & Categoria</div>
-        <div className="col-span-3 text-center">Quantidade</div>
-        <div className="col-span-3">Status</div>
-        <div className="col-span-2 text-right">Ações</div>
+      <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4 py-2.5 bg-zinc-900/60 text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+        <div className="col-span-4 min-w-0">Item & Categoria</div>
+        <div className="col-span-3 text-center min-w-0">Quantidade</div>
+        <div className="col-span-3 min-w-0">Status</div>
+        <div className="col-span-2 text-right min-w-0">Ações</div>
       </div>
 
       {items.map((item) => {
