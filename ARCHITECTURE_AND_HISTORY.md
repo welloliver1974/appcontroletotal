@@ -1308,6 +1308,22 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## 💵 73. Normalização Robusta de Datas no Scanner de Cupom & Edição Completa de Gastos (07/09/2026)
+
+* **Contexto & Motivação:**
+  - Ao escanear notas fiscais, datas em certos formatos (ex: `2026/09/07` com barras ou `DD/MM/YYYY`) podiam causar inversão de componentes ou não entrar no cálculo de `Total do Mês` caso a string não batesse exatamente com o prefixo `YYYY-MM`. Além disso, a tela de Finanças não possuía botão para editar gastos existentes.
+* **Soluções Implementadas:**
+  1. **Normalizador Robusto de Datas ([receiptScanner.ts](file:///e:/Apps/AppControleTotal/src/lib/receiptScanner.ts)):**
+     - A função `normalizeBrazilianDate` agora testa primeiro padrões `YYYY-MM-DD` e `YYYY/MM/DD` (extraindo ano, mês e dia com validação de limites de calendário `1..12` e `1..31`), e em seguida formatos brasileiros `DD/MM/YYYY`, `DD-MM-YYYY` ou `DD/MM/YY`.
+     - Evita qualquer corrupção de data ou valores inválidos que deixem inputs em branco.
+  2. **Leitura Defensiva de Datas no Extrato ([FinancasPage.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/FinancasPage.tsx)):**
+     - Adicionada a função `parseItemIsoDate` que converte de forma transparente itens salvos em formato brasileiro (`DD/MM/YYYY`) para ISO (`YYYY-MM-DD`) no momento do cálculo do scorecard (`todayTotal`, `weekTotal`, `monthTotal`), garantindo que compras do mês corrente sejam sempre somadas no teto mensal.
+  3. **Edição Completa de Gastos ([FinancasPage.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/FinancasPage.tsx), [useFinancasData.ts](file:///e:/Apps/AppControleTotal/src/features/financas/useFinancasData.ts), [SpendingFormModal.tsx](file:///e:/Apps/AppControleTotal/src/features/financas/SpendingFormModal.tsx)):**
+     - Adicionado botão de edição (`Edit2`) em cada linha do extrato.
+     - `SpendingFormModal` agora aceita `editingItem` e permite alterar valor, data, hora, categoria e descrição de qualquer lançamento já existente com 1 clique.
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Calendar, Camera, Check, FileText, Sparkles, Tag, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -21,11 +21,12 @@ const CATEGORIES = [
 
 interface SpendingFormModalProps {
   open: boolean
+  editingItem?: SpendingItem | null
   onClose: () => void
   onSubmit: (draft: Omit<SpendingItem, 'id' | 'createdAt'>) => Promise<void>
 }
 
-export function SpendingFormModal({ open, onClose, onSubmit }: SpendingFormModalProps) {
+export function SpendingFormModal({ open, editingItem, onClose, onSubmit }: SpendingFormModalProps) {
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('Alimentação')
   const [note, setNote] = useState('')
@@ -36,6 +37,23 @@ export function SpendingFormModal({ open, onClose, onSubmit }: SpendingFormModal
   })
   const [saving, setSaving] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
+
+  useEffect(() => {
+    if (editingItem) {
+      setAmount(editingItem.amount > 0 ? editingItem.amount.toFixed(2).replace('.', ',') : '')
+      setCategory(editingItem.category || 'Alimentação')
+      setNote(editingItem.note || '')
+      setDate(editingItem.date || todayStr())
+      setTime(editingItem.time || '')
+    } else if (open) {
+      setAmount('')
+      setCategory('Alimentação')
+      setNote('')
+      setDate(todayStr())
+      const now = new Date()
+      setTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`)
+    }
+  }, [editingItem, open])
 
   const handleApplyReceipt = (data: ParsedReceiptData) => {
     if (data.amount > 0) {
@@ -69,9 +87,11 @@ export function SpendingFormModal({ open, onClose, onSubmit }: SpendingFormModal
         date,
         time,
       })
-      toast.success('Gasto registrado com sucesso! 💵')
-      setAmount('')
-      setNote('')
+      toast.success(editingItem ? 'Gasto atualizado com sucesso! 💵' : 'Gasto registrado com sucesso! 💵')
+      if (!editingItem) {
+        setAmount('')
+        setNote('')
+      }
       onClose()
     } catch (err) {
       console.error('Erro ao salvar gasto:', err)
@@ -83,14 +103,19 @@ export function SpendingFormModal({ open, onClose, onSubmit }: SpendingFormModal
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="Novo Lançamento de Gasto 💵">
+      <Modal
+        open={open}
+        onClose={onClose}
+        title={editingItem ? 'Editar Lançamento de Gasto 💵' : 'Novo Lançamento de Gasto 💵'}
+      >
         <form onSubmit={handleSubmit} className="space-y-4 pt-1">
-          {/* Botão de Scanner de Cupom com IA */}
-          <button
-            type="button"
-            onClick={() => setScannerOpen(true)}
-            className="w-full flex items-center justify-between p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15 transition-all text-left group"
-          >
+          {/* Botão de Scanner de Cupom com IA (apenas em novos lançamentos) */}
+          {!editingItem && (
+            <button
+              type="button"
+              onClick={() => setScannerOpen(true)}
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15 transition-all text-left group"
+            >
             <div className="flex items-center gap-2.5">
               <span className="h-8 w-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">
                 <Camera className="h-4 w-4" />

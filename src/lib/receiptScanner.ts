@@ -39,18 +39,27 @@ function todayIso() {
 }
 
 /**
- * Normalizes dates found in Brazilian format (DD/MM/YYYY, DD/MM/YY, DD-MM-YYYY) to YYYY-MM-DD.
+ * Normalizes dates found in Brazilian format (DD/MM/YYYY, DD/MM/YY, DD-MM-YYYY) or ISO (YYYY-MM-DD, YYYY/MM/DD) to standard ISO YYYY-MM-DD.
  */
 function normalizeBrazilianDate(dateStr?: string): string {
   if (!dateStr || typeof dateStr !== 'string') return todayIso()
 
   const clean = dateStr.trim()
-  const isoMatch = clean.match(/^(\d{4}-\d{2}-\d{2})/)
-  if (isoMatch) {
-    return isoMatch[1]
+
+  // 1. Check YYYY-MM-DD or YYYY/MM/DD anywhere in string (e.g. "2026-09-07", "DATA: 2026/09/07")
+  const ymdMatch = clean.match(/(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})/)
+  if (ymdMatch) {
+    const year = ymdMatch[1]
+    const month = ymdMatch[2].padStart(2, '0')
+    const day = ymdMatch[3].padStart(2, '0')
+    const mNum = parseInt(month, 10)
+    const dNum = parseInt(day, 10)
+    if (mNum >= 1 && mNum <= 12 && dNum >= 1 && dNum <= 31) {
+      return `${year}-${month}-${day}`
+    }
   }
 
-  // DD/MM/YYYY or DD-MM-YYYY
+  // 2. Check DD/MM/YYYY or DD-MM-YYYY or DD/MM/YY (e.g. "07/09/2026", "DATA: 07/09/25 - 08:22")
   const dmyMatch = clean.match(/(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/)
   if (dmyMatch) {
     const day = dmyMatch[1].padStart(2, '0')
@@ -59,7 +68,11 @@ function normalizeBrazilianDate(dateStr?: string): string {
     if (year.length === 2) {
       year = `20${year}`
     }
-    return `${year}-${month}-${day}`
+    const mNum = parseInt(month, 10)
+    const dNum = parseInt(day, 10)
+    if (mNum >= 1 && mNum <= 12 && dNum >= 1 && dNum <= 31) {
+      return `${year}-${month}-${day}`
+    }
   }
 
   return todayIso()

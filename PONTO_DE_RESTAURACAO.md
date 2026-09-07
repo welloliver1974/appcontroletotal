@@ -30,6 +30,11 @@
 - Pré-carregamento inteligente de todos os módulos de abas em segundo plano durante o tempo ocioso do navegador.
 - Transições lisas e sem atrasos já a partir do primeiro clique.
 
+### 5. 💵 Gestão Financeira & Scanner com Data Robusta
+- Normalização inteligente de datas (`YYYY-MM-DD`, `YYYY/MM/DD`, `DD/MM/YYYY`) sem corromper dia/mês/ano.
+- Leitura defensiva no extrato e soma correta no Total do Mês.
+- Botão de Edição (`Edit2`) em todas as linhas do extrato para alterar valores, datas, categorias ou notas a qualquer momento.
+
 ---
 
 ## 🚨 Como voltar para este ponto exato a qualquer momento (Rollback)

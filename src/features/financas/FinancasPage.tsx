@@ -56,12 +56,23 @@ function currentMonthLabel() {
   return new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 }
 
+function parseItemIsoDate(dateStr?: string, fallbackIso?: string): string {
+  if (!dateStr) return fallbackIso?.slice(0, 10) || ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr
+  const parts = dateStr.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/)
+  if (parts) {
+    return `${parts[3]}-${parts[2].padStart(2, '0')}-${parts[1].padStart(2, '0')}`
+  }
+  return dateStr.slice(0, 10)
+}
+
 export function FinancasPage() {
   const module = MODULE_BY_ID['financas']
   const {
     data,
     loading,
     addSpending,
+    updateSpending,
     removeSpending,
     addFixedBill,
     removeFixedBill,
@@ -71,6 +82,7 @@ export function FinancasPage() {
 
   const [tab, setTab] = useState<'extrato' | 'contas'>('extrato')
   const [spendingModalOpen, setSpendingModalOpen] = useState(false)
+  const [editingSpending, setEditingSpending] = useState<SpendingItem | null>(null)
   const [billModalOpen, setBillModalOpen] = useState(false)
   const [editingBudget, setEditingBudget] = useState(false)
   const [budgetInput, setBudgetInput] = useState('')
@@ -96,7 +108,7 @@ export function FinancasPage() {
     let monthT = 0
 
     for (const item of data.spending) {
-      const itemDate = item.date || item.createdAt?.slice(0, 10) || ''
+      const itemDate = parseItemIsoDate(item.date, item.createdAt)
       const amount = Number(item.amount) || 0
 
       if (itemDate === currentTodayStr) {
@@ -125,7 +137,11 @@ export function FinancasPage() {
   // Filtragem do extrato
   const filteredSpending = useMemo(() => {
     if (!data) return []
-    let list = [...data.spending].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    let list = [...data.spending].sort((a, b) => {
+      const dateA = parseItemIsoDate(a.date, a.createdAt)
+      const dateB = parseItemIsoDate(b.date, b.createdAt)
+      return (dateB || '').localeCompare(dateA || '')
+    })
 
     if (categoryFilter) {
       list = list.filter((i) => i.category.toLowerCase() === categoryFilter.toLowerCase())
@@ -485,10 +501,24 @@ export function FinancasPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3 shrink-0 ml-3">
-                            <span className="font-display font-num text-sm md:text-base font-bold text-zinc-100">
+                          <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                            <span className="font-display font-num text-sm md:text-base font-bold text-zinc-100 mr-1">
                               {formatBRL(Number(item.amount) || 0)}
                             </span>
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Editar gasto"
+                              onClick={() => {
+                                setEditingSpending(item)
+                                setSpendingModalOpen(true)
+                              }}
+                              className="h-7 w-7 text-zinc-500 hover:text-emerald-400"
+                              title="Editar este gasto"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </Button>
 
                             {pendingDelete === item.id ? (
                               <Button
@@ -648,9 +678,17 @@ export function FinancasPage() {
       {spendingModalOpen && (
         <SpendingFormModal
           open={spendingModalOpen}
-          onClose={() => setSpendingModalOpen(false)}
+          editingItem={editingSpending}
+          onClose={() => {
+            setSpendingModalOpen(false)
+            setEditingSpending(null)
+          }}
           onSubmit={async (draft) => {
-            await addSpending(draft)
+            if (editingSpending) {
+              await updateSpending(editingSpending.id, draft)
+            } else {
+              await addSpending(draft)
+            }
           }}
         />
       )}

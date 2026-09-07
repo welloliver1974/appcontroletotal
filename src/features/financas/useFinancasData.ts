@@ -47,6 +47,21 @@ export function useFinancasData() {
     return created
   }
 
+  const updateSpending = async (id: string, updates: Partial<Omit<SpendingItem, 'id'>>) => {
+    const updatedList = await api.update<SpendingItem>('spendingEntries', id, updates)
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            spending: Array.isArray(updatedList)
+              ? updatedList
+              : prev.spending.map((s) => (s.id === id ? { ...s, ...updates } : s)),
+          }
+        : null,
+    )
+    return updatedList
+  }
+
   const removeSpending = async (id: string) => {
     await api.remove<SpendingItem>('spendingEntries', id)
     setData((prev) =>
@@ -90,6 +105,7 @@ export function useFinancasData() {
     data,
     loading,
     addSpending,
+    updateSpending,
     removeSpending,
     addFixedBill,
     removeFixedBill,
