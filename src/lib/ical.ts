@@ -103,6 +103,7 @@ function unfoldIcal(raw: string): string[] {
 
 /**
  * Parses raw iCalendar text into AgendaEvent array and expands recurring events.
+ * Includes global event limit to prevent browser freezing with large calendars.
  */
 export function parseIcalToEvents(icalText: string): AgendaEvent[] {
   const lines = unfoldIcal(icalText)
@@ -162,6 +163,11 @@ export function parseIcalToEvents(icalText: string): AgendaEvent[] {
     }
   }
 
+  // Global limit to prevent browser freezing with large calendars
+  const MAX_TOTAL_EVENTS = 2000
+  let totalEvents = 0
+  let limitReached = false
+
   // Expansion window: 60 days in past to 180 days in future
   const now = new Date()
   const windowStart = new Date(now.getFullYear(), now.getMonth() - 2, 1)
@@ -171,6 +177,8 @@ export function parseIcalToEvents(icalText: string): AgendaEvent[] {
   const seenIds = new Set<string>()
 
   for (const item of rawEvents) {
+    if (limitReached) break
+
     const category = inferCategory(item.title, item.location)
     const sanitizedUid = item.uid.replace(/[^a-zA-Z0-9_-]/g, '_')
     const baseId = item.uid.startsWith('gcal-')
@@ -181,6 +189,10 @@ export function parseIcalToEvents(icalText: string): AgendaEvent[] {
     if (!item.rrule) {
       const id = baseId
       if (!seenIds.has(id)) {
+        if (totalEvents >= MAX_TOTAL_EVENTS) {
+          limitReached = true
+          break
+        }
         seenIds.add(id)
         events.push({
           id,
@@ -191,6 +203,7 @@ export function parseIcalToEvents(icalText: string): AgendaEvent[] {
           category,
           location: item.location,
         })
+        totalEvents++
       }
       continue
     }
@@ -215,13 +228,17 @@ export function parseIcalToEvents(icalText: string): AgendaEvent[] {
     let count = 0
     const maxCount = 200
 
-    while (curr <= windowEnd && count < maxCount) {
+    while (curr <= windowEnd && count < maxCount && !limitReached) {
       if (untilDate && curr > untilDate) break
 
       if (curr >= windowStart) {
         const occDateStr = toIsoDate(curr)
         const occId = `${baseId}-${occDateStr}`
         if (!seenIds.has(occId)) {
+          if (totalEvents >= MAX_TOTAL_EVENTS) {
+            limitReached = true
+            break
+          }
           seenIds.add(occId)
           events.push({
             id: occId,
@@ -232,6 +249,7 @@ export function parseIcalToEvents(icalText: string): AgendaEvent[] {
             category,
             location: item.location,
           })
+          totalEvents++
         }
       }
 
@@ -249,6 +267,10 @@ export function parseIcalToEvents(icalText: string): AgendaEvent[] {
       }
       count++
     }
+  }
+
+  if (limitReached) {
+    console.warn('[iCal] Limite de eventos atingido (2.000). Alguns eventos podem não ser exibidos.')
   }
 
   // Sort chronologically
