@@ -23,7 +23,7 @@ export function getGoogleCalendarConfig(): GoogleCalendarConfig {
 
   return {
     icalUrl: '',
-    autoSync: true,
+    autoSync: false,
     lastSyncAt: null,
     lastEventsCount: 0,
   }
