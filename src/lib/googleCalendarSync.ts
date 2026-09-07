@@ -1,4 +1,4 @@
-import { db } from './db'
+import { db, supabase } from './db'
 import { parseIcalToEvents } from './ical'
 import { enrichEventsWithCompletion } from './eventCompletionStore'
 import { formatLocalIsoDate } from './utils'
@@ -33,7 +33,17 @@ export function getGoogleCalendarConfig(): GoogleCalendarConfig {
 export function saveGoogleCalendarConfig(config: GoogleCalendarConfig): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
   
-  // Persiste de forma definitiva no banco de dados (docVault / Supabase)
+  // Persiste no Supabase (app_settings e docVault)
+  if (supabase) {
+    void Promise.resolve(
+      supabase.from('app_settings').upsert({
+        id: 'gcal_config',
+        data: config,
+        updated_at: new Date().toISOString(),
+      })
+    ).catch(() => {})
+  }
+
   void db.upsert('docVault', {
     id: DOC_VAULT_CONFIG_ID,
     title: 'Google Calendar Config',
@@ -48,9 +58,24 @@ export function saveGoogleCalendarConfig(config: GoogleCalendarConfig): void {
 export async function restoreGoogleCalendarConfigFromDb(): Promise<GoogleCalendarConfig> {
   const current = getGoogleCalendarConfig()
   if (current.icalUrl) {
-    // Garante que o banco também tenha a cópia
     saveGoogleCalendarConfig(current)
     return current
+  }
+
+  if (supabase) {
+    try {
+      const { data } = await supabase.from('app_settings').select('data').eq('id', 'gcal_config').maybeSingle()
+      if (data?.data?.icalUrl) {
+        const restored: GoogleCalendarConfig = {
+          icalUrl: data.data.icalUrl,
+          autoSync: data.data.autoSync ?? true,
+          lastSyncAt: data.data.lastSyncAt ?? null,
+          lastEventsCount: data.data.lastEventsCount ?? 0,
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(restored))
+        return restored
+      }
+    } catch {}
   }
 
   try {

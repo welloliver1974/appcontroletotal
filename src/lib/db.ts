@@ -35,7 +35,7 @@ export function tableName(collection: string): string {
   return TABLES[collection] ?? collection
 }
 
-/** Shared collections: Household, Expenses, Maintenance, Pantry, Trips (visible to everyone in the family) */
+/** Shared collections: Household, Expenses, Maintenance, Pantry, Trips, Agenda & Google Calendar Events (visible to everyone in the family) */
 export const SHARED_COLLECTIONS = new Set([
   'spending',
   'spendingEntries',
@@ -52,16 +52,16 @@ export const SHARED_COLLECTIONS = new Set([
   'places',
   'docVault',
   'doc_vault',
+  'events',
 ])
 
-/** Personal collections: Life-Log, Reading, Media, Facts, Events (isolated per user) */
+/** Personal collections: Life-Log, Reading, Media, Facts (isolated per user) */
 export const PERSONAL_COLLECTIONS = new Set([
   'lifeLog',
   'life_log',
   'reading',
   'media',
   'facts',
-  'events',
 ])
 
 export function isPersonalCollection(collection: string): boolean {
