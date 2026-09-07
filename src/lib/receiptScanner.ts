@@ -307,11 +307,14 @@ export async function parseReceiptWithVision(
 
   const multiPhotoNote =
     urls.length > 1
-      ? `\n\nATENÇÃO - CUPOM LONGO COMPOSTO POR ${urls.length} FOTOS CONSECUTIVAS:
-- As imagens enviadas correspondem a partes sequenciais do mesmo cupom fiscal.
-- Una e consolide todos os produtos comprados presentes em todas as fotos numa única lista contínua.
-- Se houver produtos sobrepostos/repetidos na transição entre duas fotos, NÃO duplique o item.
-- Extraia o valor TOTAL pago geralmente impresso no rodapé da última foto.`
+      ? `\n\n🚨 ATENÇÃO CRÍTICA - CUPOM LONGO COMPOSTO POR ${urls.length} FOTOS CONSECUTIVAS:
+- Você recebeu ${urls.length} fotos sequenciais (Partes 1 a ${urls.length}) do MESMO cupom fiscal.
+- É ESTRITAMENTE OBRIGATÓRIO ler e extrair os produtos de TODAS AS ${urls.length} FOTOS.
+- A Foto 1 contém os primeiros itens, e as Fotos 2, 3, etc. contêm a continuação com o RESTANTE dos itens.
+- NUNCA pare na Foto 1! Você DEVE continuar extraindo todos os itens que aparecem nas fotos seguintes.
+- Una e consolide todos os produtos comprados de todas as partes na mesma lista 'detailedItems' sem cortar nada.
+- Se houver 1 ou 2 produtos repetidos na transição/sobreposição entre duas fotos, inclua-o apenas uma vez.
+- Extraia o valor TOTAL pago geralmente visível no rodapé da última foto.`
       : ''
 
   const systemPrompt = `Você é um scanner OCR especialista em cupons fiscais brasileiros (Hortifrutis, Mercados, Padarias, Lanchonetes, SAT CFe, NFC-e).${multiPhotoNote}
@@ -319,12 +322,12 @@ export async function parseReceiptWithVision(
 REGRAS DE EXTRAÇÃO:
 
 1. ESTABELECIMENTO (establishment):
-   - Extraia o Nome Comercial / Fantasia ou Razão Social no topo da nota (Linha 1 do cabeçalho).
+   - Extraia o Nome Comercial / Fantasia ou Razão Social no topo da nota (Linha 1 do cabeçalho da Foto 1).
    - Exemplos: "Hortifruti Queiroz Filho Ltda", "Sacolão Vila Pompeia", "Padaria Bella Paulista", "Sendas Distribuidora (Assaí)", "Carrefour".
    - NUNCA use "Cupom Fiscal", "Documento Auxiliar", "NFC-e", "SAT", "SEFAZ", "Consumidor" nem endereços.
 
 2. VALOR TOTAL LÍQUIDO (amount):
-   - Localize o "TOTAL R$", "VALOR A PAGAR R$" ou "VALOR LÍQUIDO R$".
+   - Localize o "TOTAL R$", "VALOR A PAGAR R$" ou "VALOR LÍQUIDO R$" (geralmente na última foto).
    - Retorne o número float (ex: 39.97).
 
 3. CATEGORIA (category):
@@ -338,7 +341,7 @@ REGRAS DE EXTRAÇÃO:
    - Data no formato ISO "YYYY-MM-DD" e Hora "HH:MM" (ex: "2026-08-15" e "19:15").
 
 5. ITENS / PRODUTOS (detailedItems):
-   - Extraia todos os produtos comprados listados no cupom:
+   - Extraia TODOS os produtos comprados listados no cupom (percorrendo todas as fotos da lista do início ao fim):
      * "name": Nome claro do produto (ex: "Batata Cong Bemb", "Pão Panizan 2006", "Ovos Bastos Ext").
      * "qty": Quantidade numérica (ex: 1, 2, 0.500).
      * "unit": "un", "kg", "g", "l", "pct", "cx".
@@ -372,17 +375,23 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
       type: 'text',
       text:
         urls.length > 1
-          ? `Leia as ${urls.length} fotos deste cupom fiscal longo. Extraia o estabelecimento no topo, todos os produtos de todas as fotos, o valor total e a chave de acesso em JSON.`
+          ? `Abaixo estão as ${urls.length} fotos consecutivas do mesmo cupom longo. Extraia OBRIGATORIAMENTE todos os produtos de TODAS as ${urls.length} imagens (sem parar na 1ª imagem) e consolide no JSON com o valor total:`
           : 'Leia este cupom fiscal / recibo. Extraia o estabelecimento no topo, valor líquido pago, data/hora, produtos e a chave de acesso fiscal em JSON.',
     },
   ]
 
-  for (const url of urls) {
+  urls.forEach((url, idx) => {
+    if (urls.length > 1) {
+      userContent.push({
+        type: 'text',
+        text: `--- [FOTO ${idx + 1} DE ${urls.length}]: ${idx === 0 ? 'Início do cupom / Cabeçalho e primeiros itens' : idx === urls.length - 1 ? 'Final do cupom / Últimos itens e Rodapé com Valor Total' : 'Continuação da lista de itens comprados'} ---`,
+      })
+    }
     userContent.push({
       type: 'image_url',
       image_url: { url },
     })
-  }
+  })
 
   const userMessages = [
     { role: 'system', content: systemPrompt },
@@ -405,7 +414,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
   if (apiKey && endpoint && visionProvider !== 'vps') {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000)
+      const timeoutId = setTimeout(() => controller.abort(), 40000)
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -425,7 +434,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
           model: visionModel,
           messages: userMessages,
           temperature: 0.1,
-          max_tokens: 1500,
+          max_tokens: 4000,
           response_format: { type: 'json_object' },
         }),
       })
@@ -444,7 +453,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
   // 2. TENTATIVA 2: SERVERLESS PROXY FALLBACK
   if (!rawContent) {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 45000)
+    const timeoutId = setTimeout(() => controller.abort(), 60000)
 
     try {
       const res = await fetch('/api/llm/proxy', {
@@ -458,7 +467,7 @@ ESTRUTURA JSON OBRIGATÓRIA (sem markdown, apenas o JSON puro):
           model: visionModel,
           messages: userMessages,
           temperature: 0.1,
-          max_tokens: 1500,
+          max_tokens: 4000,
           response_format: { type: 'json_object' },
           customUrl: config.customBaseUrl,
         }),
