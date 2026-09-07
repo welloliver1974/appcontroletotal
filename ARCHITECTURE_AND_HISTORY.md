@@ -1297,6 +1297,17 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## ⚡ 72. Pré-carregamento Inteligente em Segundo Plano (`Idle Prefetch`) para Abas Instantâneas (07/09/2026)
+
+* **Contexto & Motivação:**
+  - O usuário relatou que a primeira transição entre abas (ex: Hoje para Despensa ou Finanças) apresentava uma leve latência inicial ao abrir pela primeira vez no navegador antes de normalizar. Isso ocorria porque o React/Vite utiliza *lazy loading* sob demanda para cada rota.
+* **Soluções Implementadas:**
+  1. **Idle Prefetching ([App.tsx](file:///e:/Apps/AppControleTotal/src/app/App.tsx)):**
+     - Adicionado hook com `requestIdleCallback` (com fallback de timeout) que pré-carrega silenciosamente os chunks de todas as 8 abas (`DashboardPage`, `DespensaPage`, `FinancasPage`, `AgendaPage`, `FitPage`, `LifeLogPage`, `ManutencaoPage`, `ViagensPage`) assim que a tela inicial conclui seu carregamento e a thread principal fica ociosa.
+     - O primeiro clique em qualquer aba agora é 100% instantâneo e liso, sem necessidade de esperar o download sob demanda.
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 
