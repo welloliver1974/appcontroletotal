@@ -116,24 +116,25 @@ export function SpendingFormModal({ open, editingItem, onClose, onSubmit }: Spen
               onClick={() => setScannerOpen(true)}
               className="w-full flex items-center justify-between p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15 transition-all text-left group"
             >
-            <div className="flex items-center gap-2.5">
-              <span className="h-8 w-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">
-                <Camera className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-xs font-semibold text-zinc-100 flex items-center gap-1.5">
-                  <span>Escanear Cupom Fiscal com IA</span>
-                  <span className="chip px-1.5 py-0 text-[9px] bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
-                    Otimizado Free Tier
-                  </span>
-                </p>
-                <p className="text-[11px] text-zinc-400">
-                  Tire uma foto para preencher valor, loja e data automaticamente
-                </p>
+              <div className="flex items-center gap-2.5">
+                <span className="h-8 w-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">
+                  <Camera className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-xs font-semibold text-zinc-100 flex items-center gap-1.5">
+                    <span>Escanear Cupom Fiscal com IA</span>
+                    <span className="chip px-1.5 py-0 text-[9px] bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
+                      Otimizado Free Tier
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-zinc-400">
+                    Tire uma foto para preencher valor, loja e data automaticamente
+                  </p>
+                </div>
               </div>
-            </div>
-            <Sparkles className="h-4 w-4 text-emerald-400 opacity-70 group-hover:opacity-100 shrink-0" />
-          </button>
+              <Sparkles className="h-4 w-4 text-emerald-400 opacity-70 group-hover:opacity-100 shrink-0" />
+            </button>
+          )}
 
           {/* Valor */}
           <div className="space-y-1">

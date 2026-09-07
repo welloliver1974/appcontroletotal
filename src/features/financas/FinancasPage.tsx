@@ -29,6 +29,7 @@ import { SpendingFormModal } from './SpendingFormModal'
 import { FixedBillFormModal } from './FixedBillFormModal'
 import { MonthlyReportModal } from './MonthlyReportModal'
 import { SafeToSpendWidget } from '@/features/dashboard/SafeToSpendWidget'
+import type { SpendingItem } from '@/data/types'
 
 const CATEGORY_ICONS: Record<string, { icon: typeof Utensils; color: string; bg: string }> = {
   alimentação: { icon: Utensils, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
