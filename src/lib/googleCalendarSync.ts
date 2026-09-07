@@ -1,7 +1,7 @@
 import { db, supabase, getCurrentUserEmail } from './db'
 import { parseIcalToEvents } from './ical'
 import { enrichEventsWithCompletion } from './eventCompletionStore'
-import { formatLocalIsoDate } from './utils'
+// formatLocalIsoDate removed — no longer needed after simplifying sync logic
 import type { AgendaEvent } from '@/data/types'
 
 export interface GoogleCalendarConfig {
@@ -210,42 +210,12 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
       }
     }
 
-    // Identifica e remove eventos do Google Calendar deste usuário que foram apagados no Google
-    try {
-      const existingEvents = await db.get<AgendaEvent>('events')
-      const incomingGcalIds = new Set(allEvents.map((e) => e.id))
-
-      const now = new Date()
-      const windowStart = formatLocalIsoDate(new Date(now.getFullYear(), now.getMonth() - 2, 1))
-      const windowEnd = formatLocalIsoDate(new Date(now.getFullYear(), now.getMonth() + 6, 0))
-
-      const orphanedGcalEvents = (Array.isArray(existingEvents) ? existingEvents : []).filter(
-        (e) =>
-          typeof e.id === 'string' &&
-          e.id.startsWith(`gcal-${userPrefix}-`) &&
-          e.date >= windowStart &&
-          e.date <= windowEnd &&
-          !incomingGcalIds.has(e.id),
-      )
-
-      for (const orphan of orphanedGcalEvents) {
-        await db.remove('events', orphan.id)
-      }
-    } catch {}
-
-    // Enriquece com status concluído persistido e salva em lote
+    // Enriquece com status concluído persistido e salva em batches para não travar o celular
     const enrichedEvents = enrichEventsWithCompletion(allEvents)
-    await db.upsertMany('events', enrichedEvents)
-
-    // Persiste no Supabase por usuário
-    if (supabase) {
-      void Promise.resolve(
-        supabase.from('app_settings').upsert({
-          id: `events_${currentEmail.toLowerCase().trim()}`,
-          data: enrichedEvents,
-          updated_at: new Date().toISOString(),
-        })
-      ).catch(() => {})
+    const BATCH_SIZE = 100
+    for (let i = 0; i < enrichedEvents.length; i += BATCH_SIZE) {
+      const batch = enrichedEvents.slice(i, i + BATCH_SIZE)
+      await db.upsertMany('events', batch)
     }
 
     const now = new Date().toISOString()

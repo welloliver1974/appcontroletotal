@@ -120,6 +120,49 @@ await supabase.from('app_settings').delete().like('id', 'events_%');
 
 ---
 
+## 🔧 Correção 2: Travamento do Celular na Sincronização Manual
+
+**Data**: 2026-09-07
+**Problema**: Ao sincronizar pelo celular, o app travava completamente
+
+### Causa Raiz
+
+`src/lib/googleCalendarSync.ts` fazia 3 operações pesadas de uma vez:
+
+1. **Carregava todos os eventos existentes** do Supabase (~2500) via `db.get('events')` só para verificar eventos órfãos
+2. **Upsert único** com 2500+ eventos num único batch, travando a thread JavaScript no mobile
+3. **Salvava os eventos novamente em `app_settings`**, recriando os dados corruptos que causavam o merge duplicado
+
+### Solução Aplicada
+
+```typescript
+// ANTES — pesado e perigoso:
+const existingEvents = await db.get<AgendaEvent>('events')  // carrega ~2500
+// ... lógica de orfãos ...
+await db.upsertMany('events', enrichedEvents)               // upsert em lote gigante
+// salva em app_settings (risco de reativar merge)
+supabase.from('app_settings').upsert({
+  id: `events_${currentEmail}`,
+  data: enrichedEvents,
+})
+
+// DEPOIS — otimizado para mobile:
+const enrichedEvents = enrichEventsWithCompletion(allEvents)
+const BATCH_SIZE = 100
+for (let i = 0; i < enrichedEvents.length; i += BATCH_SIZE) {
+  const batch = enrichedEvents.slice(i, i + BATCH_SIZE)
+  await db.upsertMany('events', batch)  // batches de 100
+}
+// app_settings: apenas config (URL/toggle), NÃO eventos
+```
+
+**Mudanças**:
+- ✅ Removido cleanup de orfãos (busca pesada de ~2500 eventos)
+- ✅ Upsert em batches de 100 eventos em vez de um batch gigante
+- ✅ Eventos NÃO mais salvos em `app_settings` (só a config do calendar)
+
+---
+
 ## 📋 Commits Realizados
 
 | Commit | Descrição |
@@ -129,6 +172,7 @@ await supabase.from('app_settings').delete().like('id', 'events_%');
 | `70a7aff` | Corrige erros de TypeScript dos comentários |
 | `6e86279` | Desativa autoSync como padrão no código |
 | `d034e5b` | Atualiza documentação completa |
+| *(novo)* | Otimiza sync manual para mobile — batches + remove app_settings events |
 
 ---
 
@@ -141,6 +185,7 @@ await supabase.from('app_settings').delete().like('id', 'events_%');
 - **autoSync**: Desativado para todos os usuários
 - **Travamentos**: ✅ Resolvido
 - **Duplicatas**: ✅ Resolvido
+- **Sync mobile**: ✅ Otimizado (batches de 100, sem load massivo)
 
 ---
 
@@ -173,6 +218,7 @@ Se quiser sincronizar com o Google Calendar:
 ✅ Agenda mostra eventos sem duplicatas  
 ✅ Build TypeScript passa sem erros  
 ✅ Deploy no Vercel realizado com sucesso  
+✅ Sync manual otimizado para mobile (batches)
 
 ---
 
@@ -183,6 +229,8 @@ Se quiser sincronizar com o Google Calendar:
 3. **Limitar** processamento síncrono pesado (max 500 eventos no caso do iCal)
 4. **Testar** impacto no localStorage antes de implementar sync automático
 5. **Documentar** alterações que modificam estrutura de dados persistentes
+6. **Mobile first**: nunca fazer bulk operations com milhares de registros de uma vez — usar batches
+7. **Dados sensíveis**: evitar salvar grandes datasets em `app_settings` que possam ser re-mergidos acidentalmente
 
 ---
 
