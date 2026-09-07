@@ -19,8 +19,9 @@ export function getGoogleCalendarConfig(): GoogleCalendarConfig {
     if (raw) {
       return JSON.parse(raw)
     }
-  } catch {}
-
+  } catch (err) {
+    console.warn('[GCalConfig] Erro ao restaurar config:', err instanceof Error ? err.message : err)
+  }
   return {
     icalUrl: '',
     autoSync: false,

@@ -5,7 +5,8 @@
  */
 import { getHermesAdvancedConfig } from './hermes'
 import type { DashboardData } from '@/features/dashboard/dashboardData'
-import { calculateVehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
+import type { AgendaEvent, PantryItem, Asset } from '@/data/types'
+import { calculateVehiclePredictiveStats, type VehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
 import { isoOffset, isValidIsoDate, todayStr } from './utils'
 import { fetchCurrentWeather } from './weatherService'
 
@@ -225,12 +226,12 @@ Gere o briefing executivo contextualizado para agora:`
 }
 
 function buildSmartRefinedBriefing(
-  remainingTodayEvents: any[],
-  pastTodayEvents: any[],
-  tomorrowEvents: any[],
-  lowStock: any[],
-  vehicleAlerts: any[],
-  urgentAssets: any[],
+  remainingTodayEvents: AgendaEvent[],
+  pastTodayEvents: AgendaEvent[],
+  tomorrowEvents: AgendaEvent[],
+  lowStock: PantryItem[],
+  vehicleAlerts: Array<{ asset: Asset; stats: VehiclePredictiveStats | null }>,
+  urgentAssets: Asset[],
   totalMonthSpent: number,
   greeting: string,
   currentHour: number,

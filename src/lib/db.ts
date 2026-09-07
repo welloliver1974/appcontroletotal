@@ -89,7 +89,10 @@ export function getCurrentUserEmail(): string | null {
       const parsed = JSON.parse(raw)
       return parsed?.state?.userEmail || null
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[db] Auth fallback:', err instanceof Error ? err.message : err)
+    return null
+  }
   return null
 }
 
