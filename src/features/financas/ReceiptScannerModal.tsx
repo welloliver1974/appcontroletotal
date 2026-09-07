@@ -185,7 +185,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
         applyQrResult(qr)
       } else {
         // Fallback: If QR couldn't be decoded, run AI vision on the image
-        const compressed = await compressImageForOcr(file, 1800, 0.88)
+        const compressed = await compressImageForOcr(file, 2200, 0.92)
         const photoItem: CapturedReceiptPhoto = {
           id: `photo-${Date.now()}`,
           file,
@@ -237,7 +237,7 @@ export function ReceiptScannerModal({ open, onClose, onApply }: ReceiptScannerMo
 
     setErrorMsg(null)
     try {
-      const compressed = await compressImageForOcr(file, 1800, 0.88)
+      const compressed = await compressImageForOcr(file, 2200, 0.92)
       const newPhoto: CapturedReceiptPhoto = {
         id: `photo-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         file,

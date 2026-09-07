@@ -1242,6 +1242,10 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
   2. **Consolidação Multimodal na IA ([receiptScanner.ts](file:///e:/Apps/AppControleTotal/src/lib/receiptScanner.ts)):**
      - `parseReceiptWithVision` atualizado para receber arrays de imagens (`compressedDataUrls: string | string[]`).
      - Prompt especializado para orientar o modelo de visão a unificar a lista contínua de produtos, remover sobreposições acidentais na divisão das fotos e extrair o valor líquido total do rodapé.
+     - Limite de resposta aumentado para 4.000 tokens para suportar notas fiscais com mais de 60 produtos.
+  3. **Refinamento de Nitidez e Desabreviação de Produtos ([imageCompressor.ts](file:///e:/Apps/AppControleTotal/src/lib/imageCompressor.ts) & [receiptScanner.ts](file:///e:/Apps/AppControleTotal/src/lib/receiptScanner.ts)):**
+     - Resolução do compressor de imagem elevada para 2200px (qualidade 0.92), garantindo nitidez cristalina em casas decimais de peso (ex: `0.485 kg`) e multiplicadores unitários (ex: `3 UN x 4.50`).
+     - Prompt calibrado para desabreviação comercial automática em português e limpeza de códigos de barras / NCM anexados aos nomes.
 
 ---
 

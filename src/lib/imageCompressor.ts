@@ -15,8 +15,8 @@ export interface CompressionResult {
 
 export async function compressImageForOcr(
   file: File | Blob,
-  maxDimension = 1280,
-  quality = 0.85,
+  maxDimension = 2200,
+  quality = 0.92,
 ): Promise<CompressionResult> {
   const originalSizeKb = Math.round(file.size / 1024)
 

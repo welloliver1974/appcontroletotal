@@ -340,13 +340,24 @@ REGRAS DE EXTRAÇÃO:
 4. DATA E HORA:
    - Data no formato ISO "YYYY-MM-DD" e Hora "HH:MM" (ex: "2026-08-15" e "19:15").
 
-5. ITENS / PRODUTOS (detailedItems):
+5. ITENS / PRODUTOS (detailedItems) - LEITURA RIGOROSA:
    - Extraia TODOS os produtos comprados listados no cupom (percorrendo todas as fotos da lista do início ao fim):
-     * "name": Nome claro do produto (ex: "Batata Cong Bemb", "Pão Panizan 2006", "Ovos Bastos Ext").
-     * "qty": Quantidade numérica (ex: 1, 2, 0.500).
-     * "unit": "un", "kg", "g", "l", "pct", "cx".
-     * "unitPrice": Preço unitário float (ex: 18.99).
-     * "totalPrice": Preço total do item float (ex: 18.99).
+     
+     * "name": Nome limpo, compreensível e legível em português.
+       - Desabrevie termos comuns de supermercado (ex: "LEITE UHT INT PIRACANJUBA 1L" ➔ "Leite Piracanjuba Integral 1L", "BAT CONG BEMB 1KG" ➔ "Batata Congelada Bem Brasil 1kg", "ARROZ T1 CAMIL 5KG" ➔ "Arroz Camil Tipo 1 5kg", "MACA GALA NAC KG" ➔ "Maçã Gala Nacional", "REFRIG COCA COLA 2L" ➔ "Refrigerante Coca-Cola 2L").
+       - Remova códigos numéricos de barras, NCM, CFOP, índices "001", "002" e referências fiscais grudadas no nome.
+     
+     * "qty": Quantidade numérica real e precisa.
+       - MULTIPLICADOR DE UNIDADES: Se o cupom tiver "2 UN x 6,50 = 13,00" ou "3 x 4,99" ou "QTD: 3", extraia "qty": 2 ou 3 (NUNCA coloque 1 quando houver multiplicador de quantidade).
+       - PRODUTOS POR PESO (KG/G): Em hortifruti, açougue ou frios (ex: "0,485 KG x 32,90 = 15,96"), extraia o peso com decimais "qty": 0.485 (NUNCA arredonde para 1).
+     
+     * "unit": Unidade padrão ("un", "kg", "g", "l", "pct", "cx").
+     
+     * "unitPrice": Preço unitário float (ex: 6.50 ou 32.90).
+     
+     * "totalPrice": Preço total líquido do item float após descontos da linha (ex: 13.00 ou 15.96).
+     
+     * CONSISTÊNCIA MATEMÁTICA: Certifique-se de que (qty × unitPrice) seja compatível com totalPrice.
 
 6. CHAVE DE ACESSO FISCAL SEFAZ (accessKey):
    - Extraia a sequência de 44 dígitos da 'Chave de Acesso' ou 'Consulte pela Chave de Acesso' se presente no cupom (ex: "35260817879943000139650130000291821778634186" sem espaços).
