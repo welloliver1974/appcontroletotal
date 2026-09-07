@@ -132,9 +132,9 @@ export function buildTodayPlan(data: Partial<RawTodayData>, nowRef = new Date())
   const billsDueToday = dueBills.filter((b) => b.dueDay === currentDay)
   const billsOverdue = dueBills.filter((b) => b.dueDay < currentDay)
 
-  // 3. Despensa Crítica (zerada ou vencendo)
+  // 3. Despensa Crítica (zerada ou abaixo do estoque mínimo configurado)
   const expiredPantry = pantry.filter((p) => p.expiresAt && p.expiresAt <= today)
-  const lowStockPantry = pantry.filter((p) => p.qty <= 0 || p.qty <= (p.lowThreshold || 1))
+  const lowStockPantry = pantry.filter((p) => p.qty <= 0 || (p.lowThreshold > 0 && p.qty < p.lowThreshold))
 
   // 4. Manutenção Crítica
   const criticalAssets = assets.filter((a) => {

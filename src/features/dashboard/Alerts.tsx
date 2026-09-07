@@ -60,7 +60,7 @@ function buildAlerts(data: DashboardData): AlertItem[] {
   }
 
   // Agrupamento consolidado de itens de despensa
-  const lowStock = data.pantry.filter((p) => p.qty <= p.lowThreshold)
+  const lowStock = data.pantry.filter((p) => p.qty <= 0 || (p.lowThreshold > 0 && p.qty < p.lowThreshold))
   if (lowStock.length > 0) {
     const names = lowStock.slice(0, 4).map((p) => p.name).join(', ')
     const extra = lowStock.length > 4 ? ` e mais ${lowStock.length - 4}` : ''

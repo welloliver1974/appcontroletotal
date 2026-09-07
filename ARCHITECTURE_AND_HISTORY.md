@@ -1266,6 +1266,37 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## 🥗 70. Nova Regra de Estoque Baixo da Despensa & Eliminação de Falsos Positivos na Aba "Hoje" (07/09/2026)
+
+* **Contexto & Motivação:**
+  - Na aba "Hoje" e no Radar do Dashboard, 16 itens com 1 unidade (ex: 1 pote de margarina, 1 Toddy de 2kg) estavam disparando alertas de atenção/atenção crítica, pois o código utilizava `qty <= (p.lowThreshold || 1)`. Como o fallback padrão era 1, qualquer item com 1 unidade ativa disparava falso positivo de "Estoque Baixo".
+* **Soluções Implementadas:**
+  1. **Regra Inteligente de Alerta ([hojeUtils.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/hojeUtils.ts), [Alerts.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/Alerts.tsx), [QuickShoppingListCard.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/QuickShoppingListCard.tsx)):**
+     - O alerta de estoque baixo agora só é disparado se `qty <= 0` (zerado) OU se `lowThreshold > 0` e estritamente `qty < lowThreshold`.
+     - Itens com 1 unidade que satisfazem a despensa da casa não geram mais alertas indesejados.
+  2. **Utilitário da Despensa ([despensaUtils.ts](file:///e:/Apps/AppControleTotal/src/features/despensa/despensaUtils.ts)):**
+     - Status `OK` padronizado para produtos com estoque positivo dentro do limite mínimo configurado.
+
+---
+
+## 📅 71. Sincronização Automática Segura do Google Calendar (ICS) com Cooldown e Mutex (07/09/2026)
+
+* **Contexto & Motivação:**
+  - A sincronização automática anterior gerava riscos de loops ou duplicação caso disparasse repetidamente em renderizações ou trocas de aba.
+* **Soluções Implementadas:**
+  1. **Motor de Sincronização Segura ([googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts)):**
+     - Criada a função `syncGoogleCalendarSafelyWithCooldown(cooldownMinutes = 30, force = false)`.
+     - **Mutex de Concorrência:** A flag em memória `isSyncingInProgress` impede que duas requisições simultâneas processem o iCal ao mesmo tempo.
+     - **Janela de Cooldown (30 min):** Armazena o timestamp no `localStorage` sob a chave `act.lastGcalSyncTimestamp_{userEmail}`. Mesmo que o usuário mude de abas ou recarregue telas, o sync silencioso só roda se tiverem se passado pelo menos 30 minutos desde a última sincronização com sucesso.
+     - **Deduplicação de Eventos:** Mantém a política de upsert de eventos únicos por ID scoped (`gcal-{email}-{uid}`) sem registrar listas de eventos em `app_settings`.
+  2. **Integração nas Telas ([useHojeData.ts](file:///e:/Apps/AppControleTotal/src/features/hoje/useHojeData.ts) & [AgendaPage.tsx](file:///e:/Apps/AppControleTotal/src/features/agenda/AgendaPage.tsx)):**
+     - Ao abrir o app na aba "Hoje" ou na aba "Agenda", a sincronização de fundo é engatilhada de maneira transparente e segura.
+     - O botão manual "Sincronizar" continua disponível para atualização imediata a qualquer momento.
+  3. **Ponto de Restauração Garantido:**
+     - Tag git `ponto-estavel-agenda-2026-09-07`, arquivo [PONTO_DE_RESTAURACAO.md](file:///e:/Apps/AppControleTotal/PONTO_DE_RESTAURACAO.md) e script de restauração rápida [rollback_ponto_estavel.mjs](file:///e:/Apps/AppControleTotal/rollback_ponto_estavel.mjs).
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 

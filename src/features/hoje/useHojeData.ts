@@ -11,7 +11,7 @@ import type {
   Trip,
 } from '@/data/types'
 import { buildTodayPlan, type RawTodayData, type TodayPlan, todayIsoString } from './hojeUtils'
-// import { getGoogleCalendarConfig, syncGoogleCalendar } from '@/lib/googleCalendarSync'
+import { syncGoogleCalendarSafelyWithCooldown } from '@/lib/googleCalendarSync'
 import {
   enrichEventsWithCompletion,
   restoreCompletedEventsFromDb,
@@ -96,18 +96,12 @@ export function useHojeData(): UseHojeDataResult {
       if (aliveRef.current) void reload()
     })
 
-    // Auto-sync com Google Calendar em background se configurado
-    // DESATIVADO PARA EVITAR DUPLICATAS - user deve sync manualmente se quiser
-    // const config = getGoogleCalendarConfig()
-    // if (config.autoSync && config.icalUrl) {
-    //   syncGoogleCalendar()
-    //     .then((res) => {
-    //       if (res.ok && res.count > 0 && aliveRef.current) {
-    //         void reload()
-    //       }
-    //     })
-    //     .catch(() => {})
-    // }
+    // Sincronização automática silenciosa em background com proteção de 30min de cooldown
+    void syncGoogleCalendarSafelyWithCooldown(30).then((res) => {
+      if (res && res.ok && res.count > 0 && aliveRef.current) {
+        void reload()
+      }
+    }).catch(() => {})
 
     return () => {
       aliveRef.current = false

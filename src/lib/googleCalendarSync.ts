@@ -240,3 +240,57 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
     }
   }
 }
+
+let isSyncingInProgress = false
+
+/**
+ * Sincronização automática protegida com cooldown de tempo e mutex contra concorrência.
+ * Impede loops de renderização e só executa no máximo 1 vez a cada X minutos.
+ */
+export async function syncGoogleCalendarSafelyWithCooldown(
+  cooldownMinutes = 30,
+  force = false,
+): Promise<SyncResult | null> {
+  let config = getGoogleCalendarConfig()
+  if (!config.icalUrl) {
+    config = await restoreGoogleCalendarConfigFromDb()
+  }
+
+  if (!config.icalUrl) return null
+
+  // Se já houver um processo de sincronização em andamento, ignora novas chamadas simultâneas
+  if (isSyncingInProgress) {
+    return null
+  }
+
+  // Se autoSync estiver desligado e não for forçado manualmente, não sincroniza
+  if (!config.autoSync && !force) {
+    return null
+  }
+
+  // Checa a trava de tempo (cooldown) no localStorage
+  const currentEmail = getCurrentUserEmail() || 'welloliver@gmail.com'
+  const lastSyncKey = `act.lastGcalSyncTimestamp_${currentEmail.toLowerCase().trim()}`
+  const lastSyncTime = Number(localStorage.getItem(lastSyncKey) || '0')
+  const now = Date.now()
+  const elapsedMs = now - lastSyncTime
+  const cooldownMs = cooldownMinutes * 60 * 1000
+
+  if (!force && elapsedMs < cooldownMs) {
+    // Ainda dentro da janela de cooldown seguro (já sincronizou recentemente)
+    return null
+  }
+
+  isSyncingInProgress = true
+  try {
+    const result = await syncGoogleCalendar(config.icalUrl)
+    if (result.ok) {
+      localStorage.setItem(lastSyncKey, String(Date.now()))
+    }
+    return result
+  } catch {
+    return null
+  } finally {
+    isSyncingInProgress = false
+  }
+}

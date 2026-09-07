@@ -42,7 +42,7 @@ export function QuickShoppingListCard() {
 
   // Filter items that need attention: low stock OR expiring in 7 days
   const needsAttention = items.filter((item) => {
-    const isLow = item.qty <= item.lowThreshold
+    const isLow = item.qty <= 0 || (item.lowThreshold > 0 && item.qty < item.lowThreshold)
     const isExpiring = item.expiresAt && item.expiresAt <= today
     return isLow || isExpiring
   })

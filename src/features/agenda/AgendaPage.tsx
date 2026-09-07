@@ -13,8 +13,9 @@ import { Badge } from '@/components/ui/primitives'
 import { cn } from '@/lib/utils'
 import type { AgendaEvent, InboxEmail } from '@/data/types'
 import { api } from '@/data/api'
-import { getGoogleCalendarConfig, syncGoogleCalendar } from '@/lib/googleCalendarSync'
+import { getGoogleCalendarConfig, syncGoogleCalendar, syncGoogleCalendarSafelyWithCooldown } from '@/lib/googleCalendarSync'
 import { toast } from '@/stores/toastStore'
+import { useEffect } from 'react'
 
 function AgendaSkeleton() {
   return (
@@ -52,18 +53,14 @@ export function AgendaPage() {
   const [settingsSection, setSettingsSection] = useState<'hermes' | 'calendar' | 'backup' | 'webhook' | 'pwa' | 'theme' | 'notifications'>('calendar')
   const [syncingGcal, setSyncingGcal] = useState(false)
 
-  // Auto-sync Google Calendar on mount if enabled
-  // DESATIVADO PARA EVITAR DUPLICATAS - user deve sync manualmente se quiser
-  // useEffect(() => {
-  //   const config = getGoogleCalendarConfig()
-  //   if (config.autoSync && config.icalUrl) {
-  //     syncGoogleCalendar().then((res) => {
-  //       if (res.ok && res.count > 0) {
-  //         reload()
-  //       }
-  //     }).catch(() => {})
-  //   }
-  // }, [reload])
+  // Auto-sync Google Calendar on mount if enabled (com cooldown de 30min e mutex contra duplicatas)
+  useEffect(() => {
+    void syncGoogleCalendarSafelyWithCooldown(30).then((res) => {
+      if (res && res.ok && res.count > 0) {
+        void reload()
+      }
+    }).catch(() => {})
+  }, [reload])
 
   const handleSyncGoogleCalendar = async () => {
     const config = getGoogleCalendarConfig()
