@@ -53,16 +53,17 @@ export function AgendaPage() {
   const [syncingGcal, setSyncingGcal] = useState(false)
 
   // Auto-sync Google Calendar on mount if enabled
-  useEffect(() => {
-    const config = getGoogleCalendarConfig()
-    if (config.autoSync && config.icalUrl) {
-      syncGoogleCalendar().then((res) => {
-        if (res.ok && res.count > 0) {
-          reload()
-        }
-      }).catch(() => {})
-    }
-  }, [reload])
+  // DESATIVADO PARA EVITAR DUPLICATAS - user deve sync manualmente se quiser
+  // useEffect(() => {
+  //   const config = getGoogleCalendarConfig()
+  //   if (config.autoSync && config.icalUrl) {
+  //     syncGoogleCalendar().then((res) => {
+  //       if (res.ok && res.count > 0) {
+  //         reload()
+  //       }
+  //     }).catch(() => {})
+  //   }
+  // }, [reload])
 
   const handleSyncGoogleCalendar = async () => {
     const config = getGoogleCalendarConfig()
