@@ -18,6 +18,7 @@ import {
   Camera,
   ClipboardPaste,
   Mic,
+  ShoppingBasket,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -1006,6 +1007,39 @@ export function SettingsHermes() {
               </div>
               <span className="text-[10px] text-zinc-400">Voz nativa do aparelho</span>
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* SEÇÃO 6: PREFERÊNCIAS DE CONTEÚDO DO BRIEFING */}
+      <div className="space-y-3 border-t border-zinc-800 pt-4">
+        <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide flex items-center gap-1.5">
+          <ShoppingBasket className="h-3.5 w-3.5 text-emerald-400" />
+          6. Conteúdo do Briefing Executivo (App & Telegram)
+        </h4>
+
+        <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-950/15 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <h5 className="text-xs font-semibold text-zinc-100 flex items-center gap-1.5">
+                <span>Alertas de Despensa & Compras no Briefing</span>
+              </h5>
+              <p className="text-[11px] text-zinc-400 max-w-xl">
+                {config.includePantryAlerts !== false
+                  ? 'Ativo: O Hermes avisa sobre itens baixos no estoque tanto no card do Dashboard quanto no envio do Telegram.'
+                  : 'Desativado: O Hermes foca apenas em Compromissos, Clima, Finanças e Manutenções, sem mencionar itens de compras.'}
+              </p>
+            </div>
+
+            <label className="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
+              <input
+                type="checkbox"
+                checked={config.includePantryAlerts !== false}
+                onChange={(e) => updateConfig({ includePantryAlerts: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
           </div>
         </div>
       </div>

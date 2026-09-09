@@ -10,6 +10,7 @@ import {
   Loader2,
   Moon,
   Send,
+  ShoppingBasket,
   Sun,
 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
@@ -44,6 +45,7 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
   const [morningTime, setMorningTime] = useState(scheduleConfig.morningTime || '07:00')
   const [nightEnabled, setNightEnabled] = useState(scheduleConfig.nightEnabled ?? true)
   const [nightTime, setNightTime] = useState(scheduleConfig.nightTime || '21:30')
+  const [includePantryAlerts, setIncludePantryAlerts] = useState(config.includePantryAlerts !== false)
   const [channel, setChannel] = useState<'telegram' | 'webhook'>(scheduleConfig.channel || 'telegram')
 
   const [botToken, setBotToken] = useState(
@@ -58,11 +60,12 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
 
   const handleSave = () => {
-    // 1. Salva credenciais do Telegram no Hermes config
+    // 1. Salva credenciais do Telegram e preferências no Hermes config
     const updatedHermes = {
       ...config,
       telegramBotToken: botToken.trim(),
       telegramChatId: chatId.trim(),
+      includePantryAlerts,
     }
     saveHermesAdvancedConfig(updatedHermes)
 
@@ -364,6 +367,35 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
               </div>
             </div>
           )}
+        </div>
+
+        {/* 3. Filtro de Conteúdo do Briefing (Despensa & Compras) */}
+        <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-950/15 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                <ShoppingBasket className="h-4 w-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-semibold text-zinc-100">🛒 Alertas de Despensa & Compras</h4>
+                <p className="text-[10px] text-zinc-400">
+                  {includePantryAlerts
+                    ? 'Ativo: Hermes avisa sobre itens baixos no estoque (App & Telegram).'
+                    : 'Desativado: Hermes foca apenas em Agenda, Clima, Finanças e Revisões.'}
+                </p>
+              </div>
+            </div>
+
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includePantryAlerts}
+                onChange={(e) => setIncludePantryAlerts(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
+          </div>
         </div>
 
         {/* Canal de Destino */}

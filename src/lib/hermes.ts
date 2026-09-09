@@ -43,6 +43,7 @@ export interface HermesAdvancedConfig {
   telegramBotToken?: string
   telegramChatId?: string
   enabled: boolean
+  includePantryAlerts?: boolean
 }
 
 export function getDefaultVisionModel(provider: ProviderId): string {
@@ -190,6 +191,7 @@ export function getHermesAdvancedConfig(targetEmail?: string | null): HermesAdva
         telegramBotToken: parsed.telegramBotToken || defaultTelegramToken,
         telegramChatId: parsed.telegramChatId || defaultTelegramChatId,
         enabled: parsed.enabled ?? true,
+        includePantryAlerts: parsed.includePantryAlerts ?? sharedParsed.includePantryAlerts ?? true,
       }
     }
   } catch {}
@@ -211,6 +213,7 @@ export function getHermesAdvancedConfig(targetEmail?: string | null): HermesAdva
     telegramBotToken: defaultTelegramToken,
     telegramChatId: defaultTelegramChatId,
     enabled: true,
+    includePantryAlerts: sharedParsed.includePantryAlerts ?? true,
   }
 }
 
@@ -296,6 +299,7 @@ export async function loadHermesConfigFromCloud(targetEmail?: string | null): Pr
       telegramBotToken: cloudData.telegramBotToken || local.telegramBotToken,
       telegramChatId: cloudData.telegramChatId || local.telegramChatId,
       enabled: cloudData.enabled ?? local.enabled,
+      includePantryAlerts: cloudData.includePantryAlerts ?? local.includePantryAlerts ?? true,
     }
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))

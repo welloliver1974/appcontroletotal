@@ -50,8 +50,11 @@ export async function generateFastAIBriefing(data: DashboardData): Promise<strin
     .filter((e) => e.date === tomorrowIso)
     .sort((a, b) => (a.timeStart || '').localeCompare(b.timeStart || ''))
 
-  // 3. Despensa
-  const lowStock = (data.pantry || []).filter((p) => Number(p.qty || 0) <= Number(p.lowThreshold || 1))
+  // 3. Despensa (respeita a configuração de alertas)
+  const includePantry = config.includePantryAlerts !== false
+  const lowStock = includePantry
+    ? (data.pantry || []).filter((p) => Number(p.qty || 0) <= Number(p.lowThreshold || 1))
+    : []
 
   // 4. Manutenção real (apenas se data explícita estiver cadastrada e for próxima)
   const urgentAssets = (data.assets || []).filter((a) => {
@@ -132,9 +135,9 @@ export async function generateFastAIBriefing(data: DashboardData): Promise<strin
           : 'Agenda livre amanhã'
 
       const pantryText =
-        lowStock.length > 0
+        includePantry && lowStock.length > 0
           ? `${lowStock.length} itens acabando (${lowStock.slice(0, 3).map((i) => i.name).join(', ')})`
-          : 'Despensa 100% em dia'
+          : 'Despensa 100% em dia / sem alertas de compras'
 
       const maintenanceText =
         vehicleAlerts.length > 0 && vehicleAlerts[0].stats
@@ -154,7 +157,7 @@ DIRETRIZES TEMPORAIS E DE CONTEÚDO:
 1. Comece OBRIGATORIAMENTE com a saudação de agora ("${greeting}!").
 2. NUNCA trate compromissos passados antes de ${currentTimeStr} como tarefas pendentes. Se houver compromissos restantes a partir de agora (${currentTimeStr}), mencione-os. Se todos os compromissos de hoje já passaram ou foram concluídos, comente que a pauta do dia foi concluída e direcione a atenção para o restante do período ou para amanhã.
 3. Dê uma visão prévia dos compromissos de AMANHÃ para planejamento antecipado.
-4. Se houver itens em falta na despensa ou alerta real de manutenção/veículo, mencione brevemente.
+4. Se houver itens em falta na despensa informados nos dados, ou alerta real de manutenção/veículo, mencione brevemente. Caso contrário, NÃO mencione compras ou despensa.
 5. Feche com uma frase motivadora ou de bom descanso adequada ao período (${timeContextLabel}).
 6. REGRA CRÍTICA: NUNCA deixe frases incompletas, parênteses sem fechar ou pensamentos cortados. Sempre conclua todas as frases com pontuação final.
 NÃO use marcadores com hífen ou tópicos — escreva em texto corrido e elegante.`

@@ -23,6 +23,7 @@ import { HermesScheduleModal } from './HermesScheduleModal'
 import { toast } from '@/stores/toastStore'
 import { calculateVehiclePredictiveStats } from '@/features/manutencao/predictiveMaint'
 import { isoOffset, todayStr } from '@/lib/utils'
+import { getHermesAdvancedConfig } from '@/lib/hermes'
 
 export function HermesBriefingCard({ data }: { data: DashboardData }) {
   const [briefing, setBriefing] = useState<string | null>(() => {
@@ -92,7 +93,11 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
     .filter((e) => e.date === tomorrowIso)
     .sort((a, b) => (a.timeStart || '').localeCompare(b.timeStart || ''))
 
-  const lowStock = (data.pantry || []).filter((p) => Number(p.qty || 0) <= Number(p.lowThreshold || 1))
+  const hermesConfig = getHermesAdvancedConfig()
+  const includePantry = hermesConfig.includePantryAlerts !== false
+  const lowStock = includePantry
+    ? (data.pantry || []).filter((p) => Number(p.qty || 0) <= Number(p.lowThreshold || 1))
+    : []
 
   // Manutenções com data explícita próxima
   const urgentAssets = (data.assets || []).filter((a) => {
@@ -143,7 +148,7 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
       )
     }
 
-    if (lowStock.length > 0) {
+    if (includePantry && lowStock.length > 0) {
       sentences.push(
         `A despensa possui ${lowStock.length} item(ns) para comprar (${lowStock.slice(0, 2).map((i) => i.name).join(', ')}).`,
       )
@@ -187,11 +192,11 @@ export function HermesBriefingCard({ data }: { data: DashboardData }) {
       tomorrowEvents.length > 0
         ? tomorrowEvents.map((e) => `• ${e.timeStart ? `${e.timeStart} - ` : ''}${e.title}${e.location ? ` (${e.location})` : ''}`).join('\n')
         : `• Agenda de amanhã livre.`,
-      ``,
-      `🛒 *Lista de Compras & Despensa (${lowStock.length} pendentes):*`,
-      lowStock.length > 0
-        ? lowStock.map((i) => `• ${i.name} (Comprar: ${i.lowThreshold} ${i.unit})`).join('\n')
-        : `• Tudo abastecido em casa!`,
+      ...(includePantry && lowStock.length > 0 ? [
+        ``,
+        `🛒 *Lista de Compras & Despensa (${lowStock.length} pendentes):*`,
+        lowStock.map((i) => `• ${i.name} (Comprar: ${i.lowThreshold} ${i.unit})`).join('\n'),
+      ] : []),
       ``,
       `🚀 _Gerado automaticamente pelo Life OS Hub_`,
     ]

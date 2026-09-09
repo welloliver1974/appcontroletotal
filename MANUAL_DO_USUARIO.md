@@ -33,7 +33,7 @@ O Dashboard foi projetado com foco em **lançamentos em 1 toque**, eliminando a 
 * **`🔊 Ouvir / ⏹️ Parar`**: Narra o resumo matinal e o passo a passo de receitas com voz natural em português brasileiro.
 * **`👩 / 👨 Seletor Rápido de Voz`**: Alterne entre a voz feminina clara/ágil (`👩`) e masculina encorpada/grave (`👨`) com apenas 1 clique.
 * **`🌤️ Clima em Tempo Real`**: Exibe a temperatura e condição climática da sua cidade (Open-Meteo).
-* **`⏰ Agendar`**: Configura os horários matinal (ex: `07:00`) e debriefing noturno (ex: `21:30`), com disparos autônomos 24/7 direto no seu Telegram Bot.
+* **`⏰ Agendar & Preferências`**: Configura os horários matinal (ex: `07:00`) e noturno (`21:30`) via Telegram, além de permitir **ativar/desativar alertas de despensa no briefing** com 1 clique (para evitar mensagens repetitivas de estoque quando preferir foco total em agenda e finanças).
 * **`🔄 Atualizar`**: Regenera a síntese executiva do Hermes instantaneamente com IA.
 
 ### 📱 Abas Rápidas de Navegação no Celular:
