@@ -14,6 +14,7 @@ export interface ScheduleConfig {
   morningTime?: string // "07:00"
   nightEnabled?: boolean
   nightTime?: string // "21:30"
+  includePantryAlerts?: boolean
   channel?: 'telegram' | 'webhook'
   telegramBotToken?: string
   telegramChatId?: string
@@ -41,6 +42,7 @@ export function getHermesScheduleConfig(): ScheduleConfig {
         morningTime: parsed.morningTime || '07:00',
         nightEnabled: parsed.nightEnabled ?? true,
         nightTime: parsed.nightTime || '21:30',
+        includePantryAlerts: parsed.includePantryAlerts ?? (hermesConfig.includePantryAlerts !== false),
         channel: parsed.channel || 'telegram',
         telegramBotToken: (parsed.telegramBotToken || hermesConfig.telegramBotToken || '').trim(),
         telegramChatId: (parsed.telegramChatId || hermesConfig.telegramChatId || '').trim(),
@@ -54,6 +56,7 @@ export function getHermesScheduleConfig(): ScheduleConfig {
     morningTime: '07:00',
     nightEnabled: true,
     nightTime: '21:30',
+    includePantryAlerts: hermesConfig.includePantryAlerts !== false,
     channel: 'telegram',
     telegramBotToken: hermesConfig.telegramBotToken || '',
     telegramChatId: hermesConfig.telegramChatId || '',

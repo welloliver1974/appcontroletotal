@@ -76,6 +76,7 @@ export function HermesScheduleModal({ open, onClose, briefingText }: HermesSched
       morningTime,
       nightEnabled,
       nightTime,
+      includePantryAlerts,
       channel,
       telegramBotToken: botToken.trim(),
       telegramChatId: chatId.trim(),

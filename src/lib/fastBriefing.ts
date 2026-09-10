@@ -137,7 +137,9 @@ export async function generateFastAIBriefing(data: DashboardData): Promise<strin
       const pantryText =
         includePantry && lowStock.length > 0
           ? `${lowStock.length} itens acabando (${lowStock.slice(0, 3).map((i) => i.name).join(', ')})`
-          : 'Despensa 100% em dia / sem alertas de compras'
+          : includePantry
+            ? 'Despensa 100% em dia / sem alertas de compras'
+            : 'Alertas de despensa desativados pelo usuário (NÃO mencione despensa, compras ou mantimentos sob nenhuma hipótese).'
 
       const maintenanceText =
         vehicleAlerts.length > 0 && vehicleAlerts[0].stats
@@ -157,7 +159,11 @@ DIRETRIZES TEMPORAIS E DE CONTEÚDO:
 1. Comece OBRIGATORIAMENTE com a saudação de agora ("${greeting}!").
 2. NUNCA trate compromissos passados antes de ${currentTimeStr} como tarefas pendentes. Se houver compromissos restantes a partir de agora (${currentTimeStr}), mencione-os. Se todos os compromissos de hoje já passaram ou foram concluídos, comente que a pauta do dia foi concluída e direcione a atenção para o restante do período ou para amanhã.
 3. Dê uma visão prévia dos compromissos de AMANHÃ para planejamento antecipado.
-4. Se houver itens em falta na despensa informados nos dados, ou alerta real de manutenção/veículo, mencione brevemente. Caso contrário, NÃO mencione compras ou despensa.
+4. ${
+  includePantry
+    ? 'Se houver itens em falta na despensa informados nos dados, ou alerta real de manutenção/veículo, mencione brevemente. Caso contrário, NÃO mencione compras ou despensa.'
+    : 'O usuário desativou notificações de despensa/compras. NUNCA mencione despensa, compras ou mantimentos sob nenhuma hipótese.'
+}
 5. Feche com uma frase motivadora ou de bom descanso adequada ao período (${timeContextLabel}).
 6. REGRA CRÍTICA: NUNCA deixe frases incompletas, parênteses sem fechar ou pensamentos cortados. Sempre conclua todas as frases com pontuação final.
 NÃO use marcadores com hífen ou tópicos — escreva em texto corrido e elegante.`
@@ -167,8 +173,7 @@ NÃO use marcadores com hífen ou tópicos — escreva em texto corrido e elegan
 - Agenda Hoje (${timeContextLabel}): ${todayText}
 - Agenda Amanhã: ${tomorrowText}
 - Finanças do Mês: R$ ${totalMonthSpent.toFixed(2)} gastos registrados (Cota Segura: ${safeToSpendText})
-- Despensa: ${pantryText}
-- Manutenção: ${maintenanceText}
+${includePantry ? `- Despensa: ${pantryText}\n` : ''}- Manutenção: ${maintenanceText}
 
 Gere o briefing executivo contextualizado para agora:`
 
@@ -220,6 +225,7 @@ Gere o briefing executivo contextualizado para agora:`
     pastTodayEvents,
     tomorrowEvents,
     lowStock,
+    includePantry,
     vehicleAlerts,
     urgentAssets,
     totalMonthSpent,
@@ -233,6 +239,7 @@ function buildSmartRefinedBriefing(
   pastTodayEvents: AgendaEvent[],
   tomorrowEvents: AgendaEvent[],
   lowStock: PantryItem[],
+  includePantry: boolean,
   vehicleAlerts: Array<{ asset: Asset; stats: VehiclePredictiveStats | null }>,
   urgentAssets: Asset[],
   totalMonthSpent: number,
@@ -265,7 +272,7 @@ function buildSmartRefinedBriefing(
   }
 
   // 3. Despensa / Manutenção / Finanças
-  if (lowStock.length > 0) {
+  if (includePantry && lowStock.length > 0) {
     sentences.push(
       `Na despensa, vale a pena repor ${lowStock.length} item(ns) em baixa (${lowStock.slice(0, 2).map((i) => i.name).join(', ')}).`,
     )
@@ -274,9 +281,9 @@ function buildSmartRefinedBriefing(
   } else if (urgentAssets.length > 0) {
     sentences.push(`Fique atento à revisão de ${urgentAssets[0].name}.`)
   } else if (totalMonthSpent > 0) {
-    sentences.push(`Seus gastos acumulados no mês somam R$ ${totalMonthSpent.toFixed(2)}, com despensa e ativos em dia.`)
+    sentences.push(`Seus gastos acumulados no mês somam R$ ${totalMonthSpent.toFixed(2)}${includePantry ? ', com despensa e ativos em dia' : ', com finanças e ativos em dia'}.`)
   } else {
-    sentences.push('Sua despensa, veículos e ativos estão 100% organizados e em dia.')
+    sentences.push(includePantry ? 'Sua despensa, veículos e ativos estão 100% organizados e em dia.' : 'Seus veículos e ativos estão 100% organizados e em dia.')
   }
 
   // 4. Fechamento

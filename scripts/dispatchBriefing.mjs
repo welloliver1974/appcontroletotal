@@ -35,6 +35,7 @@ const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPA
 let TELEGRAM_BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || '8638107104:AAHd2IYOmLRB1kOl3Rcr0TFnNvlIo0-UjDk'
 let TELEGRAM_CHAT_ID = process.env.VITE_TELEGRAM_CHAT_ID || process.env.TELEGRAM_CHAT_ID || '497789001'
 let GROQ_API_KEY = process.env.VITE_GROQ_API_KEY || process.env.GROQ_API_KEY || process.env.VITE_LLM_API_KEY || process.env.LLM_API_KEY
+let INCLUDE_PANTRY_ALERTS = true
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error('[HermesCron] Erro: SUPABASE_URL ou SUPABASE_ANON_KEY não fornecidos.')
@@ -58,7 +59,10 @@ async function syncCloudSettings() {
       if (cfg.telegramChatId) TELEGRAM_CHAT_ID = cfg.telegramChatId.trim()
       if (cfg.groqApiKey) GROQ_API_KEY = cfg.groqApiKey.trim()
       else if (cfg.llmApiKey && cfg.provider === 'groq') GROQ_API_KEY = cfg.llmApiKey.trim()
-      console.log('[HermesCron] Configurações sincronizadas da nuvem com sucesso.')
+      if (cfg.includePantryAlerts !== undefined) {
+        INCLUDE_PANTRY_ALERTS = Boolean(cfg.includePantryAlerts)
+      }
+      console.log(`[HermesCron] Configurações sincronizadas da nuvem com sucesso (includePantryAlerts: ${INCLUDE_PANTRY_ALERTS}).`)
     }
   } catch (err) {
     console.warn('[HermesCron] Não foi possível ler app_settings, usando padrões:', err.message)
@@ -77,7 +81,7 @@ async function fetchDashboardData() {
     { data: assets }
   ] = await Promise.all([
     supabase.from('events').select('*').gte('date', todayIso).lte('date', tomorrowIso),
-    supabase.from('pantry').select('*'),
+    INCLUDE_PANTRY_ALERTS ? supabase.from('pantry').select('*') : Promise.resolve({ data: [] }),
     supabase.from('spending').select('*'),
     supabase.from('assets').select('*')
   ])
@@ -85,7 +89,7 @@ async function fetchDashboardData() {
   return {
     todayEvents: (events || []).filter(e => e.date === todayIso),
     tomorrowEvents: (events || []).filter(e => e.date === tomorrowIso),
-    lowPantry: (pantry || []).filter(p => Number(p.qty || 0) <= Number(p.lowThreshold || 1)),
+    lowPantry: INCLUDE_PANTRY_ALERTS ? (pantry || []).filter(p => Number(p.qty || 0) <= Number(p.lowThreshold || 1)) : [],
     spending: spending || [],
     assets: assets || []
   }
@@ -96,11 +100,15 @@ async function generateAIBriefing(data) {
   const dateFormatted = now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
 
   if (mode === 'night') {
+    const pantryDirective = INCLUDE_PANTRY_ALERTS
+      ? `- Itens na Despensa a Comprar: ${data.lowPantry.length} itens`
+      : `- Alertas de Despensa: DESATIVADOS pelo usuário (NÃO mencione despensa, compras ou mantimentos)`
+
     const prompt = `Você é o HERMES, copiloto executivo do Life OS Hub.
 Escreva um fechamento noturno carinhoso, inteligente e relaxante (3 frases) para o usuário descansar a mente.
 - Compromissos de Hoje: ${data.todayEvents.length} atividades
 - Amanhã: ${data.tomorrowEvents.length > 0 ? data.tomorrowEvents.map(e => e.title).join(', ') : 'Agenda livre'}
-- Itens na Despensa a Comprar: ${data.lowPantry.length} itens
+${pantryDirective}
 
 Gere o Debriefing Noturno:`
 
@@ -150,11 +158,15 @@ Gere o Debriefing Noturno:`
   }
 
   // Morning Mode
+  const pantryDirective = INCLUDE_PANTRY_ALERTS
+    ? `- Despensa em baixa (${data.lowPantry.length}): ${data.lowPantry.slice(0, 3).map(p => p.name).join(', ') || 'Tudo abastecido'}`
+    : `- Alertas de Despensa & Compras: DESATIVADOS pelo usuário (NÃO mencione despensa, compras ou mantimentos sob nenhuma hipótese)`
+
   const prompt = `Você é o HERMES, copiloto executivo do Life OS Hub.
 Escreva um briefing matinal estimulante, elegante e direto ao ponto (3 a 4 frases) para o usuário começar o dia com clareza.
 - Compromissos de Hoje (${data.todayEvents.length}): ${data.todayEvents.map(e => `${e.title}${e.timeStart ? ` às ${e.timeStart}` : ''}`).join(', ') || 'Nenhum'}
 - Compromissos de Amanhã (${data.tomorrowEvents.length}): ${data.tomorrowEvents.map(e => e.title).join(', ') || 'Agenda livre'}
-- Despensa em baixa (${data.lowPantry.length}): ${data.lowPantry.slice(0, 3).map(p => p.name).join(', ') || 'Tudo abastecido'}
+${pantryDirective}
 
 Gere o Briefing Matinal:`
 
@@ -184,10 +196,13 @@ Gere o Briefing Matinal:`
   }
 
   if (!aiText) {
-    aiText = `Bom dia! Para hoje, você tem ${data.todayEvents.length > 0 ? `${data.todayEvents.length} compromisso(s) agendado(s)` : 'a agenda livre'}. ${data.lowPantry.length > 0 ? `Na despensa, ${data.lowPantry.length} item(ns) precisam de reposição.` : 'Sua despensa está em ordem.'} Tenha um dia produtivo e de grandes realizações!`
+    const pantrySentence = INCLUDE_PANTRY_ALERTS
+      ? (data.lowPantry.length > 0 ? ` Na despensa, ${data.lowPantry.length} item(ns) precisam de reposição.` : ' Sua despensa está em ordem.')
+      : ''
+    aiText = `Bom dia! Para hoje, você tem ${data.todayEvents.length > 0 ? `${data.todayEvents.length} compromisso(s) agendado(s)` : 'a agenda livre'}.${pantrySentence} Tenha um dia produtivo e de grandes realizações!`
   }
 
-  return [
+  const messageLines = [
     `☀️ *BOM DIA! RESUMO MATINAL — LIFE OS HUB*`,
     `📅 *Data:* ${dateFormatted}`,
     ``,
@@ -203,14 +218,22 @@ Gere o Briefing Matinal:`
     data.tomorrowEvents.length > 0
       ? data.tomorrowEvents.map(e => `• ${e.timeStart ? `${e.timeStart} - ` : ''}${e.title}`).join('\n')
       : `• Agenda de amanhã livre.`,
-    ``,
-    `🛒 *Despensa & Compras (${data.lowPantry.length} pendentes):*`,
-    data.lowPantry.length > 0
-      ? data.lowPantry.map(i => `• ${i.name} (Comprar: ${i.lowThreshold || 1} ${i.unit || 'un'})`).join('\n')
-      : `• Tudo abastecido em casa!`,
+  ]
+
+  if (INCLUDE_PANTRY_ALERTS && data.lowPantry.length > 0) {
+    messageLines.push(
+      ``,
+      `🛒 *Despensa & Compras (${data.lowPantry.length} pendentes):*`,
+      data.lowPantry.map(i => `• ${i.name} (Comprar: ${i.lowThreshold || 1} ${i.unit || 'un'})`).join('\n')
+    )
+  }
+
+  messageLines.push(
     ``,
     `🚀 _Enviado autonomamente via Hermes 24/7 Cloud_`
-  ].join('\n')
+  )
+
+  return messageLines.join('\n')
 }
 
 async function sendTelegramMessage(text) {
