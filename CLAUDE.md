@@ -86,6 +86,9 @@ api/            # Vercel Serverless Functions
     - 3º card de tendência com curva de humor histórica (1 a 5) baseada no `lifeLog` / Voice Notes e emojis representativos.
 11. **Modo Supermercado com Gestão de Custos & Sincronização com Finanças ([src/features/despensa/SupermarketModeModal.tsx](file:///e:/Apps/AppControleTotal/src/features/despensa/SupermarketModeModal.tsx)):**
     - Cálculo de total previsto vs. subtotal em tempo real do carrinho, ajuste inline de preços e lançamento automático do gasto nas despesas (`spendingEntries`).
+12. **Controle Granular de Alertas de Despensa no Hermes ([scripts/dispatchBriefing.mjs](file:///e:/Apps/AppControleTotal/scripts/dispatchBriefing.mjs) & [src/lib/fastBriefing.ts](file:///e:/Apps/AppControleTotal/src/lib/fastBriefing.ts)):**
+    - Toggle `includePantryAlerts` nas configurações do Hermes sincronizado com a nuvem Supabase (`app_settings`).
+    - Supressão total do bloco `🛒 Despensa & Compras` e das menções de mantimentos nos envios autônomos ao Telegram e briefings.
 
 ## Validação
 

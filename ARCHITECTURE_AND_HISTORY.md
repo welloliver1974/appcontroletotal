@@ -1324,6 +1324,31 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## 🤖 74. Controle Granular de Alertas de Despensa no Hermes Briefing & Cron Autônomo do Telegram (10/09/2026)
+
+* **Contexto & Motivação:**
+  - Foi criado um botão/toggle nas preferências do Hermes (`includePantryAlerts`) para permitir desativar a menção de itens críticos ou faltantes da despensa nos briefings diários.
+  - No entanto, o usuário continuava recebendo mensagens matinais/noturnas no Telegram contendo a seção `🛒 Despensa & Compras` e itens a repor.
+* **Causa Raiz Identificada:**
+  - O valor `includePantryAlerts: false` estava persistido corretamente no Supabase (`app_settings -> hermes_config`).
+  - Contudo, o disparador autônomo em segundo plano ([scripts/dispatchBriefing.mjs](file:///e:/Apps/AppControleTotal/scripts/dispatchBriefing.mjs)), executado diariamente às 07:00 e 21:30 via GitHub Actions Cron (`hermes-cron.yml`) e VPS, não lia o campo `includePantryAlerts` ao sincronizar as configurações da nuvem.
+  - Além disso, o bloco `🛒 Despensa & Compras (${data.lowPantry.length} pendentes)` e as diretivas para a IA Groq estavam inseridos de forma incondicional no script de disparo, e o motor [fastBriefing.ts](file:///e:/Apps/AppControleTotal/src/lib/fastBriefing.ts) mantinha no prompt do modelo menção de despensa, induzindo o assistente a comentar sobre compras.
+* **Soluções Implementadas:**
+  1. **Sincronização Cloud no Cron do Telegram ([scripts/dispatchBriefing.mjs](file:///e:/Apps/AppControleTotal/scripts/dispatchBriefing.mjs)):**
+     - Leitura de `includePantryAlerts` de `app_settings` no boot do script.
+     - Se `includePantryAlerts === false`:
+       - Omite totalmente a consulta ao banco Supabase para a tabela `pantry`.
+       - Injeta diretiva estrita no prompt do LLM: *`Alertas de Despensa & Compras: DESATIVADOS pelo usuário (NÃO mencione despensa, compras ou mantimentos sob nenhuma hipótese)`*.
+       - O bloco `🛒 Despensa & Compras` é 100% suprimido da mensagem final entregue ao Telegram.
+       - Mensagem de contingência (caso a API falhe) também não cita reposições de despensa.
+  2. **Silenciamento no Motor Geral de Briefings ([fastBriefing.ts](file:///e:/Apps/AppControleTotal/src/lib/fastBriefing.ts)):**
+     - Omite o tópico `- Despensa: ...` do `userPrompt` quando os alertas de despensa estiverem desativados.
+     - Fallback offline `buildSmartRefinedBriefing` ajustado para focar estritamente em compromissos, finanças e veículos.
+  3. **Integração no Agendador e Modal ([hermesScheduler.ts](file:///e:/Apps/AppControleTotal/src/lib/hermesScheduler.ts) & [HermesScheduleModal.tsx](file:///e:/Apps/AppControleTotal/src/features/dashboard/HermesScheduleModal.tsx)):**
+     - Propagação de `includePantryAlerts` no modelo `ScheduleConfig` e persistência no `localStorage` sob `act.hermes.autoBriefing`.
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 
