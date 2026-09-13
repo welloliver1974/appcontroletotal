@@ -258,11 +258,40 @@ export const db = {
         return trips as T[]
       }
 
-      const { data, error } = await supabase.from(tableName(collection)).select('*')
-      if (error) throw error
-      const parsed = fromSupabaseRow<T[]>(data ?? [])
+      let rawData: unknown[] = []
+      if (collection === 'events') {
+        const currentEmail = getCurrentUserEmail()
+        if (currentEmail) {
+          const isPrimary = isPrimaryUser(currentEmail)
+          let page = 0
+          const pageSize = 1000
+          while (true) {
+            let q = supabase.from('events').select('*')
+            if (isPrimary) {
+              q = q.or(`user_email.eq.${currentEmail},user_email.is.null`)
+            } else {
+              q = q.eq('user_email', currentEmail)
+            }
+            const { data, error } = await q.range(page * pageSize, (page + 1) * pageSize - 1)
+            if (error) throw error
+            if (!data || data.length === 0) break
+            rawData.push(...data)
+            if (data.length < pageSize) break
+            page++
+          }
+        } else {
+          const { data, error } = await supabase.from('events').select('*')
+          if (error) throw error
+          rawData = data ?? []
+        }
+      } else {
+        const { data, error } = await supabase.from(tableName(collection)).select('*')
+        if (error) throw error
+        rawData = data ?? []
+      }
+
+      const parsed = fromSupabaseRow<T[]>(rawData)
       const filtered = filterRowsForUser<T>(collection, parsed)
-      // REMOVIDO: lógica de merge com app_settings que causava duplicatas
       if (collection === 'events') {
         return enrichEventsWithCompletion(filtered as unknown as AgendaEvent[]) as unknown as T[]
       }

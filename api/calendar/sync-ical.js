@@ -86,7 +86,11 @@ function unfoldIcal(raw) {
   return unfolded;
 }
 
-function parseIcalText(icalText) {
+function parseIcalText(icalText, userEmail) {
+  const isSilvia = (userEmail || '').toLowerCase().includes('silvinha') || (userEmail || '').toLowerCase().includes('silvia');
+  const userPrefix = isSilvia ? 'silvia' : 'well';
+  const effectiveEmail = userEmail || (isSilvia ? 'silvinhamsa@gmail.com' : 'welloliver@gmail.com');
+
   const lines = unfoldIcal(icalText);
   const rawEvents = [];
   let inEvent = false;
@@ -136,9 +140,11 @@ function parseIcalText(icalText) {
   for (const item of rawEvents) {
     const category = inferCategory(item.title, item.location);
     const sanitizedUid = item.uid.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const baseId = item.uid.startsWith('gcal-')
+    const baseId = item.uid.startsWith(`gcal-${userPrefix}-`)
       ? item.uid
-      : `gcal-${sanitizedUid}-${item.start.date}-${item.start.time.replace(':', '')}`;
+      : (item.uid.startsWith('gcal-')
+          ? `gcal-${userPrefix}-${item.uid.slice(5)}`
+          : `gcal-${userPrefix}-${sanitizedUid}-${item.start.date}-${item.start.time.replace(':', '')}`);
 
     if (!item.rrule) {
       if (!seenIds.has(baseId)) {
@@ -151,6 +157,7 @@ function parseIcalText(icalText) {
           time_end: item.end ? item.end.time : null,
           category,
           location: item.location,
+          user_email: effectiveEmail,
           created_at: nowIso(),
           updated_at: nowIso(),
         });
@@ -191,6 +198,7 @@ function parseIcalText(icalText) {
             time_end: item.end ? item.end.time : null,
             category,
             location: item.location,
+            user_email: effectiveEmail,
             created_at: nowIso(),
             updated_at: nowIso(),
           });
@@ -220,7 +228,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { icalUrl } = req.body || {};
+  const { icalUrl, userEmail } = req.body || {};
   if (!icalUrl || typeof icalUrl !== 'string' || !icalUrl.startsWith('http')) {
     return res.status(400).json({ error: 'URL do iCal (.ics) inválida ou não informada.' });
   }
@@ -239,7 +247,7 @@ export default async function handler(req, res) {
     }
 
     const icalText = await fetchRes.text();
-    const parsedEvents = parseIcalText(icalText);
+    const parsedEvents = parseIcalText(icalText, userEmail);
 
     const SUPABASE_URL =
       process.env.SUPABASE_URL ||
@@ -276,6 +284,7 @@ export default async function handler(req, res) {
         timeEnd: e.time_end,
         category: e.category,
         location: e.location,
+        userEmail: e.user_email,
       })),
       syncedAt: nowIso(),
     });

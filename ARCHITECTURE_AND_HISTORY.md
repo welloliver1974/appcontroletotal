@@ -1349,6 +1349,34 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## 📅 75. Multi-Tenancy & Isolamento Total de Contas no Google Calendar (Silvia & Wellington) (13/09/2026)
+
+* **Contexto & Diagnóstico:**
+  - O usuário configurou a URL iCal (.ics) do Google Calendar da Silvia (`silvinhamsa@gmail.com`) e o sincronizador baixou os 538 compromissos com sucesso, mas nada era exibido na tela dela na aba Agenda ou Hoje.
+  - **Causas Raízes Identificadas:**
+    1. **Ausência da coluna `user_email` no Supabase:** A tabela `events` no PostgreSQL não possuía o campo `user_email`. Ao tentar salvar eventos com `db.upsertMany('events', ...)`, o Supabase retornava o erro `code: '42703', message: 'column events.user_email does not exist'`.
+    2. **Filtro de isolamento de usuário em `filterRowsForUser` ([db.ts](file:///e:/Apps/AppControleTotal/src/lib/db.ts)):** Ao ler `events`, o app fazia `SELECT * FROM events`. Como a coluna não existia, `row.user_email` vinha indefinido para todas as linhas. Por regra de segurança, registros sem usuário eram atribuídos exclusivamente à conta principal (`welloliver@gmail.com`), descartando 100% dos eventos para a conta da Silvia (`isPrimary = false`).
+    3. **Limite do PostgREST:** O Supabase possui teto de 1.000 registros por query sem paginação. Com 2.550 eventos acumulados, uma consulta sem filtro por usuário truncava os dados.
+* **Soluções Implementadas:**
+  1. **Migração de Banco de Dados ([20260913000000_personal_tables_user_email.sql](file:///e:/Apps/AppControleTotal/supabase/migrations/20260913000000_personal_tables_user_email.sql)):**
+     - Executado via Supabase CLI (`supabase db query --linked`):
+       ```sql
+       ALTER TABLE IF EXISTS events ADD COLUMN IF NOT EXISTS user_email TEXT;
+       CREATE INDEX IF NOT EXISTS idx_events_user_email ON events(user_email);
+       ```
+     - Adicionado também para as demais coleções pessoais (`life_log`, `reading`, `media`, `facts`).
+  2. **Migração dos Eventos da Silvia:**
+     - Os 538 compromissos da Silvia foram migrados com sucesso para a tabela `events` com `user_email = 'silvinhamsa@gmail.com'`.
+  3. **Consulta Filtrada e Paginada em Tempo de Execução ([db.ts](file:///e:/Apps/AppControleTotal/src/lib/db.ts)):**
+     - Para a Silvia: a consulta aplica `query.eq('user_email', currentEmail)`. Retorna instantaneamente os 538 eventos dela sem transferir dados do Wellington.
+     - Para o Wellington: aplica `query.or('user_email.eq.welloliver@gmail.com,user_email.is.null')` com loop paginado de 1.000 em 1.000, carregando todos os 2.550 eventos sem truncamento.
+     - Dupla checagem em memória via `filterRowsForUser` garante zero vazamento cruzado entre as contas.
+  4. **Propagação de Identidade no Sincronizador ([googleCalendarSync.ts](file:///e:/Apps/AppControleTotal/src/lib/googleCalendarSync.ts) & [sync-ical.js](file:///e:/Apps/AppControleTotal/api/calendar/sync-ical.js)):**
+     - `/api/calendar/sync-ical` agora recebe `userEmail`, gerando IDs com prefixo isolado (`gcal-silvia-...` e `gcal-well-...`) e salvando `user_email` diretamente na persistência do Supabase.
+     - Snapshot de contingência salvo na tabela `app_settings` (`events_${email}`).
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 

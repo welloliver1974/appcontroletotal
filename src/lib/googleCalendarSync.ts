@@ -88,7 +88,7 @@ export interface SyncResult {
 /**
  * Helper to fetch and parse a single iCal URL (with proxies & cache buster)
  */
-async function fetchAndParseSingleIcal(icalUrl: string): Promise<AgendaEvent[]> {
+async function fetchAndParseSingleIcal(icalUrl: string, userEmail?: string): Promise<AgendaEvent[]> {
   const cacheBuster = `_cb=${Date.now()}`
   const separator = icalUrl.includes('?') ? '&' : '?'
   const freshIcalUrl = `${icalUrl}${separator}${cacheBuster}`
@@ -98,7 +98,7 @@ async function fetchAndParseSingleIcal(icalUrl: string): Promise<AgendaEvent[]> 
     const res = await fetch('/api/calendar/sync-ical', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-      body: JSON.stringify({ icalUrl: freshIcalUrl }),
+      body: JSON.stringify({ icalUrl: freshIcalUrl, userEmail }),
     })
 
     if (res.ok) {
@@ -175,12 +175,12 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
     const allEvents: AgendaEvent[] = []
     const seenMap = new Map<string, AgendaEvent>()
 
-    // Baixa e processa cada URL em paralelo
-    const results = await Promise.all(urlList.map((url) => fetchAndParseSingleIcal(url)))
-
     const currentEmail = getCurrentUserEmail() || 'welloliver@gmail.com'
-    const isSilvia = currentEmail.toLowerCase().includes('silvinha')
+    const isSilvia = currentEmail.toLowerCase().includes('silvinha') || currentEmail.toLowerCase().includes('silvia')
     const userPrefix = isSilvia ? 'silvia' : 'well'
+
+    // Baixa e processa cada URL em paralelo
+    const results = await Promise.all(urlList.map((url) => fetchAndParseSingleIcal(url, currentEmail)))
 
     for (const eventList of results) {
       for (const ev of eventList) {
@@ -226,6 +226,17 @@ export async function syncGoogleCalendar(customUrl?: string): Promise<SyncResult
       lastSyncAt: now,
       lastEventsCount: enrichedEvents.length,
     })
+
+    // Snapshot de backup em app_settings
+    if (supabase) {
+      void Promise.resolve(
+        supabase.from('app_settings').upsert({
+          id: `events_${currentEmail.toLowerCase().trim()}`,
+          data: enrichedEvents,
+          updated_at: now,
+        })
+      ).catch(() => {})
+    }
 
     return {
       ok: true,
