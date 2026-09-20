@@ -637,9 +637,16 @@ export async function sendHermesWebhook(
     'Content-Type': 'application/json',
   }
 
+  const rawBody = typeof payload === 'string' && event === 'raw' ? payload : JSON.stringify(body)
+
   if (config.vpsSecret) {
-    headers['X-Hermes-Signature'] = config.vpsSecret
-    headers['Authorization'] = `Bearer ${config.vpsSecret}`
+    const enc = new TextEncoder()
+    const key = await crypto.subtle.importKey(
+      'raw', enc.encode(config.vpsSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+    )
+    const sig = await crypto.subtle.sign('HMAC', key, enc.encode(rawBody))
+    const hex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('')
+    headers['X-Hub-Signature-256'] = `sha256=${hex}`
   }
 
   try {
@@ -649,7 +656,7 @@ export async function sendHermesWebhook(
     const res = await fetch(targetUrl, {
       method: 'POST',
       headers,
-      body: typeof payload === 'string' && event === 'raw' ? payload : JSON.stringify(body),
+      body: rawBody,
       signal: controller.signal,
     })
 
