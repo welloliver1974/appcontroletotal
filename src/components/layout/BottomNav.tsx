@@ -12,16 +12,21 @@ export function BottomNav() {
   const setManualOpen = useUiStore((s) => s.setManualOpen)
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen)
 
-  // Auto-scroll suave para manter o item ativo sempre visível e confortável na tela
+  // Auto-scroll inteligente: só rola o container se o item ativo estiver fora da visão
   useEffect(() => {
     if (!navContainerRef.current) return
-    const activeEl = navContainerRef.current.querySelector<HTMLElement>('[data-active="true"]')
+    const container = navContainerRef.current
+    const activeEl = container.querySelector<HTMLElement>('[data-active="true"]')
     if (activeEl) {
-      activeEl.scrollIntoView({
-        behavior: 'smooth',
-        inline: 'center',
-        block: 'nearest',
-      })
+      const elRect = activeEl.getBoundingClientRect()
+      const cRect = container.getBoundingClientRect()
+      if (elRect.left < cRect.left || elRect.right > cRect.right) {
+        activeEl.scrollIntoView({
+          behavior: 'smooth',
+          inline: 'center',
+          block: 'nearest',
+        })
+      }
     }
   }, [location.pathname])
 

@@ -229,6 +229,24 @@ function mapSupabaseError(err: unknown): Error {
   return new Error('Database unavailable')
 }
 
+type MutationListener = (collection: string) => void
+const mutationListeners = new Set<MutationListener>()
+
+export function registerDbMutationListener(cb: MutationListener): () => void {
+  mutationListeners.add(cb)
+  return () => {
+    mutationListeners.delete(cb)
+  }
+}
+
+function notifyMutation(collection: string) {
+  mutationListeners.forEach((listener) => {
+    try {
+      listener(collection)
+    } catch {}
+  })
+}
+
 export const db = {
   /** Lista todas as linhas de uma coleção. */
   async get<T = Row>(collection: string): Promise<T[]> {
@@ -310,6 +328,7 @@ export const db = {
   async set<T = Row>(collection: string, rows: T[]): Promise<T[]> {
     assertSupabaseConfig()
     const enrichedRows = rows.map((r) => enrichRowWithUser(collection, r))
+    notifyMutation(collection)
     if (!supabase) {
       localStorageDb.set<T>(collection, enrichedRows)
       return enrichedRows
@@ -343,6 +362,7 @@ export const db = {
   async insert<T = Row>(collection: string, row: T): Promise<T[]> {
     assertSupabaseConfig()
     const enrichedRow = enrichRowWithUser(collection, row)
+    notifyMutation(collection)
     if (!supabase) {
       const r = enrichedRow as T & { id: string }
       localStorageDb.insert<T & { id: string }>(collection, r)
@@ -374,6 +394,7 @@ export const db = {
   async upsert<T = Row>(collection: string, row: T): Promise<T[]> {
     assertSupabaseConfig()
     const enrichedRow = enrichRowWithUser(collection, row)
+    notifyMutation(collection)
     if (!supabase) {
       const r = enrichedRow as T & { id: string }
       const exists = localStorageDb.get<T & { id: string }>(collection).some((it) => it.id === r.id)
@@ -408,6 +429,7 @@ export const db = {
   /** Insere ou atualiza múltiplas linhas em lote. */
   async upsertMany<T = Row>(collection: string, rows: T[]): Promise<T[]> {
     assertSupabaseConfig()
+    notifyMutation(collection)
     if (rows.length === 0) return await this.get<T>(collection)
 
     const enrichedRows = rows.map((r) => enrichRowWithUser(collection, r))
@@ -451,6 +473,7 @@ export const db = {
   /** Atualiza uma linha pelo `id`. */
   async update<T = Row>(collection: string, id: string, patch: Partial<T>): Promise<T[]> {
     assertSupabaseConfig()
+    notifyMutation(collection)
 
     if (collection === 'events' && 'completed' in (patch as Record<string, unknown>)) {
       void setEventCompleted(id, Boolean((patch as Record<string, unknown>).completed))
@@ -492,6 +515,7 @@ export const db = {
   /** Remove uma linha pelo `id`. */
   async remove<T = Row>(collection: string, id: string): Promise<T[]> {
     assertSupabaseConfig()
+    notifyMutation(collection)
     if (!supabase) {
       localStorageDb.remove<T & { id: string }>(collection, id)
       return localStorageDb.get<T>(collection)

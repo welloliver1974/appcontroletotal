@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { supabase, tableName } from './db'
+import { invalidateApiCache } from '@/data/api'
 
 /**
  * Hook to subscribe to Supabase Realtime changes for one or more collections.
@@ -18,7 +19,12 @@ export function useRealtimeSync(collections: string[], onSync: () => void | Prom
     const tables = collections.map((col) => tableName(col))
     const channelName = `realtime-sync-${tables.join('-')}-${Math.random().toString(36).slice(2, 7)}`
 
-    const triggerSync = () => {
+    const triggerSync = (collectionName?: string) => {
+      if (collectionName) {
+        invalidateApiCache(collectionName)
+      } else {
+        collections.forEach((col) => invalidateApiCache(col))
+      }
       window.clearTimeout(timerRef.current)
       // Debounce slightly to coalesce rapid bursts
       timerRef.current = window.setTimeout(() => {
@@ -28,7 +34,9 @@ export function useRealtimeSync(collections: string[], onSync: () => void | Prom
 
     const channel = client.channel(channelName)
 
-    for (const table of tables) {
+    for (let i = 0; i < tables.length; i++) {
+      const table = tables[i]
+      const col = collections[i]
       channel.on(
         'postgres_changes',
         {
@@ -37,7 +45,7 @@ export function useRealtimeSync(collections: string[], onSync: () => void | Prom
           table,
         },
         () => {
-          triggerSync()
+          triggerSync(col)
         },
       )
     }

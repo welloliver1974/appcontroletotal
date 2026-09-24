@@ -54,6 +54,12 @@ body {
   background-attachment: fixed;
 }
 
+@media (max-width: 768px) {
+  body {
+    background-attachment: scroll;
+  }
+}
+
 [data-theme='emerald'] body {
   background-image:
     radial-gradient(1200px 520px at 50% -10%, rgb(16 185 129 / 0.13), transparent 60%),
