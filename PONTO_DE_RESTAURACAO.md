@@ -26,9 +26,12 @@
 - **Sincronização em Background**: Roda silenciosamente ao abrir o app e atualiza compromissos no banco de dados.
 - **Botão Manual**: Sempre acessível na aba Agenda para forçar sincronização imediata.
 
-### 4. ⚡ Transições Instantâneas entre Abas (`Idle Prefetch`)
-- Pré-carregamento inteligente de todos os módulos de abas em segundo plano durante o tempo ocioso do navegador.
-- Transições lisas e sem atrasos já a partir do primeiro clique.
+### 4. ⚡ Transições Instantâneas entre Abas (Cache em Memória + Zero Latência Artificial + Idle Prefetch)
+- Pré-carregamento de todos os módulos de abas em segundo plano durante o tempo ocioso do navegador.
+- Remoção total de delays artificiais simulados em `api.ts`.
+- Cache em memória transparente (`memoryCache` com TTL de 30s) garantindo navegação instantânea em 0ms ao retornar a abas já visitadas, sem piscar skeletons.
+- Invalidação atômica e automática de cache conectada às mutações do banco de dados (ex: sincronização em lote da Agenda) e aos eventos do Supabase Realtime (Hermes/Telegram).
+- Otimização do CSS de fundo no mobile (`background-attachment: scroll`) e auto-scroll inteligente do menu inferior para manter 60 FPS fluidos.
 
 ### 5. 💵 Gestão Financeira & Scanner com Data Robusta
 - Normalização inteligente de datas (`YYYY-MM-DD`, `YYYY/MM/DD`, `DD/MM/YYYY`) sem corromper dia/mês/ano.

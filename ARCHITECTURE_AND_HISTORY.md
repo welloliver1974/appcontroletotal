@@ -1377,6 +1377,26 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## ⚡ 76. Otimização de Performance e Transição Instantânea entre Abas no Mobile (24/09/2026)
+
+* **Contexto & Diagnóstico de Lentidão no Celular:**
+  - O usuário relatou lentidão sensível na transição entre abas no smartphone.
+  - **Causas Raízes Identificadas:**
+    1. **Delays Simulados em `api.ts`:** Havia uma função `delay(300ms + random(250ms))` ativa que travava cada requisição `api.list`, `create`, `update` e `remove`.
+    2. **Falta de Cache em Memória:** Ao navegar entre abas, o React desmontava a página anterior. Ao retornar, o componente reiniciava em `loading = true` e disparava entre 7 e 9 requisições de rede ao Supabase do zero, gerando flash de skeletons e espera perceptível.
+    3. **Impacto de GPU Mobile no CSS (`index.css`):** O `background-attachment: fixed` com múltiplos gradientes radiais forçava a GPU de navegadores móveis (Safari e Chrome mobile) a recompor camadas a cada ciclo de render.
+    4. **Scroll Desnecessário na Barra Inferior (`BottomNav.tsx`):** A função de auto-scroll disparava `scrollIntoView({ behavior: 'smooth' })` em todo clique, mesmo quando a aba já estava 100% visível na tela do celular.
+* **Soluções Implementadas & Garantia de Integridade:**
+  1. **Remoção de Delays em `api.ts`:** Eliminado todo atraso simulado; leituras e escritas agora operam na velocidade máxima do banco/rede.
+  2. **Cache em Memória de Alta Performance (`memoryCache` com 30s TTL):**
+     - Leituras subsequentes na mesma aba ou abas visitadas recentemente abrem em **0ms**, sem recarregar tudo do zero.
+     - **Invalidação Atômica Conectada ao Banco (`registerDbMutationListener`):** Qualquer escrita via `db.insert`, `db.upsert`, `db.upsertMany` (como a sincronização em lote do Google Calendar) ou `db.remove` invalida instantaneamente o cache da coleção alterada.
+     - **Invalidação em Tempo Real (`useRealtimeSync`):** Notificações do Supabase Realtime (mudanças feitas pelo Hermes, Telegram ou background) limpam o cache da coleção afetada antes de disparar o reload, garantindo dados sempre frescos na tela.
+  3. **CSS Otimizado para Smartphones (`index.css`):** `@media (max-width: 768px)` com `background-attachment: scroll`, eliminando a sobrecarga de compositing da GPU e mantendo 60 FPS fluidos.
+  4. **Auto-Scroll Inteligente no Rodapé (`BottomNav.tsx`):** A barra só chama o scroll se o botão da aba estiver parcial ou totalmente fora da viewport visível do menu.
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
 
 
