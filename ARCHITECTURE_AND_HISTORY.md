@@ -1397,7 +1397,26 @@ VITE_LLM_API_KEY=gsk_... ou sk-or-...
 
 ---
 
+## 🛡️ 77. Correção de Isolamento Multi-Usuário no Cofre de Fatos & Webhook do Telegram (Silvia & Wellington) (25/09/2026)
+
+* **Contexto & Diagnóstico:**
+  - O usuário identificou que anotações e mensagens enviadas pela Silvia (como `"cintura 68"` e `"/new"`) estavam aparecendo no **Cofre de Fatos** da conta do Wellington na aba **Life Log**.
+  - **Causas Raízes Identificadas:**
+    1. **Webhook do Telegram sem gravação de `user_email` ([hermes-capture.js](file:///e:/Apps/AppControleTotal/api/webhook/hermes-capture.js)):** O webhook identificava a Silvia (`isSilviaUser = true`, `userEmail = 'silvinhamsa@gmail.com'`) e adicionava a tag `user:silvia`. No entanto, na montagem do payload para o Supabase nos blocos `facts`, `media`, `events` e `life_log`, o campo `user_email: userEmail` não estava sendo adicionado ao objeto a ser inserido. O banco gravava `user_email = NULL`.
+    2. **Mecanismo de fallback da conta primária ([db.ts](file:///e:/Apps/AppControleTotal/src/lib/db.ts)):** O método `filterRowsForUser` isola os registros de cada usuário. Caso uma linha não tenha `user_email`, a regra de preservação histórica atribui os dados à conta principal (`welloliver@gmail.com`). Como as anotações da Silvia estavam com `user_email = NULL`, o sistema as exibia para o Wellington e as ocultava da própria Silvia.
+* **Soluções Implementadas:**
+  1. **Atualização no Banco Supabase:**
+     - Todos os registros com tag `user:silvia` foram atualizados para `user_email = 'silvinhamsa@gmail.com'`.
+     - Registros pessoais do Wellington foram explicitados com `user_email = 'welloliver@gmail.com'`.
+  2. **Persistência Completa no Webhook ([hermes-capture.js](file:///e:/Apps/AppControleTotal/api/webhook/hermes-capture.js)):**
+     - Adicionado `user_email: userEmail` explicitamente na inserção de `facts`, `media`, `events` e `life_log`.
+  3. **Dupla Camada de Proteção no Frontend ([db.ts](file:///e:/Apps/AppControleTotal/src/lib/db.ts)):**
+     - A função `filterRowsForUser` agora possui fallback inteligente por tags: se `user_email` for ausente mas houver tag `user:silvia` ou `user:wellington`, o filtro respeita o dono indicado nas tags antes de qualquer atribuição de legado.
+
+---
+
 *Documento consolidado e mantido como fonte única da verdade para evolução contínua da aplicação.*
+
 
 
 

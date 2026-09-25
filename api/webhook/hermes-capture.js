@@ -628,6 +628,7 @@ export default async function handler(req, res) {
         minutes: Number(body.minutes || 0),
         status: 'salvo',
         tags,
+        user_email: userEmail,
         created_at: nowIso(),
         updated_at: nowIso(),
       };
@@ -689,6 +690,7 @@ export default async function handler(req, res) {
         time_end: body.timeEnd || body.time_end || null,
         category: ['reuniao', 'pessoal', 'habit', 'viagem'].includes(body.category) ? body.category : 'pessoal',
         location: body.location || null,
+        user_email: userEmail,
         created_at: nowIso(),
         updated_at: nowIso(),
       };
@@ -718,6 +720,7 @@ export default async function handler(req, res) {
         body: summary || body.body || title,
         tags,
         mood: Math.min(5, Math.max(1, Number(body.mood) || 3)),
+        user_email: userEmail,
         created_at: nowIso(),
         updated_at: nowIso(),
       };
@@ -745,6 +748,7 @@ export default async function handler(req, res) {
       content: rawText || (typeof body === 'string' ? body : JSON.stringify(body)),
       source: 'telegram',
       tags,
+      user_email: userEmail,
       created_at: nowIso(),
       updated_at: nowIso(),
     };

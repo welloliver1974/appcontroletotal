@@ -106,7 +106,16 @@ export function filterRowsForUser<T>(collection: string, rows: T[]): T[] {
 
   return rows.filter((r: unknown) => {
     const row = r as Record<string, unknown>
-    const rowEmail = (row.userEmail || row.user_email || row.authorEmail || row.author_email) as string | undefined
+    let rowEmail = (row.userEmail || row.user_email || row.authorEmail || row.author_email) as string | undefined
+
+    // Fallback de segurança para tags de usuário (ex: 'user:silvia', 'user:wellington')
+    if (!rowEmail && Array.isArray(row.tags)) {
+      if (row.tags.some((t) => typeof t === 'string' && (t === 'user:silvia' || t.includes('silvia')))) {
+        rowEmail = 'silvinhamsa@gmail.com'
+      } else if (row.tags.some((t) => typeof t === 'string' && (t === 'user:wellington' || t.includes('welloliver')))) {
+        rowEmail = 'welloliver@gmail.com'
+      }
+    }
 
     if (rowEmail) {
       return rowEmail.toLowerCase().trim() === currentEmail.toLowerCase().trim()
