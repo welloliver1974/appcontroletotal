@@ -5,7 +5,7 @@ on:
     # 07:00 BRT = 10:00 UTC (Briefing Matinal)
     - cron: '0 10 * * *'
     # 21:30 BRT = 00:30 UTC (Debriefing Noturno)
-    - cron: '30 0 * * *'
+    - cron: '30 21 * * *'
   workflow_dispatch:
     inputs:
       mode:
